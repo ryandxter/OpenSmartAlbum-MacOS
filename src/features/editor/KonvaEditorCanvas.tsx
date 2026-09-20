@@ -1560,17 +1560,26 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
     return (activeSpread?.elements || []).filter((el) => selectedFrameIds.includes(el.id));
   }, [activeSpread?.elements, selectedFrameIds]);
 
+  const transformableSelectedFrames = useMemo(
+    () => selectedFramesList.filter((element) => !element.locked),
+    [selectedFramesList]
+  );
+  const transformableSelectedFrameIds = useMemo(
+    () => transformableSelectedFrames.map((element) => element.id),
+    [transformableSelectedFrames]
+  );
+  const transformableSelectionCount = transformableSelectedFrameIds.length;
+  const primaryTransformableFrameId = transformableSelectedFrameIds[0];
+
   const selectionGroupRotation = useEditorStore((s) => s.selectionGroupRotation);
   const multiGroupInfo = useMemo(() => {
-    if (selectedFramesList.length <= 1) return null;
-    return computeMultiFrameGroupInfo(selectedFramesList as PhotoFrameElement[], selectionGroupRotation ?? undefined);
-  }, [selectedFramesList, selectionGroupRotation]);
+    if (transformableSelectedFrames.length <= 1) return null;
+    return computeMultiFrameGroupInfo(transformableSelectedFrames as PhotoFrameElement[], selectionGroupRotation ?? undefined);
+  }, [transformableSelectedFrames, selectionGroupRotation]);
 
   const isSelectionFullyLocked = useMemo(() => {
-    if (!activeSpread || selectedFrameIds.length === 0) return false;
-    const selected = (activeSpread.elements || []).filter((f) => selectedFrameIds.includes(f.id));
-    return selected.length > 0 && selected.every((f) => f.locked);
-  }, [activeSpread, selectedFrameIds]);
+    return selectedFramesList.length > 0 && transformableSelectionCount === 0;
+  }, [selectedFramesList.length, transformableSelectionCount]);
 
   // Sync Konva Transformer to selected node(s)
   useEffect(() => {
@@ -1583,8 +1592,8 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
     } else if (trRef.current.isTransforming()) {
       // Store/viewport rerenders must not reset the active gesture's scale.
       return;
-    } else if (selectedFrameIds.length === 1) {
-      const singleNode = stageRef.current.findOne(`#${selectedFrameIds[0]}`);
+    } else if (transformableSelectionCount === 1 && primaryTransformableFrameId) {
+      const singleNode = stageRef.current.findOne(`#${primaryTransformableFrameId}`);
       if (singleNode) {
         singleNode.scaleX(1);
         singleNode.scaleY(1);
@@ -1597,7 +1606,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
         trRef.current.forceUpdate();
         trRef.current.getLayer()?.batchDraw();
       }
-    } else if (selectedFrameIds.length > 1) {
+    } else if (transformableSelectionCount > 1) {
       const proxyNode = multiGroupRef.current || stageRef.current.findOne('#multi-selection-proxy');
       if (proxyNode && multiGroupInfo) {
         proxyNode.x(multiGroupInfo.groupX * scaleFactor);
@@ -1612,7 +1621,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
         trRef.current.forceUpdate();
         trRef.current.getLayer()?.batchDraw();
       } else {
-        const selectedNodes = selectedFrameIds
+        const selectedNodes = transformableSelectedFrameIds
           .map((id) => stageRef.current?.findOne(`#${id}`))
           .filter(Boolean) as Konva.Node[];
         if (selectedNodes.length > 0) {
@@ -1627,7 +1636,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
       trRef.current.forceUpdate();
       trRef.current.getLayer()?.batchDraw();
     }
-  }, [selectedFrameIds, editingCropFrameId, editingTextElementId, activeSpread?.elements, zoomLevel, containerSize, multiGroupInfo, selectionGroupRotation, isSelectionFullyLocked]);
+  }, [transformableSelectedFrameIds, transformableSelectionCount, primaryTransformableFrameId, editingCropFrameId, editingTextElementId, activeSpread?.elements, zoomLevel, containerSize, multiGroupInfo, selectionGroupRotation, isSelectionFullyLocked]);
 
   // Immediately detach Transformer synchronously before paint when editing text or crop mode
   useLayoutEffect(() => {
@@ -2010,7 +2019,6 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
   const selectedElements = (activeSpread.elements || []).filter((f) =>
     selectedFrameIds.includes(f.id)
   );
-  const isMultiSelected = selectedElements.length > 1;
   const swapHandleFrame = selectedFrameIds.length === 1 && !editingCropFrameId
     && selectedElements[0]?.type === 'photo' && !selectedElements[0].locked && Boolean(selectedElements[0].photoId)
     ? selectedElements[0] as PhotoFrameElement
@@ -2984,7 +2992,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                     element={textEl}
                     isSelected={isSelected}
                     isEditing={isEditing}
-                    isMultiSelectActive={isMultiSelected}
+                    isMultiSelectActive={transformableSelectionCount > 1}
                     scaleFactor={scaleFactor}
                     canvasUnit={dims.unit}
                     dpi={dims.dpi}
@@ -3012,7 +3020,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                       const initialPositions = new Map<string, { x: number; y: number }>();
                       currentGroupIds.forEach((id) => {
                         const f = (activeSpread.elements || []).find((el) => el.id === id);
-                        if (f) {
+                        if (f && !f.locked) {
                           initialPositions.set(id, { x: f.x, y: f.y });
                         }
                       });
@@ -3220,7 +3228,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                   isSelected={isSelected}
                   isMuted={Boolean(editingCropFrameId && editingCropFrameId !== frame.id)}
                   isCropMode={isCrop}
-                  isMultiSelectActive={isMultiSelected}
+                  isMultiSelectActive={transformableSelectionCount > 1}
                   isHoveredForDrop={!isHoveredDropSwap && hoveredDropFrameId === frame.id}
                   isAltDrop={isHoveredDropAlt}
                   scaleFactor={scaleFactor}
@@ -3248,7 +3256,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                     const initialPositions = new Map<string, { x: number; y: number }>();
                     currentGroupIds.forEach((id) => {
                       const f = (activeSpread.elements || []).find((el) => el.id === id);
-                      if (f) {
+                      if (f && !f.locked) {
                         initialPositions.set(id, { x: f.x, y: f.y });
                       }
                     });
@@ -3604,7 +3612,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
               })}
 
             {/* 2. Multi-Selection Proxy Rect for Rotated Transformer Envelope */}
-            {selectedFrameIds.length > 1 && multiGroupInfo && (
+            {transformableSelectionCount > 1 && multiGroupInfo && (
               <Rect
                 id="multi-selection-proxy"
                 ref={multiGroupRef}
@@ -3643,7 +3651,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                 }
               }}
               enabledAnchors={
-                selectedFrameIds.length > 1
+                transformableSelectionCount > 1
                   ? ['top-left', 'top-right', 'bottom-right', 'bottom-left']
                   : [
                       'top-left',
@@ -3672,8 +3680,8 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                 setRotationHud(null);
                 setResizeHud(null);
                 const isSingleTextSelected =
-                  selectedFrameIds.length === 1 &&
-                  (activeSpread?.elements || []).find((el) => el.id === selectedFrameIds[0])?.type === 'text';
+                  transformableSelectionCount === 1 &&
+                  (activeSpread?.elements || []).find((el) => el.id === primaryTransformableFrameId)?.type === 'text';
 
                 const isCorner =
                   !anchor ||
@@ -3687,7 +3695,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                 if (isSingleTextSelected) {
                   tr.keepRatio(isCorner);
                 } else {
-                  tr.keepRatio(isCorner || selectedFrameIds.length > 1);
+                  tr.keepRatio(isCorner || transformableSelectionCount > 1);
                 }
 
                 // Lock to high-contrast curved rotation cursor during active rotation
@@ -3695,9 +3703,9 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                   if (stageRef.current) {
                     stageRef.current.container().style.cursor = ROTATE_CURSOR;
                   }
-                  const targetNode = selectedFrameIds.length > 1
+                  const targetNode = transformableSelectionCount > 1
                     ? multiGroupRef.current
-                    : (tr.getNode() || (selectedFrameIds[0] ? (stageRef.current?.findOne(`#${selectedFrameIds[0]}`) as Konva.Node | undefined) : null));
+                    : (tr.getNode() || (primaryTransformableFrameId ? (stageRef.current?.findOne(`#${primaryTransformableFrameId}`) as Konva.Node | undefined) : null));
                   if (targetNode) {
                     const rawRot = targetNode.rotation();
                     const normalizedRot = Math.round((((rawRot % 360) + 360) % 360) * 10) / 10;
@@ -3724,9 +3732,9 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                   }
                 }
 
-                if (selectedFrameIds.length > 1 && activeSpread && multiGroupInfo) {
+                if (transformableSelectionCount > 1 && activeSpread && multiGroupInfo) {
                   const selectedFrames = (activeSpread.elements || [])
-                    .filter((f) => selectedFrameIds.includes(f.id))
+                    .filter((f) => transformableSelectedFrameIds.includes(f.id) && !f.locked)
                     .map((f) => ({ ...f }));
                   multiTransformInitialStateRef.current = {
                     frames: selectedFrames as PhotoFrameElement[],
@@ -3752,9 +3760,9 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                     stageRef.current.container().style.cursor = ROTATE_CURSOR;
                   }
                   const tr = trRef.current;
-                  const targetNode = selectedFrameIds.length > 1
+                  const targetNode = transformableSelectionCount > 1
                     ? multiGroupRef.current
-                    : (tr?.getNode() || (selectedFrameIds[0] ? (stageRef.current?.findOne(`#${selectedFrameIds[0]}`) as Konva.Node | undefined) : null));
+                    : (tr?.getNode() || (primaryTransformableFrameId ? (stageRef.current?.findOne(`#${primaryTransformableFrameId}`) as Konva.Node | undefined) : null));
 
                   if (targetNode && tr) {
                     const rawRot = targetNode.rotation();
@@ -3788,9 +3796,9 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                   const tr = trRef.current;
                   if (tr && stageRef.current) {
                     let targetNode: Konva.Node | null = null;
-                    if (selectedFrameIds.length === 1) {
-                      targetNode = tr.getNode() || (selectedFrameIds[0] ? (stageRef.current.findOne(`#${selectedFrameIds[0]}`) as Konva.Node | null) : null);
-                    } else if (selectedFrameIds.length > 1) {
+                    if (transformableSelectionCount === 1) {
+                      targetNode = tr.getNode() || (primaryTransformableFrameId ? (stageRef.current.findOne(`#${primaryTransformableFrameId}`) as Konva.Node | null) : null);
+                    } else if (transformableSelectionCount > 1) {
                       targetNode = multiGroupRef.current;
                     }
 
@@ -3800,8 +3808,8 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                       const physW = (targetNode.width() * scaleX) / scaleFactor;
                       const physH = (targetNode.height() * scaleY) / scaleFactor;
 
-                      const selEl = selectedFrameIds.length === 1
-                        ? (activeSpread?.elements || []).find((el) => el.id === selectedFrameIds[0])
+                      const selEl = transformableSelectionCount === 1
+                        ? (activeSpread?.elements || []).find((el) => el.id === primaryTransformableFrameId)
                         : null;
                       const isText = selEl?.type === 'text';
 
@@ -3850,7 +3858,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                 }
 
                 // Live Real-Time WYSIWYG 60 FPS Multi-Frame Transform during mouse dragging
-                if (selectedFrameIds.length > 1 && multiGroupInfo && activeSpread) {
+                if (transformableSelectionCount > 1 && multiGroupInfo && activeSpread) {
                   const proxyNode = multiGroupRef.current;
                   if (!proxyNode) return;
 
@@ -3863,7 +3871,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                     const deltaAngle = currentGroupRot - initialGroupRot;
 
                     const initialFrames = (multiTransformInitialStateRef.current?.frames ||
-                      (activeSpread.elements || []).filter((f) => selectedFrameIds.includes(f.id))) as PhotoFrameElement[];
+                      (activeSpread.elements || []).filter((f) => transformableSelectedFrameIds.includes(f.id) && !f.locked)) as PhotoFrameElement[];
 
                     const updates = calculateMultiFrameRotation(initialFrames, deltaAngle);
                     updates.forEach((u) => {
@@ -3896,7 +3904,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                     const newY = proxyNode.y() / scaleFactor;
 
                     const initialFrames = multiTransformInitialStateRef.current?.frames ||
-                      (activeSpread.elements || []).filter((f) => selectedFrameIds.includes(f.id));
+                      (activeSpread.elements || []).filter((f) => transformableSelectedFrameIds.includes(f.id) && !f.locked);
 
                     const updates = calculateRotatedMultiFrameResize(
                       multiGroupInfo,
@@ -3927,7 +3935,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                 }
               }}
               boundBoxFunc={(oldBox, newBox) => {
-                const singleText = selectedFrameIds.length === 1 && activeSpread.elements.find((el) => el.id === selectedFrameIds[0])?.type === 'text';
+                const singleText = transformableSelectionCount === 1 && activeSpread.elements.find((el) => el.id === primaryTransformableFrameId)?.type === 'text';
                 if (singleText) {
                   const minTextSize = convertPtToUnit(1, unit, currentProject?.canvasDpi || 300) * scaleFactor;
                   return newBox.width >= minTextSize && newBox.height >= minTextSize ? newBox : oldBox;
@@ -3936,9 +3944,9 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                   return oldBox;
                 }
 
-                if (snapEnabled && selectedFrameIds.length === 1) {
+                if (snapEnabled && transformableSelectionCount === 1 && primaryTransformableFrameId) {
                   const currentAnchor = trRef.current?.getActiveAnchor();
-                  const selectedId = selectedFrameIds[0];
+                  const selectedId = primaryTransformableFrameId;
                   const otherRects = (activeSpread.elements || [])
                     .filter((f) => f.id !== selectedId)
                     .map((f) => ({ x: f.x, y: f.y, width: f.width, height: f.height }));
@@ -3981,12 +3989,12 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                 const tr = trRef.current;
                 if (!tr) return;
 
-                if (selectedFrameIds.length > 1 && multiGroupInfo && activeSpread) {
+                if (transformableSelectionCount > 1 && multiGroupInfo && activeSpread) {
                   const activeAnchor = activeTransformAnchorRef.current || tr.getActiveAnchor();
                   const proxyNode = multiGroupRef.current;
 
                   // Reset temporary transform scales on individual Konva frame groups
-                  selectedFrameIds.forEach((id) => {
+                  transformableSelectedFrameIds.forEach((id) => {
                     const node = stageRef.current?.findOne(`#${id}`) as Konva.Node | undefined;
                     if (node) {
                       node.scaleX(1);
@@ -4004,7 +4012,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                       proxyNode.scaleY(1);
 
                       const initialFrames = (multiTransformInitialStateRef.current?.frames ||
-                        (activeSpread.elements || []).filter((f) => selectedFrameIds.includes(f.id))) as PhotoFrameElement[];
+                        (activeSpread.elements || []).filter((f) => transformableSelectedFrameIds.includes(f.id) && !f.locked)) as PhotoFrameElement[];
 
                       const updates = calculateMultiFrameRotation(initialFrames, deltaAngle);
                       if (updates.length > 0) {
@@ -4022,7 +4030,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                       proxyNode.scaleY(1);
 
                       const initialFrames = multiTransformInitialStateRef.current?.frames ||
-                        (activeSpread.elements || []).filter((f) => selectedFrameIds.includes(f.id));
+                        (activeSpread.elements || []).filter((f) => transformableSelectedFrameIds.includes(f.id) && !f.locked);
 
                       const updates = calculateRotatedMultiFrameResize(
                         multiGroupInfo,

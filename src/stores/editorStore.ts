@@ -589,13 +589,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const { currentAlbum } = useAlbumStore.getState();
     if (!currentAlbum) return;
 
+    const targetSpread = currentAlbum.coverSpread.id === spreadId
+      ? currentAlbum.coverSpread
+      : currentAlbum.spreads.find((spread) => spread.id === spreadId);
+    const targetFrame = (targetSpread?.elements || []).find((element) => element.id === frameId);
+    if (!targetFrame || targetFrame.locked) return;
+
     useHistoryStore.getState().pushState(currentAlbum);
 
     if (currentAlbum.coverSpread.id === spreadId) {
       const updatedCover = {
         ...currentAlbum.coverSpread,
         elements: (currentAlbum.coverSpread.elements || []).map((f) =>
-          f.id === frameId ? ({ ...f, ...geometry } as AlbumElement) : f
+          f.id === frameId && !f.locked ? ({ ...f, ...geometry } as AlbumElement) : f
         ),
       };
       useAlbumStore.setState({
@@ -608,7 +614,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
           return {
             ...spread,
             elements: (spread.elements || []).map((f) =>
-              f.id === frameId ? ({ ...f, ...geometry } as AlbumElement) : f
+              f.id === frameId && !f.locked ? ({ ...f, ...geometry } as AlbumElement) : f
             ),
           };
         }
@@ -625,6 +631,12 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const { currentAlbum } = useAlbumStore.getState();
     if (!currentAlbum || updates.length === 0) return;
 
+    const requestedIds = new Set(updates.map((update) => update.id));
+    const hasUnlockedTarget = [currentAlbum.coverSpread, ...currentAlbum.spreads].some((spread) =>
+      (spread.elements || []).some((element) => requestedIds.has(element.id) && !element.locked)
+    );
+    if (!hasUnlockedTarget) return;
+
     useHistoryStore.getState().pushState(currentAlbum);
 
     const updateMap = new Map(updates.map((u) => [u.id, u.geometry]));
@@ -634,7 +646,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
 
     const applyUpdate = (f: AlbumElement): AlbumElement => {
       const geom = updateMap.get(f.id);
-      if (!geom) return f;
+      if (!geom || f.locked) return f;
       if (f.type === 'text') {
         return updateTextNode(f as TextNodeElement, geom as any, unit, dpi);
       }
@@ -1367,7 +1379,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     const targetSpread = spreads.find((s) => s.id === spreadId);
     if (!targetSpread) return;
 
-    const selectedFrames = (targetSpread.elements || []).filter((f) => selectedFrameIds.includes(f.id)) as PhotoFrameElement[];
+    const selectedFrames = (targetSpread.elements || []).filter(
+      (f) => selectedFrameIds.includes(f.id) && !f.locked
+    ) as PhotoFrameElement[];
     if (selectedFrames.length === 0) return;
 
     if (selectedFrames.length === 1) {

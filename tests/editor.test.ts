@@ -1714,4 +1714,56 @@ for (const update of tinyMultiResize) {
   assert.ok(Math.abs(update.geometry.width! / update.geometry.height! - original.width / original.height) < 1e-12);
 }
 
-console.log('✓ All Editor domain, Multiple Selection, Batch Alignment, Granular Snapping, Group/Ungroup, Group-Aware Layout Spacing, Safe Margin Alignment, Resize Safe Margin Snapping, Shift Orthogonal Drag, Copy-Paste, Paste in Place, Paste to All Spreads, Alt+Drag Duplicate, Photo Replacement, Photo Swap, Multi-Frame Batch Rotation, Mixed-Angle Multi-Frame Rotation, Rotated Multi-Frame Resize, Rotated Group Bounding Box, Multi-Frame Group Info, Persistent Group Rotation, SAT Rotated Marquee Selection, Multi-Frame Text Proportional Font Scaling, In-Frame Crop Rotation & Snapping, Snapping Config Persistence, Dynamic Per-Corner Rounded Corners, and Corner Resize Ratio Precision tests passed successfully!');
+// Locked members of a grouped mixed selection must remain immutable.
+const [lockedGroupFrame, unlockedGroupFrame] = getRatioFrames();
+useEditorStore.getState().selectFrames([lockedGroupFrame.id, unlockedGroupFrame.id]);
+useEditorStore.getState().groupSelectedFrames(ratioSpreadId);
+useEditorStore.getState().toggleLockSingleFrame(ratioSpreadId, lockedGroupFrame.id, true);
+const geometrySnapshot = (frame: PhotoFrameElement) => ({
+  x: frame.x,
+  y: frame.y,
+  width: frame.width,
+  height: frame.height,
+  rotation: frame.rotation || 0,
+});
+const lockedGeometryBeforeMixedTransform = geometrySnapshot(getRatioFrames().find((frame) => frame.id === lockedGroupFrame.id)!);
+const unlockedBeforeMixedTransform = getRatioFrames().find((frame) => frame.id === unlockedGroupFrame.id)!;
+
+useEditorStore.getState().updateFrameGeometry(ratioSpreadId, lockedGroupFrame.id, {
+  x: lockedGroupFrame.x + 25,
+  width: lockedGroupFrame.width + 10,
+});
+assert.deepEqual(
+  geometrySnapshot(getRatioFrames().find((frame) => frame.id === lockedGroupFrame.id)!),
+  lockedGeometryBeforeMixedTransform,
+  'Direct geometry updates must not mutate a locked grouped frame',
+);
+
+useEditorStore.getState().batchUpdateFrames(ratioSpreadId, [
+  { id: lockedGroupFrame.id, geometry: { x: lockedGroupFrame.x + 15, width: lockedGroupFrame.width + 5 } },
+  { id: unlockedGroupFrame.id, geometry: { x: unlockedBeforeMixedTransform.x + 15, width: unlockedBeforeMixedTransform.width + 5 } },
+]);
+assert.deepEqual(
+  geometrySnapshot(getRatioFrames().find((frame) => frame.id === lockedGroupFrame.id)!),
+  lockedGeometryBeforeMixedTransform,
+  'Batch resize must exclude locked members of a mixed group selection',
+);
+assert.equal(
+  getRatioFrames().find((frame) => frame.id === unlockedGroupFrame.id)!.width,
+  unlockedBeforeMixedTransform.width + 5,
+  'Batch resize must continue updating the unlocked group member',
+);
+
+useEditorStore.getState().rotateSelectedFrames(ratioSpreadId, 'cw');
+assert.deepEqual(
+  geometrySnapshot(getRatioFrames().find((frame) => frame.id === lockedGroupFrame.id)!),
+  lockedGeometryBeforeMixedTransform,
+  'Group rotation must exclude locked members of a mixed selection',
+);
+assert.equal(
+  getRatioFrames().find((frame) => frame.id === unlockedGroupFrame.id)!.rotation,
+  ((unlockedBeforeMixedTransform.rotation || 0) + 90) % 360,
+  'Group rotation must continue rotating the unlocked group member',
+);
+
+console.log('✓ All Editor domain, Multiple Selection, Batch Alignment, Granular Snapping, Group/Ungroup, Group-Aware Layout Spacing, Locked Mixed-Group Transform Protection, Safe Margin Alignment, Resize Safe Margin Snapping, Shift Orthogonal Drag, Copy-Paste, Paste in Place, Paste to All Spreads, Alt+Drag Duplicate, Photo Replacement, Photo Swap, Multi-Frame Batch Rotation, Mixed-Angle Multi-Frame Rotation, Rotated Multi-Frame Resize, Rotated Group Bounding Box, Multi-Frame Group Info, Persistent Group Rotation, SAT Rotated Marquee Selection, Multi-Frame Text Proportional Font Scaling, In-Frame Crop Rotation & Snapping, Snapping Config Persistence, Dynamic Per-Corner Rounded Corners, and Corner Resize Ratio Precision tests passed successfully!');

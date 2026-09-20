@@ -762,6 +762,7 @@
 - [x] Replace separate Group/Ungroup visuals in the floating left toolbar with one stable-icon toggle: neutral while ungrouped, cyan only while the selected group is active, matching the Border toggle behavior.
 - [x] Standardize locked photo and text selection feedback as a thin solid amber outline shown only while the locked object is selected, without transform handles.
 - [x] Keep cyan and amber selection outlines visible at flush canvas edges by rendering selection feedback above the sheet perimeter and insetting screen-space strokes within object bounds.
+- [x] Enforce absolute lock protection inside mixed grouped selections by excluding locked members from Transformer bounds, live drag/resize/rotation, and store-level geometry commits.
 - [x] Refine Layout Cycle HUD visual styling, status indicators, and keyboard context feedback.
 - [x] Application version metadata bumped to `v1.0.76`.
 
