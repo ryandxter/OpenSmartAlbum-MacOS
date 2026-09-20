@@ -75,3 +75,13 @@ Frames hold two independent transformation entities:
 - For a single selected, unlocked photo frame, a compact on-canvas `Swap Photos` drag handle (`⇄`) appears at the visual center of the photo. Dragging this handle moves photo content only; frame geometry remains stationary. The handle is hidden during crop mode, multi-selection, and while the frame body itself is being moved so it never appears detached from the live drag preview.
 - A valid drop target must be a different, unlocked photo frame on the active spread. Text elements, locked frames, the source frame, and empty canvas space cancel without changing the document.
 - The target displays a compact topmost `Release` badge that is independent of artwork z-index. A valid drop uses `swapFrames`, resets both crops consistently with the `S` shortcut, and creates one Undo step.
+- The `S` shortcut is context-aware: exactly two selected photo frames reserve it for Swap; otherwise, when the Smart Layout HUD is active, it shuffles photo placement.
+
+---
+
+## 5. Shortcut Reference Accuracy
+
+- The Settings shortcut reference must match implemented handlers and distinguish keyboard commands from canvas gestures.
+- Every entry must state its active context, such as Canvas, Crop Mode, Filmstrip, Smart Layout, Text Editing, or Project.
+- Keep unit-dependent actions generic: arrow-key nudge follows the project unit rather than always using millimeters.
+- Whenever canvas interaction changes, update the shortcut catalog in `SettingsDialog.tsx` in the same change.

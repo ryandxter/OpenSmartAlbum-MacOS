@@ -755,5 +755,12 @@
 - [x] Allow Crop Mode to exit through a primary click or tap on empty canvas/pasteboard space while preserving crop interaction inside the active photo.
 - [x] Application version metadata bumped to `v1.0.75`.
 
+### Phase 69 — Release v1.0.76: Context-Aware Shortcuts Reference & Layout Cycle HUD
+
+- [x] Audit and rebuild the Settings shortcut reference with accurate implemented combinations, dedicated Crop and Photo guidance, context labels, searchable notes, clearer key chords, and responsive rows.
+- [x] Resolve the shared `S` key context so two selected photos perform Swap without also triggering Smart Layout Shuffle.
+- [x] Refine Layout Cycle HUD visual styling, status indicators, and keyboard context feedback.
+- [x] Application version metadata bumped to `v1.0.76`.
+
 
 

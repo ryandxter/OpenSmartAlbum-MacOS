@@ -21,6 +21,7 @@ export function LayoutCycleHUD() {
 
   const currentProject = useProjectStore((s) => s.currentProject);
   const editingCropFrameId = useEditorStore((s) => s.editingCropFrameId);
+  const selectedFrameIds = useEditorStore((s) => s.selectedFrameIds);
 
   const activeSpread = useMemo(() => {
     if (!currentAlbum || !activeSpreadId) return null;
@@ -85,6 +86,9 @@ export function LayoutCycleHUD() {
   const currentIndex = (activeSpread && spreadLayoutIndices[activeSpread.id]) ?? 0;
   const safeIndex = variations.length > 0 ? currentIndex % variations.length : 0;
   const currentVariation = variations[safeIndex];
+  const isPhotoSwapSelection = selectedFrameIds.length === 2 && selectedFrameIds.every((id) =>
+    activeSpread?.elements.some((element) => element.id === id && element.type === 'photo')
+  );
 
   const handleNext = useCallback(() => {
     if (!activeSpread || !currentProject) return;
@@ -120,6 +124,7 @@ export function LayoutCycleHUD() {
         }
       } else if (e.key === 's' || e.key === 'S') {
         if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+          if (isPhotoSwapSelection) return;
           e.preventDefault();
           handleShuffle();
         }
@@ -128,7 +133,7 @@ export function LayoutCycleHUD() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleNext, handlePrev, handleShuffle, editingCropFrameId]);
+  }, [handleNext, handlePrev, handleShuffle, editingCropFrameId, isPhotoSwapSelection]);
 
   if (!currentProject || !activeSpread || photos.length === 0 || variations.length === 0) {
     return null;

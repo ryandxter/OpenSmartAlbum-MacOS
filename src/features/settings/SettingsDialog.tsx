@@ -19,6 +19,7 @@ interface ShortcutDef {
   category: string;
   action: string;
   combos: Array<string[]>;
+  scope: string;
   note?: string;
   keywords?: string;
 }
@@ -27,6 +28,7 @@ const SHORTCUT_CATEGORIES = [
   'All',
   'Panels & Navigation',
   'Canvas & Selection',
+  'Photo & Crop',
   'Transform & Layout',
   'Locking & Grouping',
   'Clipboard',
@@ -35,142 +37,268 @@ const SHORTCUT_CATEGORIES = [
 ] as const;
 
 const SHORTCUTS: ShortcutDef[] = [
-  // 1. Panels & Inspector Navigation
+  // 1. Panels, navigation, and viewport
   {
     id: 'nav-props',
     category: 'Panels & Navigation',
-    action: 'Toggle Properties Panel',
+    action: 'Open Properties Panel',
     combos: [['P']],
+    scope: 'Workspace',
     keywords: 'inspector sidebar properties',
   },
   {
     id: 'nav-lock',
     category: 'Panels & Navigation',
-    action: 'Toggle Lock Panel',
+    action: 'Open Locked Elements Panel',
     combos: [['L']],
+    scope: 'Workspace',
     keywords: 'lock protect sidebar',
   },
   {
     id: 'nav-smart-layout',
     category: 'Panels & Navigation',
-    action: 'Open Smart Layout Templates Panel',
+    action: 'Open Smart Layout Panel',
     combos: [['G']],
+    scope: 'Workspace',
     keywords: 'grid templates smart layout auto',
   },
   {
-    id: 'nav-spread-next',
+    id: 'nav-next-spread',
     category: 'Panels & Navigation',
-    action: 'Next / Previous Spread',
-    combos: [['PageDown'], ['PageUp']],
-    note: 'or Alt + → / ←',
-    keywords: 'next previous page spread navigation flip',
+    action: 'Go to Next Spread',
+    combos: [['Page Down'], ['Alt', 'Right Arrow']],
+    scope: 'Workspace',
+    keywords: 'next page spread navigation flip right',
+  },
+  {
+    id: 'nav-previous-spread',
+    category: 'Panels & Navigation',
+    action: 'Go to Previous Spread',
+    combos: [['Page Up'], ['Alt', 'Left Arrow']],
+    scope: 'Workspace',
+    keywords: 'previous page spread navigation flip left',
   },
   {
     id: 'nav-pan-tool',
     category: 'Panels & Navigation',
-    action: 'Pan / Hand Tool',
-    combos: [['Spacebar', '+ Drag']],
+    action: 'Pan Canvas View',
+    combos: [['Space', 'Drag'], ['Middle Mouse', 'Drag']],
+    scope: 'Canvas',
+    note: 'Hold Space while dragging, or drag with the middle mouse button.',
     keywords: 'hand pan move canvas view scroll',
   },
   {
-    id: 'nav-zoom-canvas',
+    id: 'nav-zoom-canvas-standard',
     category: 'Panels & Navigation',
-    action: 'Zoom Canvas In / Out',
-    combos: [['Ctrl', '+ Wheel'], ['Ctrl', 'Shift', '+ Wheel'], ['Ctrl', '+ / -']],
-    note: '5% step (Shift for 1% fine-tune)',
-    keywords: 'zoom canvas magnify scale mouse wheel in out 1 percent 5 percent fine precision',
+    action: 'Zoom Canvas',
+    combos: [['Ctrl', 'Wheel']],
+    scope: 'Canvas',
+    note: 'Changes zoom in 5% steps around the pointer.',
+    keywords: 'zoom canvas magnify scale mouse wheel in out 5 percent',
+  },
+  {
+    id: 'nav-zoom-canvas-fine',
+    category: 'Panels & Navigation',
+    action: 'Fine Zoom Canvas',
+    combos: [['Ctrl', 'Shift', 'Wheel']],
+    scope: 'Canvas',
+    note: 'Changes zoom in precise 1% steps around the pointer.',
+    keywords: 'zoom canvas magnify fine precision wheel 1 percent',
+  },
+  {
+    id: 'nav-zoom-canvas-keyboard',
+    category: 'Panels & Navigation',
+    action: 'Zoom In / Out by 15%',
+    combos: [['Ctrl', '+'], ['Ctrl', '-']],
+    scope: 'Workspace',
+    keywords: 'zoom canvas keyboard plus minus 15 percent',
   },
   {
     id: 'nav-reset-zoom',
     category: 'Panels & Navigation',
     action: 'Fit Spread to Screen & Center',
     combos: [['Ctrl', '0']],
+    scope: 'Workspace',
     keywords: 'zoom reset view fit center middle 100 percent',
   },
   {
     id: 'nav-filmstrip-scroll',
     category: 'Panels & Navigation',
     action: 'Scroll Filmstrip Photos',
-    combos: [['Wheel'], ['Shift', '+ Wheel']],
-    note: 'over filmstrip tray',
+    combos: [['Wheel']],
+    scope: 'Filmstrip',
+    note: 'Hover the filmstrip; a vertical wheel scroll moves it horizontally.',
     keywords: 'filmstrip scroll photos gallery mouse wheel horizontal browse next previous',
   },
 
-  // 2. Canvas Selection & Manipulation
+  // 2. Canvas selection
   {
     id: 'canvas-select',
     category: 'Canvas & Selection',
     action: 'Select Frame or Element',
     combos: [['Click']],
+    scope: 'Canvas',
     keywords: 'pick select highlight target',
   },
   {
     id: 'canvas-multi-select',
     category: 'Canvas & Selection',
-    action: 'Multi-Select Photos / Frames',
-    combos: [['Shift', '+ Click']],
-    note: 'or Marquee Drag',
-    keywords: 'multiple select add range box marquee',
+    action: 'Add or Remove from Selection',
+    combos: [['Shift', 'Click'], ['Ctrl', 'Click']],
+    scope: 'Canvas',
+    keywords: 'multiple select add remove toggle frame element',
+  },
+  {
+    id: 'canvas-marquee-select',
+    category: 'Canvas & Selection',
+    action: 'Marquee-Select Elements',
+    combos: [['Drag', 'Empty Area']],
+    scope: 'Canvas',
+    note: 'Hold Shift or Ctrl to add to the current selection.',
+    keywords: 'multiple select range box marquee empty canvas',
   },
   {
     id: 'canvas-select-all',
     category: 'Canvas & Selection',
-    action: 'Select All Frames on Spread',
+    action: 'Select All in Active Area',
     combos: [['Ctrl', 'A']],
-    keywords: 'all select spread entire',
+    scope: 'Pointer Context',
+    note: 'Targets the canvas, filmstrip, or spread drawer under the pointer.',
+    keywords: 'all select spread frames photos filmstrip drawer entire',
   },
   {
     id: 'canvas-duplicate',
     category: 'Canvas & Selection',
     action: 'Duplicate Selected Frame(s)',
     combos: [['Ctrl', 'D']],
+    scope: 'Canvas',
     keywords: 'duplicate copy clone make copy',
   },
   {
     id: 'canvas-delete',
     category: 'Canvas & Selection',
-    action: 'Delete Frame / Photo',
+    action: 'Delete Selected Canvas Element(s)',
     combos: [['Delete'], ['Backspace']],
-    keywords: 'remove trash clear delete',
+    scope: 'Canvas',
+    keywords: 'remove trash clear delete frame photo text canvas',
   },
   {
-    id: 'canvas-crop-enter',
+    id: 'filmstrip-delete',
     category: 'Canvas & Selection',
-    action: 'Enter Pan & Zoom Crop Mode',
-    combos: [['Double Click']],
-    note: 'on photo frame (Wheel to zoom crop)',
-    keywords: 'crop pan zoom scale image photo inside frame wheel',
+    action: 'Delete Selected Library Photo(s)',
+    combos: [['Delete'], ['Backspace']],
+    scope: 'Filmstrip',
+    note: 'Opens a confirmation before removing photos from the library.',
+    keywords: 'remove trash delete library photos filmstrip',
   },
   {
-    id: 'canvas-crop-exit',
+    id: 'spread-delete',
     category: 'Canvas & Selection',
-    action: 'Exit Crop Mode / Deselect',
-    combos: [['Esc'], ['Enter']],
-    keywords: 'done exit finish crop deselect escape',
+    action: 'Delete Selected Spread(s)',
+    combos: [['Delete']],
+    scope: 'Spread Drawer',
+    note: 'The spread drawer must be hovered or focused.',
+    keywords: 'remove delete page spread drawer',
+  },
+  {
+    id: 'canvas-clear-selection',
+    category: 'Canvas & Selection',
+    action: 'Clear Selection or Cancel Active Action',
+    combos: [['Esc']],
+    scope: 'Active Area',
+    note: 'Also cancels an active photo swap drag.',
+    keywords: 'escape deselect cancel selection swap drag',
   },
 
-  // 3. Transform, Rotation & Layout
+  // 3. Photo placement and crop mode
+  {
+    id: 'crop-enter',
+    category: 'Photo & Crop',
+    action: 'Enter Crop Mode',
+    combos: [['Double-click', 'Photo']],
+    scope: 'Photo Frame',
+    keywords: 'crop pan zoom scale image photo inside frame',
+  },
+  {
+    id: 'crop-pan',
+    category: 'Photo & Crop',
+    action: 'Pan Photo Inside Frame',
+    combos: [['Drag', 'Photo']],
+    scope: 'Crop Mode',
+    keywords: 'crop pan move image photo inside frame',
+  },
+  {
+    id: 'crop-zoom',
+    category: 'Photo & Crop',
+    action: 'Zoom Photo Inside Frame',
+    combos: [['Wheel']],
+    scope: 'Crop Mode',
+    note: 'Uses precise 2% crop-zoom steps.',
+    keywords: 'crop zoom scale image photo wheel 2 percent',
+  },
+  {
+    id: 'crop-pan-keyboard',
+    category: 'Photo & Crop',
+    action: 'Nudge Crop Position',
+    combos: [['Arrow Keys'], ['Shift', 'Arrow Keys']],
+    scope: 'Crop Mode',
+    note: 'Shift uses a larger movement step.',
+    keywords: 'crop pan nudge image arrow precision fast',
+  },
+  {
+    id: 'crop-rotate',
+    category: 'Photo & Crop',
+    action: 'Rotate Photo Content 90°',
+    combos: [['R'], ['Shift', 'R']],
+    scope: 'Crop Mode',
+    note: 'R rotates clockwise; Shift+R rotates counterclockwise.',
+    keywords: 'crop rotate image photo clockwise counterclockwise',
+  },
+  {
+    id: 'crop-exit',
+    category: 'Photo & Crop',
+    action: 'Exit Crop Mode',
+    combos: [['Enter'], ['Esc'], ['Click', 'Empty Area']],
+    scope: 'Crop Mode',
+    note: 'Clicking inside the active photo keeps Crop Mode active.',
+    keywords: 'done exit finish crop deselect escape empty canvas pasteboard',
+  },
+  {
+    id: 'photo-replace-drop',
+    category: 'Photo & Crop',
+    action: 'Replace Photo in Frame',
+    combos: [['Alt', 'Drop']],
+    scope: 'Filmstrip → Canvas',
+    note: 'Drop one filmstrip photo onto an unlocked photo frame.',
+    keywords: 'replace switch photo filmstrip canvas frame alt drop',
+  },
+
+  // 4. Transform, rotation, and layout
   {
     id: 'transform-swap',
     category: 'Transform & Layout',
     action: 'Swap 2 Selected Photos',
     combos: [['S']],
+    scope: 'Canvas',
+    note: 'Requires exactly two selected photo frames; this takes priority over Shuffle.',
     keywords: 'swap switch exchange replace photo images positions',
   },
   {
     id: 'transform-rotate',
     category: 'Transform & Layout',
     action: 'Rotate Frame 90° Clockwise',
-    combos: [['R']],
-    note: 'Shift + R for CCW',
+    combos: [['R'], ['Shift', 'R']],
+    scope: 'Canvas',
+    note: 'R rotates clockwise; Shift+R rotates counterclockwise.',
     keywords: 'rotate 90 orientation landscape portrait turn angle',
   },
   {
     id: 'transform-cycle-layout',
     category: 'Transform & Layout',
     action: 'Cycle Next Smart Layout',
-    combos: [['Spacebar']],
-    note: 'Shift + Space for previous',
+    combos: [['Space'], ['Shift', 'Space']],
+    scope: 'Smart Layout',
+    note: 'Space selects the next variant; Shift+Space selects the previous variant.',
     keywords: 'cycle layout template shuffle arrange smart',
   },
   {
@@ -178,58 +306,76 @@ const SHORTCUTS: ShortcutDef[] = [
     category: 'Transform & Layout',
     action: 'Shuffle Photo Placement',
     combos: [['S']],
-    note: 'when Smart Layout HUD is active',
+    scope: 'Smart Layout',
+    note: 'Used when the Smart Layout HUD is active and two photos are not selected for Swap.',
     keywords: 'shuffle positions random smart layout rearrange',
   },
   {
     id: 'transform-axis-lock',
     category: 'Transform & Layout',
     action: 'Orthogonal Axis-Lock Drag',
-    combos: [['Shift', '+ Drag']],
+    combos: [['Shift', 'Drag']],
+    scope: 'Canvas',
     keywords: 'axis lock straight horizontal vertical constrain 45 90 drag',
   },
   {
     id: 'transform-drag-dup',
     category: 'Transform & Layout',
     action: 'Quick Drag-Duplicate',
-    combos: [['Alt', '+ Drag']],
+    combos: [['Alt', 'Drag']],
+    scope: 'Canvas',
     keywords: 'quick duplicate drag copy instant clone',
   },
   {
     id: 'transform-bypass-snap',
     category: 'Transform & Layout',
     action: 'Bypass Magnetic Snapping',
-    combos: [['Ctrl', '+ Drag']],
+    combos: [['Ctrl', 'Drag']],
+    scope: 'Canvas',
     keywords: 'bypass snap magnet ignore disable temporarily align',
   },
   {
     id: 'transform-nudge',
     category: 'Transform & Layout',
-    action: 'Precision Nudge (1.0 mm)',
+    action: 'Nudge Selected Element(s)',
     combos: [['Arrow Keys']],
-    keywords: 'nudge move 1mm fine arrow precision position',
+    scope: 'Canvas',
+    note: 'Uses the base step for the project unit: 1 px/mm, 0.1 cm, or 0.05 in.',
+    keywords: 'nudge move unit fine arrow precision position',
   },
   {
     id: 'transform-nudge-fast',
     category: 'Transform & Layout',
-    action: 'Fast Nudge Movement (5.0 mm)',
-    combos: [['Shift', '+ Arrows']],
-    keywords: 'fast nudge 5mm arrow step jump',
+    action: 'Nudge by 5× Step',
+    combos: [['Shift', 'Arrow Keys']],
+    scope: 'Canvas',
+    keywords: 'fast nudge arrow step jump five times',
+  },
+  {
+    id: 'transform-swap-handle',
+    category: 'Transform & Layout',
+    action: 'Swap Photo Content by Dragging',
+    combos: [['Drag', '⇄ Handle']],
+    scope: 'Canvas',
+    note: 'Select one unlocked photo, then drag the center handle onto another photo frame.',
+    keywords: 'swap switch exchange photo content handle drag release',
   },
 
-  // 4. Locking & Grouping
+  // 5. Locking & grouping
   {
     id: 'lock-frame',
     category: 'Locking & Grouping',
     action: 'Lock Selected Frame(s)',
     combos: [['Ctrl', 'L']],
+    scope: 'Canvas',
     keywords: 'lock protect secure freeze movement position',
   },
   {
     id: 'unlock-frame',
     category: 'Locking & Grouping',
     action: 'Unlock Selected Frame(s)',
-    combos: [['Alt', 'L']],
+    combos: [['Alt', 'L'], ['Ctrl', 'Shift', 'L']],
+    scope: 'Canvas',
     keywords: 'unlock unfreeze release',
   },
   {
@@ -237,6 +383,8 @@ const SHORTCUTS: ShortcutDef[] = [
     category: 'Locking & Grouping',
     action: 'Unlock All Frames on Spread',
     combos: [['Ctrl', 'Alt', 'L']],
+    scope: 'Canvas',
+    note: 'Alt+L also unlocks all when no canvas element is selected.',
     keywords: 'unlock all frames spread entire',
   },
   {
@@ -244,6 +392,7 @@ const SHORTCUTS: ShortcutDef[] = [
     category: 'Locking & Grouping',
     action: 'Group Selected Frames',
     combos: [['Ctrl', 'G']],
+    scope: 'Canvas',
     keywords: 'group combine bind cluster',
   },
   {
@@ -251,22 +400,26 @@ const SHORTCUTS: ShortcutDef[] = [
     category: 'Locking & Grouping',
     action: 'Ungroup Selected Frames',
     combos: [['Ctrl', 'Shift', 'G']],
+    scope: 'Canvas',
     keywords: 'ungroup separate split isolate',
   },
 
-  // 5. Clipboard
+  // 6. Clipboard
   {
     id: 'clip-copy',
     category: 'Clipboard',
-    action: 'Copy Selected Frame(s)',
+    action: 'Copy Selected Item(s)',
     combos: [['Ctrl', 'C']],
-    keywords: 'copy clipboard duplicate memory',
+    scope: 'Active Selection',
+    note: 'Copies canvas elements, or selected photos when the filmstrip is active.',
+    keywords: 'copy clipboard frame photo filmstrip duplicate memory',
   },
   {
     id: 'clip-paste',
     category: 'Clipboard',
     action: 'Paste Frames',
     combos: [['Ctrl', 'V']],
+    scope: 'Canvas',
     keywords: 'paste insert place frame',
   },
   {
@@ -274,6 +427,7 @@ const SHORTCUTS: ShortcutDef[] = [
     category: 'Clipboard',
     action: 'Paste in Place',
     combos: [['Ctrl', 'Shift', 'V']],
+    scope: 'Canvas',
     keywords: 'paste in place exact coordinate alignment original',
   },
   {
@@ -281,23 +435,25 @@ const SHORTCUTS: ShortcutDef[] = [
     category: 'Clipboard',
     action: 'Paste to All Spreads',
     combos: [['Ctrl', 'Alt', 'V']],
+    scope: 'Canvas',
     keywords: 'paste all spreads repeat bulk batch header footer',
   },
 
-  // 6. Text & Typography
+  // 7. Text and typography
   {
     id: 'text-add',
     category: 'Text & Typography',
     action: 'Add New Text Box',
     combos: [['T']],
+    scope: 'Canvas',
     keywords: 'text box typography caption heading font',
   },
   {
     id: 'text-edit',
     category: 'Text & Typography',
     action: 'Edit Text Content Inline',
-    combos: [['Double Click']],
-    note: 'on text element',
+    combos: [['Double-click', 'Text']],
+    scope: 'Text Frame',
     keywords: 'edit type write double click inline rich text',
   },
   {
@@ -305,6 +461,7 @@ const SHORTCUTS: ShortcutDef[] = [
     category: 'Text & Typography',
     action: 'Bold / Italic / Underline',
     combos: [['Ctrl', 'B'], ['Ctrl', 'I'], ['Ctrl', 'U']],
+    scope: 'Text Editing',
     keywords: 'bold italic underline style typography font weight',
   },
   {
@@ -312,15 +469,34 @@ const SHORTCUTS: ShortcutDef[] = [
     category: 'Text & Typography',
     action: 'Commit & Save Text Changes',
     combos: [['Ctrl', 'Enter']],
+    scope: 'Text Editing',
     keywords: 'commit done finish save text exit edit',
   },
+  {
+    id: 'text-cancel',
+    category: 'Text & Typography',
+    action: 'Cancel Inline Text Changes',
+    combos: [['Esc']],
+    scope: 'Text Editing',
+    keywords: 'cancel discard escape text edit',
+  },
+  {
+    id: 'text-fit-content',
+    category: 'Text & Typography',
+    action: 'Fit Text Frame to Content',
+    combos: [['Ctrl', 'Alt', 'C']],
+    scope: 'Canvas',
+    note: 'Requires one unlocked text frame to be selected.',
+    keywords: 'fit frame content text hug resize ctrl alt c',
+  },
 
-  // 7. File & Project Operations
+  // 8. File and project operations
   {
     id: 'file-save',
     category: 'File & Project',
     action: 'Save Project',
     combos: [['Ctrl', 'S']],
+    scope: 'Project',
     keywords: 'save disk project write store',
   },
   {
@@ -328,6 +504,7 @@ const SHORTCUTS: ShortcutDef[] = [
     category: 'File & Project',
     action: 'Save Project As (.afsn)',
     combos: [['Ctrl', 'Shift', 'S']],
+    scope: 'Project',
     keywords: 'save as afsn new file copy backup',
   },
   {
@@ -335,6 +512,7 @@ const SHORTCUTS: ShortcutDef[] = [
     category: 'File & Project',
     action: 'Open Project',
     combos: [['Ctrl', 'O']],
+    scope: 'Project',
     keywords: 'open file load project afsn browse',
   },
   {
@@ -342,6 +520,7 @@ const SHORTCUTS: ShortcutDef[] = [
     category: 'File & Project',
     action: 'Create New Project',
     combos: [['Ctrl', 'N']],
+    scope: 'Project',
     keywords: 'new project wizard create fresh album',
   },
   {
@@ -349,6 +528,7 @@ const SHORTCUTS: ShortcutDef[] = [
     category: 'File & Project',
     action: 'Export High-Resolution Album',
     combos: [['Ctrl', 'E']],
+    scope: 'Project',
     keywords: 'export print jpg pdf high res render dpi output',
   },
   {
@@ -356,21 +536,23 @@ const SHORTCUTS: ShortcutDef[] = [
     category: 'File & Project',
     action: 'Undo Action',
     combos: [['Ctrl', 'Z']],
+    scope: 'Workspace',
     keywords: 'undo revert step back history',
   },
   {
     id: 'file-redo',
     category: 'File & Project',
     action: 'Redo Action',
-    combos: [['Ctrl', 'Y']],
-    note: 'or Ctrl + Shift + Z',
+    combos: [['Ctrl', 'Y'], ['Ctrl', 'Shift', 'Z']],
+    scope: 'Workspace',
     keywords: 'redo forward repeat history',
   },
   {
     id: 'file-shortcuts',
     category: 'File & Project',
-    action: 'Open Keyboard Shortcuts Help',
-    combos: [['F1']],
+    action: 'Open Shortcuts Reference',
+    combos: [['F1'], ['?']],
+    scope: 'Workspace',
     keywords: 'help shortcuts hotkeys f1 cheat sheet',
   },
 ];
@@ -512,11 +694,13 @@ export function SettingsDialog() {
       if (!query) return true;
       const matchAction = s.action.toLowerCase().includes(query);
       const matchCat = s.category.toLowerCase().includes(query);
+      const matchScope = s.scope.toLowerCase().includes(query);
+      const matchNote = s.note?.toLowerCase().includes(query) ?? false;
       const matchKeywords = s.keywords?.toLowerCase().includes(query) ?? false;
       const matchKeys = s.combos.some((combo) =>
         combo.some((k) => k.toLowerCase().includes(query))
       );
-      return matchAction || matchCat || matchKeywords || matchKeys;
+      return matchAction || matchCat || matchScope || matchNote || matchKeywords || matchKeys;
     });
   }, [searchQuery, categoryFilter]);
 
@@ -1224,9 +1408,25 @@ export function SettingsDialog() {
           {activeTab === 'shortcuts' && (
             <div className={styles.tabContent}>
               <div className={styles.sectionHeader}>
-                <div className={styles.sectionTitle}>Keyboard Shortcuts</div>
+                <div className={styles.sectionTitle}>Shortcuts &amp; Gestures</div>
                 <div className={styles.sectionSubtitle}>
-                  Essential desktop hotkeys for lightning-fast layout design and album production.
+                  Context-aware keyboard shortcuts and canvas gestures for faster album editing.
+                </div>
+              </div>
+
+              <div className={styles.shortcutGuide} role="note">
+                <div className={styles.shortcutGuideIcon} aria-hidden="true">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="9" />
+                    <line x1="12" y1="11" x2="12" y2="16" />
+                    <circle cx="12" cy="8" r="1" fill="currentColor" stroke="none" />
+                  </svg>
+                </div>
+                <div className={styles.shortcutGuideContent}>
+                  <div className={styles.shortcutGuideTitle}>Context-aware shortcuts</div>
+                  <div className={styles.shortcutGuideText}>
+                    Each shortcut applies to the context shown on its label. Shortcuts are paused while typing.
+                  </div>
                 </div>
               </div>
 
@@ -1242,7 +1442,7 @@ export function SettingsDialog() {
                   <input
                     type="text"
                     className={styles.searchInput}
-                    placeholder="Search shortcuts by action, key or category (e.g. crop, lock, duplicate)..."
+                    placeholder="Search by action, key, context, or category..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
@@ -1287,11 +1487,12 @@ export function SettingsDialog() {
                       {items.map((item) => (
                         <div key={item.id} className={styles.shortcutRow}>
                           <div className={styles.shortcutAction}>
-                            {item.action}
+                            <div className={styles.shortcutActionHeader}>
+                              <span>{item.action}</span>
+                              <span className={styles.shortcutScope}>{item.scope}</span>
+                            </div>
                             {item.note && (
-                              <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginLeft: '8px' }}>
-                                ({item.note})
-                              </span>
+                              <div className={styles.shortcutNote}>{item.note}</div>
                             )}
                           </div>
 
@@ -1299,19 +1500,12 @@ export function SettingsDialog() {
                             {item.combos.map((combo, comboIdx) => (
                               <React.Fragment key={comboIdx}>
                                 {comboIdx > 0 && (
-                                  <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', margin: '0 2px' }}>
-                                    /
-                                  </span>
+                                  <span className={styles.shortcutAlternative}>or</span>
                                 )}
                                 {combo.map((keyToken, tokenIdx) => (
                                   <React.Fragment key={tokenIdx}>
-                                    {keyToken.startsWith('+') ? (
-                                      <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', margin: '0 2px' }}>
-                                        {keyToken}
-                                      </span>
-                                    ) : (
-                                      <kbd className={styles.kbd}>{keyToken}</kbd>
-                                    )}
+                                    {tokenIdx > 0 && <span className={styles.shortcutJoin}>+</span>}
+                                    <kbd className={styles.kbd}>{keyToken}</kbd>
                                   </React.Fragment>
                                 ))}
                               </React.Fragment>
