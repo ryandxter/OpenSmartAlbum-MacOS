@@ -46,6 +46,7 @@ import type { Project } from '../src/domain/project';
 import { useAlbumStore } from '../src/stores/albumStore';
 import { useEditorStore } from '../src/stores/editorStore';
 import { useProjectStore } from '../src/stores/projectStore';
+import { findPhotoSwapTarget } from '../src/features/editor/photoSwapDrag';
 
 console.log('Testing Editor Domain & Smart Snapping Math...');
 
@@ -667,6 +668,39 @@ const swappedElements = elements.map((f) => {
 
 console.assert(swappedElements[0].photoId === 'photo-b', 'Frame 1 should now contain photo B');
 console.assert(swappedElements[0].x === 50 && swappedElements[0].width === 120, 'Frame 1 geometry preserved');
+
+// On-canvas drag-swap exact rotated-frame target resolution
+const rotatedSwapTarget: PhotoFrameElement = {
+  ...testFrameB,
+  id: 'rotated-swap-target',
+  x: 100,
+  y: 100,
+  width: 40,
+  height: 20,
+  rotation: 90,
+  zIndex: 5,
+};
+const lockedSwapTarget: PhotoFrameElement = {
+  ...rotatedSwapTarget,
+  id: 'locked-swap-target',
+  zIndex: 10,
+  locked: true,
+};
+assert.equal(
+  findPhotoSwapTarget([testFrameA, rotatedSwapTarget, lockedSwapTarget], { x: 90, y: 120 }, testFrameA.id)?.id,
+  rotatedSwapTarget.id,
+  'Drag-swap must resolve the topmost unlocked rotated photo frame',
+);
+assert.equal(
+  findPhotoSwapTarget([rotatedSwapTarget], { x: 79, y: 99 }, testFrameA.id),
+  null,
+  'Drag-swap must reject points outside the rotated frame rather than accepting its AABB corners',
+);
+assert.equal(
+  findPhotoSwapTarget([rotatedSwapTarget], { x: 90, y: 120 }, rotatedSwapTarget.id),
+  null,
+  'Drag-swap must never target its own source frame',
+);
 // 9. Test Group & Ungroup Mechanism
 const frameG1: PhotoFrameElement = { ...testFrameA, id: 'frame-g1', groupId: undefined };
 const frameG2: PhotoFrameElement = { ...testFrameB, id: 'frame-g2', groupId: undefined };

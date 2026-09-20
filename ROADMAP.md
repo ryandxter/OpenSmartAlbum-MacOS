@@ -400,6 +400,7 @@
 
 - [x] Fix Bypass Magnetic Snapping shortcut display from `Alt + Drag` to `Ctrl + Drag` to match actual implementation (`ctrlKey`).
 - [x] Fix snapping settings tooltip from "hold Alt to bypass" to "hold Ctrl to bypass".
+- [x] Synchronize the internal `album-editor` skill with the current modifier mapping: `Ctrl + Drag` bypasses snapping, while `Alt + Drag` duplicates canvas elements with snapping still active.
 - [x] Recalibrate Level 2 (Normal) snapping distance threshold from 20 px / 1.69 mm to 15 px / 1.27 mm.
 - [x] Update all default threshold fallback values to match new Level 2 calibration.
 - [x] Restyle Photo Spacing panel to match Safe Margin card UI: bordered card container, amber icon header, and `suffix`-based NumberInput for visual consistency.
@@ -743,6 +744,16 @@
 - [x] Enforce Physical Gap Invariant in `previewGeometry.ts` guaranteeing intentional canvas gaps (> 0.5 px) never collapse to 0 px in mini preview thumbnails.
 - [x] Render subtle spine crease fold line (`spineX`) in `MiniSpreadPreview` behind page content for clear visual sheet separation.
 - [x] Application version metadata bumped to `v1.0.74`.
+
+### Phase 68 — Release v1.0.75: Canvas Photo Drag-Swap & Crop Interaction Follow-Up
+
+- [x] Add a dedicated on-canvas center drag handle for swapping photo content between two canvas frames without moving their geometry; remove the less-direct left-toolbar drag mechanism.
+- [x] Preserve existing canvas gestures: normal drag moves, `Shift + Drag` constrains, `Ctrl + Drag` bypasses snapping, and `Alt + Drag` duplicates.
+- [x] Restrict swap targets to different unlocked photo frames, resolve rotated targets precisely, cancel invalid drops without mutation, and retain the `S` shortcut as the keyboard fallback.
+- [x] Add compact topmost amber target feedback (`Release`) independent of artwork z-index, keep the `⇄` handle as the drag preview, use one-step Undo through `swapFrames`, and add regression coverage for exact safe-target resolution.
+- [x] Hide the `⇄` swap handle while its selected frame body is being moved, then restore it at the committed frame position after drag completion or interruption.
+- [x] Allow Crop Mode to exit through a primary click or tap on empty canvas/pasteboard space while preserving crop interaction inside the active photo.
+- [x] Application version metadata bumped to `v1.0.75`.
 
 
 

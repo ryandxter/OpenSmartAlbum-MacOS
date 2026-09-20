@@ -49,7 +49,7 @@ When dragging or multi-selecting frames:
    - `snapToFrames`: Neighboring frame collinear edges (`Align Left`, `Align Right`, `Align Top`, `Align Bottom`) and centerlines (`Align Center X`, `Align Center Y`).
    - `snapToEqualGaps`: Real-time equidistant gap snapping and dynamic distance guide HUD indicators.
 2. Snap threshold is configurable (default: 2.0mm; presets: Soft 1.0mm, Standard 2.0mm, Strong 4.0mm).
-3. Snapping can be configured in the dedicated **Settings** modal (`SettingsDialog.tsx`) and toggled via master switch or bypassed in real-time by holding <kbd>Alt</kbd>.
+3. Snapping can be configured in the dedicated **Settings** modal (`SettingsDialog.tsx`) and toggled via master switch or bypassed while moving canvas elements with <kbd>Ctrl</kbd> + drag. <kbd>Alt</kbd> + drag is reserved for duplicating canvas elements and does **not** bypass snapping.
 4. Dimension matching (`"Match Width"`, `"Match Height"`) detects when a frame's width or height matches a nearby frame within $\pm 0.5\text{mm}$.
 5. Distance dimension lines with cyan pill badges display the exact physical gap between aligned frames.
 
@@ -64,3 +64,14 @@ Frames hold two independent transformation entities:
 ### Actions:
 - **`↺ Reset Ratio`** (`resetToOriginalRatio`): Adjusts frame dimensions $(w, h)$ to match the original image's aspect ratio (3:2, 4:3, 1:1, 16:9) centered at current position, leaving crop untouched.
 - **`↺ Reset Crop`** (`resetCrop`): Resets internal `cropX = 0`, `cropY = 0`, `cropScale = 1.0` (center-fitted) without altering frame bounds.
+- **Exit Crop Mode**: <kbd>Enter</kbd>, <kbd>Esc</kbd>, and a primary click/tap on empty canvas or pasteboard space exit crop mode. Clicking or dragging inside the active photo must keep crop mode active.
+
+---
+
+## 4. Canvas Photo Swap Interaction
+
+- <kbd>Alt</kbd> + drag on a canvas element duplicates it; <kbd>Ctrl</kbd> + drag moves it without snapping; <kbd>Shift</kbd> + drag constrains movement to one axis.
+- Do not overload those frame-body gestures for photo swapping.
+- For a single selected, unlocked photo frame, a compact on-canvas `Swap Photos` drag handle (`⇄`) appears at the visual center of the photo. Dragging this handle moves photo content only; frame geometry remains stationary. The handle is hidden during crop mode, multi-selection, and while the frame body itself is being moved so it never appears detached from the live drag preview.
+- A valid drop target must be a different, unlocked photo frame on the active spread. Text elements, locked frames, the source frame, and empty canvas space cancel without changing the document.
+- The target displays a compact topmost `Release` badge that is independent of artwork z-index. A valid drop uses `swapFrames`, resets both crops consistently with the `S` shortcut, and creates one Undo step.

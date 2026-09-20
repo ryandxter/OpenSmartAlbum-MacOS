@@ -37,6 +37,7 @@ import { TextInlineEditor } from './TextInlineEditor';
 import { TextNodeElement, fitTextFrame } from '../../domain/text';
 import { convertPtToUnit, convertUnit, Unit } from '../../domain/units';
 import { ContextMenu, ContextMenuItem } from '../../components/ui';
+import { findPhotoSwapTarget } from './photoSwapDrag';
 import styles from './KonvaEditorCanvas.module.css';
 
 interface KonvaEditorCanvasProps {
@@ -405,6 +406,28 @@ function PhotoFrameNode({
       };
     };
   });
+
+  const dropOverlay = isAltDrop
+    ? {
+        fill: 'rgba(16, 185, 129, 0.22)',
+        stroke: '#10b981',
+        badgeFill: 'rgba(6, 78, 59, 0.94)',
+        textFill: '#ffffff',
+        label: 'Replace Photo',
+        width: 130,
+        strokeWidth: 3,
+        dash: [8, 4],
+      }
+    : {
+        fill: 'rgba(59, 130, 246, 0.12)',
+        stroke: '#3b82f6',
+        badgeFill: 'rgba(15, 23, 42, 0.94)',
+        textFill: '#93c5fd',
+        label: 'Hold Alt to Replace',
+        width: 145,
+        strokeWidth: 2,
+        dash: [6, 4],
+      };
 
   return (
     <Group
@@ -971,32 +994,32 @@ function PhotoFrameNode({
             y={0}
             width={pixelW}
             height={pixelH}
-            fill={isAltDrop ? "rgba(16, 185, 129, 0.22)" : "rgba(59, 130, 246, 0.12)"}
-            stroke={isAltDrop ? "#10b981" : "#3b82f6"}
-            strokeWidth={isAltDrop ? 3 : 2}
-            dash={isAltDrop ? [8, 4] : [6, 4]}
+            fill={dropOverlay.fill}
+            stroke={dropOverlay.stroke}
+            strokeWidth={dropOverlay.strokeWidth}
+            dash={dropOverlay.dash}
             strokeScaleEnabled={false}
           />
           <Rect
-            x={Math.max(0, (pixelW - (isAltDrop ? 130 : 145)) / 2)}
+            x={Math.max(0, (pixelW - dropOverlay.width) / 2)}
             y={Math.max(0, (pixelH - 28) / 2)}
-            width={isAltDrop ? 130 : 145}
+            width={dropOverlay.width}
             height={28}
-            fill={isAltDrop ? "rgba(6, 78, 59, 0.94)" : "rgba(15, 23, 42, 0.94)"}
+            fill={dropOverlay.badgeFill}
             cornerRadius={6}
-            stroke={isAltDrop ? "#10b981" : "#3b82f6"}
+            stroke={dropOverlay.stroke}
             strokeWidth={1}
             strokeScaleEnabled={false}
           />
           <KonvaText
-            x={Math.max(0, (pixelW - (isAltDrop ? 130 : 145)) / 2)}
+            x={Math.max(0, (pixelW - dropOverlay.width) / 2)}
             y={Math.max(0, (pixelH - 28) / 2) + 7}
-            width={isAltDrop ? 130 : 145}
+            width={dropOverlay.width}
             align="center"
-            text={isAltDrop ? "🔄 Replace Photo" : "Hold Alt to Replace"}
+            text={dropOverlay.label}
             fontSize={11}
             fontStyle="bold"
-            fill={isAltDrop ? "#ffffff" : "#93c5fd"}
+            fill={dropOverlay.textFill}
             fontFamily="Inter, system-ui, -apple-system, sans-serif"
           />
         </Group>
@@ -1149,6 +1172,10 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const trRef = useRef<Konva.Transformer>(null);
+  const photoSwapHandleRef = useRef<Konva.Group>(null);
+  const photoSwapSourceFrameIdRef = useRef<string | null>(null);
+  const photoSwapHandleOriginRef = useRef<{ x: number; y: number } | null>(null);
+  const cancelPhotoSwapDragRef = useRef<() => void>(() => {});
   const multiGroupRef = useRef<Konva.Rect>(null);
   const multiTransformInitialStateRef = useRef<{
     frames: PhotoFrameElement[];
@@ -1215,6 +1242,8 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
   const previousPasteboardRef = useRef<{ viewport: PasteboardViewport; spreadId: string } | null>(null);
   const [hoveredDropFrameId, setHoveredDropFrameId] = useState<string | null>(null);
   const [isHoveredDropAlt, setIsHoveredDropAlt] = useState(false);
+  const [isHoveredDropSwap, setIsHoveredDropSwap] = useState(false);
+  const [isFrameMoveDragging, setIsFrameMoveDragging] = useState(false);
   const justDroppedRef = useRef(false);
   const zoomOriginRef = useRef<{ x: number; y: number } | null>(null);
   const lastFitTriggerRef = useRef<number | undefined>(fitTrigger);
@@ -1385,6 +1414,9 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
     const handleResetDragState = () => {
       setIsHoveredDropAlt(false);
       setHoveredDropFrameId(null);
+      setIsHoveredDropSwap(false);
+      setIsFrameMoveDragging(false);
+      cancelPhotoSwapDragRef.current();
       isAltPressedRef.current = false;
       syncAltDragPreviewRef.current(false);
       setIsShiftPressed(false);
@@ -1694,7 +1726,11 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
           exitCropMode();
         }
       } else if (e.key === 'Escape') {
-        if (editingCropFrameId) {
+        if (photoSwapSourceFrameIdRef.current) {
+          e.preventDefault();
+          cancelPhotoSwapDragRef.current();
+          return;
+        } else if (editingCropFrameId) {
           e.preventDefault();
           exitCropMode();
         } else {
@@ -1988,10 +2024,18 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
     selectedFrameIds.includes(f.id)
   );
   const isMultiSelected = selectedElements.length > 1;
+  const swapHandleFrame = selectedFrameIds.length === 1 && !editingCropFrameId
+    && selectedElements[0]?.type === 'photo' && !selectedElements[0].locked && Boolean(selectedElements[0].photoId)
+    ? selectedElements[0] as PhotoFrameElement
+    : undefined;
+  const hoveredSwapFrame = isHoveredDropSwap && hoveredDropFrameId
+    ? (activeSpread.elements || []).find((element) => element.id === hoveredDropFrameId && element.type === 'photo') as PhotoFrameElement | undefined
+    : undefined;
 
-  // Handle Drag & Drop photo from filmstrip tray onto canvas
+  // Handle photo placement/replacement from the filmstrip.
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    const transferTypes = Array.from(e.dataTransfer.types);
     e.dataTransfer.dropEffect = 'copy';
 
     if (stageRef.current && activeSpread?.elements) {
@@ -2000,17 +2044,16 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
       const dropY = e.clientY - stageBox.top;
       const { x: physicalX, y: physicalY } = screenToSpreadPoint({ x: dropX, y: dropY }, stageOrigin, scaleFactor);
 
-      const targetFrame = [...activeSpread.elements].reverse().find((f) =>
-        !f.locked &&
-        physicalX >= f.x &&
-        physicalX <= f.x + f.width &&
-        physicalY >= f.y &&
-        physicalY <= f.y + f.height
+      const targetFrame = findPhotoSwapTarget(
+        activeSpread.elements,
+        { x: physicalX, y: physicalY },
+        '',
       );
 
-      const isAlt = Boolean(e.altKey) && !Array.from(e.dataTransfer.types).includes('application/x-afsn-multi-photo');
+      const isAlt = Boolean(e.altKey) && !transferTypes.includes('application/x-afsn-multi-photo');
       setHoveredDropFrameId(targetFrame ? targetFrame.id : null);
       setIsHoveredDropAlt(isAlt);
+      setIsHoveredDropSwap(false);
     }
   };
 
@@ -2018,6 +2061,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
     if (!e.currentTarget.contains(e.relatedTarget as Node)) {
       setHoveredDropFrameId(null);
       setIsHoveredDropAlt(false);
+      setIsHoveredDropSwap(false);
     }
   };
 
@@ -2026,11 +2070,13 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
     e.stopPropagation();
     setHoveredDropFrameId(null);
     setIsHoveredDropAlt(false);
+    setIsHoveredDropSwap(false);
     justDroppedRef.current = true;
     setTimeout(() => {
       justDroppedRef.current = false;
     }, 250);
 
+    const transferTypes = Array.from(e.dataTransfer.types);
     const libraryPhotos = usePhotoStore.getState().photos;
     const byId = new Map(libraryPhotos.map((photo) => [photo.id, photo]));
     let photoIds: string[] = [];
@@ -2048,7 +2094,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
       if (byId.has(textId)) photoIds = [textId];
     }
 
-    if (photoIds.length === 0 && Array.from(e.dataTransfer.types).includes('application/x-afsn-photo-ids')) {
+    if (photoIds.length === 0 && transferTypes.includes('application/x-afsn-photo-ids')) {
       photoIds = usePhotoStore.getState().selectedPhotoIds;
     }
 
@@ -2066,12 +2112,10 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
       const isAlt = Boolean(e.altKey);
       // Replace photo only if ALT key was held during drop AND frame is not locked
       if (isAlt && photosToPlace.length === 1) {
-        const targetFrame = [...(activeSpread.elements || [])].reverse().find((f) =>
-          !f.locked &&
-          physicalX >= f.x &&
-          physicalX <= f.x + f.width &&
-          physicalY >= f.y &&
-          physicalY <= f.y + f.height
+        const targetFrame = findPhotoSwapTarget(
+          activeSpread.elements || [],
+          { x: physicalX, y: physicalY },
+          '',
         );
 
         if (targetFrame) {
@@ -2087,9 +2131,84 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
     }
   };
 
+  const getPhotoSwapPointer = (event: Konva.KonvaEventObject<DragEvent>) => {
+    const pointer = event.currentTarget.getStage()?.getPointerPosition();
+    return pointer ? screenToSpreadPoint(pointer, stageOrigin, scaleFactor) : null;
+  };
+
+  const resetPhotoSwapDrag = () => {
+    const origin = photoSwapHandleOriginRef.current;
+    const handle = photoSwapHandleRef.current;
+    if (origin && handle) {
+      handle.position(origin);
+      handle.getLayer()?.batchDraw();
+    }
+    photoSwapSourceFrameIdRef.current = null;
+    photoSwapHandleOriginRef.current = null;
+    setHoveredDropFrameId(null);
+    setIsHoveredDropSwap(false);
+    stageRef.current?.container().style.setProperty('cursor', 'default');
+  };
+  cancelPhotoSwapDragRef.current = resetPhotoSwapDrag;
+
+  const handlePhotoSwapDragStart = (event: Konva.KonvaEventObject<DragEvent>) => {
+    event.cancelBubble = true;
+    if (!swapHandleFrame) return;
+
+    photoSwapSourceFrameIdRef.current = swapHandleFrame.id;
+    photoSwapHandleOriginRef.current = {
+      x: event.currentTarget.x(),
+      y: event.currentTarget.y(),
+    };
+    setHoveredDropFrameId(null);
+    setIsHoveredDropSwap(false);
+    stageRef.current?.container().style.setProperty('cursor', 'grabbing');
+  };
+
+  const handlePhotoSwapDragMove = (event: Konva.KonvaEventObject<DragEvent>) => {
+    event.cancelBubble = true;
+    const sourceFrameId = photoSwapSourceFrameIdRef.current;
+    const point = getPhotoSwapPointer(event);
+    if (!sourceFrameId || !point) return;
+
+    const targetFrame = findPhotoSwapTarget(activeSpread.elements || [], point, sourceFrameId);
+    const targetId = targetFrame?.id || null;
+    setHoveredDropFrameId((current) => current === targetId ? current : targetId);
+    setIsHoveredDropSwap(Boolean(targetFrame));
+  };
+
+  const handlePhotoSwapDragEnd = (event: Konva.KonvaEventObject<DragEvent>) => {
+    event.cancelBubble = true;
+    const sourceFrameId = photoSwapSourceFrameIdRef.current;
+    const point = getPhotoSwapPointer(event);
+    const sourceFrame = sourceFrameId
+      ? (activeSpread.elements || []).find((element) => element.id === sourceFrameId)
+      : undefined;
+    const targetFrame = sourceFrameId && point
+      ? findPhotoSwapTarget(activeSpread.elements || [], point, sourceFrameId)
+      : null;
+
+    if (
+      sourceFrameId && sourceFrame?.type === 'photo' && !sourceFrame.locked
+      && sourceFrame.photoId && targetFrame
+    ) {
+      photoSwapSourceFrameIdRef.current = null;
+      photoSwapHandleOriginRef.current = null;
+      setHoveredDropFrameId(null);
+      setIsHoveredDropSwap(false);
+      stageRef.current?.container().style.setProperty('cursor', 'default');
+      swapFrames(activeSpread.id, sourceFrameId, targetFrame.id);
+      selectFrame(targetFrame.id);
+      onToast?.('✓ Swapped photos');
+      return;
+    }
+
+    resetPhotoSwapDrag();
+  };
+
   // Marquee stage pointer events
   const handleStageMouseDown = (e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
-    if (isSpacePressed || isPanning || activeTool === 'pan' || editingCropFrameId) return;
+    if (isSpacePressed || isPanning || activeTool === 'pan') return;
 
     // Ignore middle & right clicks
     if ('button' in e.evt && (e.evt.button === 1 || e.evt.button === 2)) return;
@@ -3115,7 +3234,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                   isMuted={Boolean(editingCropFrameId && editingCropFrameId !== frame.id)}
                   isCropMode={isCrop}
                   isMultiSelectActive={isMultiSelected}
-                  isHoveredForDrop={hoveredDropFrameId === frame.id}
+                  isHoveredForDrop={!isHoveredDropSwap && hoveredDropFrameId === frame.id}
                   isAltDrop={isHoveredDropAlt}
                   scaleFactor={scaleFactor}
                   isShiftPressed={isShiftPressed}
@@ -3131,6 +3250,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                     }
                   }}
                   onDragStart={() => {
+                    setIsFrameMoveDragging(true);
                     const isThisSelected = selectedFrameIds.includes(frame.id);
                     let currentGroupIds = isThisSelected ? [...selectedFrameIds] : [frame.id];
                     if (!isThisSelected) {
@@ -3325,6 +3445,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                     }
                     clearAltDragPreview();
                     dragInitialPhysicalPositionsRef.current.clear();
+                    setIsFrameMoveDragging(false);
                   }}
                   onContextMenu={(e) => {
                     openContextMenuAt(e.evt.clientX, e.evt.clientY);
@@ -4166,6 +4287,121 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                 </Label>
               </Group>
             )}
+
+            {/* Topmost photo swap target feedback, independent of artwork z-index. */}
+            {hoveredSwapFrame && (() => {
+              const visualBounds = getFrameVisualBounds(hoveredSwapFrame);
+              const badgeWidth = 54;
+              const badgeHeight = 20;
+              const badgeX = (visualBounds.x + visualBounds.width / 2) * scaleFactor - badgeWidth / 2;
+              const badgeY = (visualBounds.y + visualBounds.height / 2) * scaleFactor - badgeHeight / 2;
+
+              return (
+                <Group key="photo-swap-drop-overlay" listening={false}>
+                  <Rect
+                    x={hoveredSwapFrame.x * scaleFactor}
+                    y={hoveredSwapFrame.y * scaleFactor}
+                    width={hoveredSwapFrame.width * scaleFactor}
+                    height={hoveredSwapFrame.height * scaleFactor}
+                    rotation={hoveredSwapFrame.rotation || 0}
+                    fill="rgba(245, 158, 11, 0.2)"
+                    stroke="#f59e0b"
+                    strokeWidth={3}
+                    dash={[8, 4]}
+                    strokeScaleEnabled={false}
+                    shadowColor="rgba(245, 158, 11, 0.45)"
+                    shadowBlur={8}
+                  />
+                  <Group x={badgeX} y={badgeY}>
+                    <Rect
+                      width={badgeWidth}
+                      height={badgeHeight}
+                      fill="rgba(69, 39, 8, 0.96)"
+                      stroke="#f59e0b"
+                      strokeWidth={1}
+                      cornerRadius={5}
+                      shadowColor="rgba(0, 0, 0, 0.6)"
+                      shadowBlur={5}
+                      shadowOffset={{ x: 0, y: 1 }}
+                    />
+                    <KonvaText
+                      width={badgeWidth}
+                      height={badgeHeight}
+                      text="Release"
+                      align="center"
+                      verticalAlign="middle"
+                      fill="#fde68a"
+                      fontSize={10}
+                      fontStyle="bold"
+                      fontFamily="Inter, system-ui, -apple-system, sans-serif"
+                    />
+                  </Group>
+                </Group>
+              );
+            })()}
+
+            {/* Direct on-canvas photo-content handle; dragging it never moves frame geometry. */}
+            {swapHandleFrame && !isFrameMoveDragging && (() => {
+              const visualBounds = getFrameVisualBounds(swapHandleFrame);
+              const handleX = (visualBounds.x + visualBounds.width / 2) * scaleFactor;
+              const handleY = (visualBounds.y + visualBounds.height / 2) * scaleFactor;
+
+              return (
+                <Group
+                  key={`photo-swap-handle-${swapHandleFrame.id}`}
+                  ref={photoSwapHandleRef}
+                  name="photo-swap-handle"
+                  x={handleX}
+                  y={handleY}
+                  draggable
+                  dragDistance={3}
+                  onMouseDown={(event) => {
+                    event.cancelBubble = true;
+                  }}
+                  onClick={(event) => {
+                    event.cancelBubble = true;
+                  }}
+                  onTap={(event) => {
+                    event.cancelBubble = true;
+                  }}
+                  onMouseEnter={() => {
+                    stageRef.current?.container().style.setProperty('cursor', 'grab');
+                  }}
+                  onMouseLeave={() => {
+                    if (!photoSwapSourceFrameIdRef.current) {
+                      stageRef.current?.container().style.setProperty('cursor', 'default');
+                    }
+                  }}
+                  onDragStart={handlePhotoSwapDragStart}
+                  onDragMove={handlePhotoSwapDragMove}
+                  onDragEnd={handlePhotoSwapDragEnd}
+                >
+                  <Circle
+                    radius={12}
+                    fill="rgba(18, 20, 26, 0.9)"
+                    stroke="#f59e0b"
+                    strokeWidth={1.5}
+                    shadowColor="rgba(0, 0, 0, 0.65)"
+                    shadowBlur={6}
+                    shadowOffset={{ x: 0, y: 2 }}
+                  />
+                  <KonvaText
+                    x={-12}
+                    y={-8}
+                    width={24}
+                    height={16}
+                    text="⇄"
+                    align="center"
+                    verticalAlign="middle"
+                    fill="#fbbf24"
+                    fontSize={15}
+                    fontStyle="bold"
+                    fontFamily="Inter, system-ui, -apple-system, sans-serif"
+                    listening={false}
+                  />
+                </Group>
+              );
+            })()}
           </Layer>
         </Stage>
 
