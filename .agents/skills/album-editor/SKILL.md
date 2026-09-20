@@ -85,3 +85,12 @@ Frames hold two independent transformation entities:
 - Every entry must state its active context, such as Canvas, Crop Mode, Filmstrip, Smart Layout, Text Editing, or Project.
 - Keep unit-dependent actions generic: arrow-key nudge follows the project unit rather than always using millimeters.
 - Whenever canvas interaction changes, update the shortcut catalog in `SettingsDialog.tsx` in the same change.
+
+---
+
+## 6. Group and Locked Selection Feedback
+
+- The floating frame toolbar must expose Group/Ungroup as one toggle with one stable combined-shape icon, matching the Border toggle pattern. It remains neutral while grouping is inactive, turns cyan only when the current selection is one active group, and returns to neutral after ungrouping. The tooltip and accessible label change with the action, but the icon must not switch.
+- A selected locked photo or text object displays a thin solid amber outline. The outline appears only after selection and never exposes resize or rotation handles while the selection remains fully locked.
+- Persistent lock status is communicated by the compact padlock badge; do not keep an amber selection outline visible on unselected objects.
+- Render selection feedback above the canvas perimeter border. Inset locked-object outlines by half their screen-space stroke width so the complete amber line remains visible when an object is flush with a canvas edge; keep selection strokes independent of zoom with `strokeScaleEnabled={false}`.

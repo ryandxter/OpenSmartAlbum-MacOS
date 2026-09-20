@@ -972,12 +972,12 @@ function PhotoFrameNode({
       )}
 
       {/* Multiple Selection Visual Highlight Outline */}
-      {isSelected && isMultiSelectActive && !isCropMode && (
+      {isSelected && isMultiSelectActive && !isCropMode && !frame.locked && (
         <Rect
-          x={0}
-          y={0}
-          width={pixelW}
-          height={pixelH}
+          x={1.5}
+          y={1.5}
+          width={Math.max(0, pixelW - 3)}
+          height={Math.max(0, pixelH - 3)}
           stroke="#3b82f6"
           strokeWidth={2}
           dash={[6, 3]}
@@ -1042,19 +1042,6 @@ function PhotoFrameNode({
           <Line points={[0, pixelH / 3, pixelW, pixelH / 3]} stroke="rgba(255,255,255,0.7)" strokeWidth={1} strokeScaleEnabled={false} />
           <Line points={[0, (pixelH * 2) / 3, pixelW, (pixelH * 2) / 3]} stroke="rgba(255,255,255,0.7)" strokeWidth={1} strokeScaleEnabled={false} />
         </Group>
-      )}
-
-      {/* Locked Frame Selection Outline */}
-      {isSelected && frame.locked && !isCropMode && (
-        <Rect
-          width={pixelW}
-          height={pixelH}
-          stroke="#f59e0b"
-          strokeWidth={1.5}
-          dash={[4, 4]}
-          listening={false}
-          strokeScaleEnabled={false}
-        />
       )}
 
       {/* Modern Compact Locked Padlock Badge (top-right corner) */}
@@ -3576,6 +3563,46 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                 />
               </Group>
             )}
+            {/* Keep the sheet edge above artwork, but below every selection overlay. */}
+            <Rect
+              name="canvas-outer-perimeter-border"
+              listening={false}
+              x={0}
+              y={0}
+              width={screenSpreadW}
+              height={screenSpreadH}
+              stroke="#000000"
+              strokeWidth={1}
+            />
+
+            {/* Locked selection outlines stay above the sheet edge and fully inside object bounds. */}
+            {selectedElements
+              .filter((element) => element.locked)
+              .map((element) => {
+                const lockedStrokeWidth = 1.25;
+                const lockedInset = lockedStrokeWidth / 2;
+                return (
+                  <Group
+                    key={`locked-selection-${element.id}`}
+                    x={element.x * scaleFactor}
+                    y={element.y * scaleFactor}
+                    rotation={element.rotation || 0}
+                    listening={false}
+                  >
+                    <Rect
+                      x={lockedInset}
+                      y={lockedInset}
+                      width={Math.max(0, element.width * scaleFactor - lockedStrokeWidth)}
+                      height={Math.max(0, element.height * scaleFactor - lockedStrokeWidth)}
+                      stroke="#fbbf24"
+                      strokeWidth={lockedStrokeWidth}
+                      strokeScaleEnabled={false}
+                      listening={false}
+                    />
+                  </Group>
+                );
+              })}
+
             {/* 2. Multi-Selection Proxy Rect for Rotated Transformer Envelope */}
             {selectedFrameIds.length > 1 && multiGroupInfo && (
               <Rect
@@ -3586,21 +3613,6 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                 width={multiGroupInfo.groupWidth * scaleFactor}
                 height={multiGroupInfo.groupHeight * scaleFactor}
                 rotation={multiGroupInfo.groupRotation}
-                listening={false}
-              />
-            )}
-
-            {/* Multi-Selection Locked Indicator Outline */}
-            {selectedFrameIds.length > 1 && multiGroupInfo && isSelectionFullyLocked && (
-              <Rect
-                x={multiGroupInfo.groupX * scaleFactor}
-                y={multiGroupInfo.groupY * scaleFactor}
-                width={multiGroupInfo.groupWidth * scaleFactor}
-                height={multiGroupInfo.groupHeight * scaleFactor}
-                rotation={multiGroupInfo.groupRotation}
-                stroke="#f59e0b"
-                strokeWidth={1.5}
-                dash={[4, 4]}
                 listening={false}
               />
             )}
@@ -4044,18 +4056,6 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                   stageRef.current.container().style.cursor = 'default';
                 }
               }}
-            />
-
-            {/* Canvas Outer Perimeter Border (Thin Solid Black) */}
-            <Rect
-              name="canvas-outer-perimeter-border"
-              listening={false}
-              x={0}
-              y={0}
-              width={screenSpreadW}
-              height={screenSpreadH}
-              stroke="#000000"
-              strokeWidth={1}
             />
 
             {/* Rubber-band Marquee Selection Box */}

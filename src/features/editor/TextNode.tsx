@@ -378,20 +378,6 @@ export function TextNode({
         />
       )}
 
-      {/* Locked Text Box Selection / Status Outline (Yellow dashed bounding box) */}
-      {element.locked && (
-        <Rect
-          width={displayPixelW}
-          height={displayPixelH}
-          stroke="#f59e0b"
-          strokeWidth={isSelected ? 1.5 : 1}
-          dash={[4, 4]}
-          opacity={isSelected ? 1 : 0.8}
-          listening={false}
-          strokeScaleEnabled={false}
-        />
-      )}
-
       {/* Modern Compact Locked Padlock Badge (top-right corner) - Identical to Photo Frame */}
       {element.locked && (
         <Group

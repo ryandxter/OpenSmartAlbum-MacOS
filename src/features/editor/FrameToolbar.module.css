@@ -43,6 +43,11 @@
   color: var(--color-text-primary);
 }
 
+.toolBtn:focus-visible {
+  outline: 2px solid rgba(56, 189, 248, 0.85);
+  outline-offset: 2px;
+}
+
 .toolBtnActive {
   background-color: rgba(56, 189, 248, 0.18) !important;
   color: var(--color-accent) !important;

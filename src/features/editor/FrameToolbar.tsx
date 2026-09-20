@@ -41,6 +41,7 @@ export function FrameToolbar() {
   const hasUngrouped = selectedElements.some((f) => !f.groupId);
   const canGroup = selectedElements.length >= 2 && (distinctGroupIds.size > 1 || hasUngrouped);
   const canUngroup = distinctGroupIds.size > 0;
+  const isGroupActive = distinctGroupIds.size === 1 && !hasUngrouped;
 
   const isCrop = editingCropFrameId === frame.id;
   const updateCropZoom = (delta: number) => {
@@ -223,32 +224,30 @@ export function FrameToolbar() {
             </button>
           )}
 
-          {/* Contextual: Group Frames Button */}
-          {canGroup && (
+          {/* Contextual: Group / Ungroup Toggle */}
+          {(canGroup || canUngroup) && (
             <button
               type="button"
-              className={styles.toolBtn}
-              onClick={() => groupSelectedFrames(activeSpread.id)}
-              title={`Group ${selectedFrameIds.length} Frames (Ctrl+G)`}
+              className={`${styles.toolBtn} ${isGroupActive ? styles.toolBtnActive : ''}`}
+              onClick={() => {
+                if (isGroupActive) {
+                  ungroupSelectedFrames(activeSpread.id);
+                  return;
+                }
+                groupSelectedFrames(activeSpread.id);
+              }}
+              title={
+                isGroupActive
+                  ? 'Ungroup Selected Frames (Ctrl+Shift+G)'
+                  : `Group ${selectedFrameIds.length} Selected Frames (Ctrl+G)`
+              }
+              aria-label={isGroupActive ? 'Ungroup selected frames' : `Group ${selectedFrameIds.length} selected frames`}
+              aria-pressed={isGroupActive}
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect width="9" height="9" x="2" y="2" rx="1.5" />
-                <rect width="9" height="9" x="13" y="13" rx="1.5" />
-              </svg>
-            </button>
-          )}
-
-          {/* Contextual: Ungroup Frames Button */}
-          {canUngroup && (
-            <button
-              type="button"
-              className={styles.toolBtn}
-              onClick={() => ungroupSelectedFrames(activeSpread.id)}
-              title="Ungroup Frames (Ctrl+Shift+G)"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect width="8" height="8" x="2" y="2" rx="1" strokeDasharray="2 2" />
-                <rect width="8" height="8" x="14" y="14" rx="1" strokeDasharray="2 2" />
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <rect width="11" height="11" x="3" y="3" rx="2" fill="currentColor" fillOpacity="0.12" />
+                <rect width="11" height="11" x="10" y="10" rx="2" fill="currentColor" fillOpacity="0.2" />
+                <path d="M9 9h6v6" strokeWidth="2.4" />
               </svg>
             </button>
           )}
