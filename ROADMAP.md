@@ -763,8 +763,18 @@
 - [x] Standardize locked photo and text selection feedback as a thin solid amber outline shown only while the locked object is selected, without transform handles.
 - [x] Keep cyan and amber selection outlines visible at flush canvas edges by rendering selection feedback above the sheet perimeter and insetting screen-space strokes within object bounds.
 - [x] Enforce absolute lock protection inside mixed grouped selections by excluding locked members from Transformer bounds, live drag/resize/rotation, and store-level geometry commits.
+- [x] Modernize selected-object feedback with solid cyan/blue bounds while retaining dashed styling only for transient marquee, crop, and canvas guides.
 - [x] Refine Layout Cycle HUD visual styling, status indicators, and keyboard context feedback.
 - [x] Application version metadata bumped to `v1.0.76`.
+
+### Phase 70 — Release v1.0.77: Editor Canvas & Toolbar Refinements
+
+- [x] Refine FrameToolbar styling and interaction logic.
+- [x] Improve KonvaEditorCanvas rendering, selection, and drag behavior.
+- [x] Clean up TextNode unused code.
+- [x] Extend editorStore with additional state management.
+- [x] Add editor regression tests.
+- [x] Application version metadata bumped to `v1.0.77`.
 
 
 

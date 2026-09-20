@@ -980,7 +980,6 @@ function PhotoFrameNode({
           height={Math.max(0, pixelH - 3)}
           stroke="#3b82f6"
           strokeWidth={2}
-          dash={[6, 3]}
           strokeScaleEnabled={false}
           listening={false}
         />
@@ -3671,7 +3670,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
               anchorStrokeWidth={1.5}
               borderStroke={editingCropFrameId ? '#f59e0b' : '#3b82f6'}
               borderStrokeWidth={1.5}
-              borderDash={editingCropFrameId ? [5, 3] : [4, 3]}
+              borderDash={editingCropFrameId ? [5, 3] : []}
               onTransformStart={() => {
                 const tr = trRef.current;
                 if (!tr) return;
