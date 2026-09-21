@@ -50,3 +50,7 @@ cache/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Graphify Knowledge Graph
+graphify-out/
+
