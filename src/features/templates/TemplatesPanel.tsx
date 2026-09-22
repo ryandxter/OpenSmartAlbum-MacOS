@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Shuffle, Star } from 'lucide-react';
 import { useAlbumStore } from '../../stores/albumStore';
 import { useProjectStore } from '../../stores/projectStore';
@@ -7,6 +7,7 @@ import { getProjectDimensionsInCanvasUnit } from '../../domain/templates';
 import {
   generateAdaptiveLayoutVariations,
   AdaptivePhoto,
+  AdaptiveLayoutVariation,
 } from '../../domain/adaptiveLayout';
 import { PhotoFrameElement } from '../../domain/editor';
 import {
@@ -15,6 +16,76 @@ import {
 } from '../../domain/carouselLayout';
 import { CarouselPhotoFrame } from '../../domain/carousel';
 import styles from './TemplatesPanel.module.css';
+
+interface AdaptiveVariationCardProps {
+  variation: AdaptiveLayoutVariation;
+  index: number;
+  totalCount: number;
+  isCurrent: boolean;
+  totalW: number;
+  totalH: number;
+  spineX: number;
+  onSelect: (index: number, name: string) => void;
+}
+
+export const AdaptiveVariationCardItem = React.memo(function AdaptiveVariationCardItem({
+  variation,
+  index,
+  totalCount,
+  isCurrent,
+  totalW,
+  totalH,
+  spineX,
+  onSelect,
+}: AdaptiveVariationCardProps) {
+  const scaleX = 140 / totalW;
+  const scaleY = 70 / totalH;
+
+  const svgRects = variation.rects
+    .map(
+      (r) =>
+        `<rect class="${isCurrent ? styles.miniLayoutRectActive : styles.miniLayoutRect}" x="${(r.x * scaleX).toFixed(1)}" y="${(r.y * scaleY).toFixed(1)}" width="${(r.width * scaleX).toFixed(1)}" height="${(r.height * scaleY).toFixed(1)}" rx="2" fill="${isCurrent ? 'rgba(59, 130, 246, 0.40)' : 'rgba(255, 255, 255, 0.08)'}" stroke="${isCurrent ? '#3b82f6' : 'rgba(255, 255, 255, 0.22)'}" stroke-width="${isCurrent ? '1.5' : '1'}"/>`
+    )
+    .join('');
+
+  const spine = `<line x1="${(spineX * scaleX).toFixed(1)}" y1="4" x2="${(spineX * scaleX).toFixed(1)}" y2="66" stroke="rgba(255, 255, 255, 0.18)" stroke-dasharray="2 2" stroke-width="1"/>`;
+
+  const svg = `<svg width="140" height="70" viewBox="0 0 140 70" xmlns="http://www.w3.org/2000/svg"><rect width="140" height="70" rx="4" fill="#18181b"/>${spine}${svgRects}</svg>`;
+
+  const scoreClass =
+    variation.score !== undefined
+      ? variation.score >= 85
+        ? styles.scoreBadgeHigh
+        : variation.score >= 70
+          ? styles.scoreBadgeMedium
+          : styles.scoreBadgeStandard
+      : '';
+
+  return (
+    <div
+      className={`${styles.templateCard} ${isCurrent ? styles.activeCard : ''}`}
+      onClick={() => onSelect(index, variation.name)}
+    >
+      <div
+        className={styles.svgWrapper}
+        dangerouslySetInnerHTML={{ __html: svg }}
+      />
+      <div className={styles.cardMeta}>
+        <span className={styles.templateTitle}>{variation.name}</span>
+        <span className={styles.templateDesc}>{variation.description}</span>
+        <div className={styles.tagRow}>
+          <span className={styles.indexBadge} title={`Layout ${index + 1} of ${totalCount}`}>#{index + 1}</span>
+          {variation.score !== undefined && (
+            <span className={`${styles.tagPill} ${scoreClass}`}>
+              <Star size={10} strokeWidth={1.75} fill="currentColor" style={{ verticalAlign: 'middle', marginRight: 3 }} />
+              {variation.score}%
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
 
 interface TemplatesPanelProps {
   onApplyToast?: (msg: string) => void;
@@ -142,13 +213,41 @@ export function TemplatesPanel({ onApplyToast, activeMode = 'print' }: Templates
       ? spreadLayoutIndices[activeSpread.id]
       : 0;
 
-  const handleApplyAdaptive = (index: number, name: string) => {
-    if (!activeSpread || !currentProject) return;
-    applyAdaptiveLayoutByIndex(activeSpread.id, index, currentProject);
-    if (onApplyToast) {
-      onApplyToast(`Switched to layout: ${name}`);
+  // Windowed progressive rendering state (Initial 16 cards, expanding by 16 on demand)
+  const [visibleCount, setVisibleCount] = useState<number>(16);
+
+  // Reset visible window when spread changes or photo count changes
+  useEffect(() => {
+    setVisibleCount(Math.max(16, (currentActiveIndex || 0) + 8));
+  }, [activeSpread?.id, currentPhotoCount]);
+
+  // Ensure active card is always rendered if currentActiveIndex increments past visible window
+  useEffect(() => {
+    if (currentActiveIndex !== undefined && currentActiveIndex >= visibleCount) {
+      setVisibleCount((prev) => Math.max(prev, currentActiveIndex + 8));
     }
-  };
+  }, [currentActiveIndex, visibleCount]);
+
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const target = e.currentTarget;
+      if (target.scrollHeight - target.scrollTop - target.clientHeight < 200) {
+        setVisibleCount((prev) => Math.min(prev + 16, adaptiveVariations.length));
+      }
+    },
+    [adaptiveVariations.length]
+  );
+
+  const handleApplyAdaptive = useCallback(
+    (index: number, name: string) => {
+      if (!activeSpread || !currentProject) return;
+      applyAdaptiveLayoutByIndex(activeSpread.id, index, currentProject);
+      if (onApplyToast) {
+        onApplyToast(`Switched to layout: ${name}`);
+      }
+    },
+    [activeSpread, currentProject, applyAdaptiveLayoutByIndex, onApplyToast]
+  );
 
   const handleApplyCarouselPreset = (preset: CarouselLayoutPreset) => {
     if (!currentCarousel) return;
@@ -302,7 +401,24 @@ export function TemplatesPanel({ onApplyToast, activeMode = 'print' }: Templates
     );
   }
 
-  // Print Mode Rendering (Original with CR-06 High Contrast Fix)
+  // Canvas Dimensions for Print Mode
+  const dims = currentProject ? getProjectDimensionsInCanvasUnit(currentProject, activeSpread) : null;
+  const isCover = currentAlbum?.coverSpread?.id === activeSpread?.id;
+  const totalW = dims
+    ? isCover
+      ? (activeSpread?.leftPage ? activeSpread.leftPage.width : dims.pageWidth) +
+        (activeSpread?.rightPage ? activeSpread.rightPage.width : 0) +
+        dims.gutterWidth
+      : dims.pageWidth * 2 + dims.gutterWidth
+    : 400;
+  const totalH = dims?.pageHeight || 200;
+  const spineX = dims
+    ? isCover && activeSpread?.leftPage
+      ? activeSpread.leftPage.width + dims.gutterWidth / 2
+      : dims.pageWidth + dims.gutterWidth / 2
+    : 70;
+
+  // Print Mode Rendering (High Contrast Studio Silhouettes & Progressive Windowing)
   return (
     <div className={styles.container}>
       {/* Header with Active Spread & Photos Count */}
@@ -355,62 +471,22 @@ export function TemplatesPanel({ onApplyToast, activeMode = 'print' }: Templates
         )}
       </div>
 
-      {/* Adaptive Variations Grid */}
-      <div className={styles.gridList}>
-        {adaptiveVariations.map((variation, index) => {
+      {/* Adaptive Variations Grid (Windowed progressive rendering) */}
+      <div className={styles.gridList} onScroll={handleScroll}>
+        {adaptiveVariations.slice(0, visibleCount).map((variation, index) => {
           const isCurrent = index === ((currentActiveIndex ?? 0) % (adaptiveVariations.length || 1));
-
-          // Render mini SVG from variation rects
-          const dims = currentProject ? getProjectDimensionsInCanvasUnit(currentProject, activeSpread) : null;
-          const totalW = dims ? dims.pageWidth * 2 + dims.gutterWidth : 400;
-          const totalH = dims?.pageHeight || 200;
-
-          const scaleX = 140 / totalW;
-          const scaleY = 70 / totalH;
-
-          // CR-06 High Contrast Fix for both active and inactive variation cards
-          const svgRects = variation.rects
-            .map(
-              (r) =>
-                `<rect x="${(r.x * scaleX).toFixed(1)}" y="${(r.y * scaleY).toFixed(1)}" width="${(r.width * scaleX).toFixed(1)}" height="${(r.height * scaleY).toFixed(1)}" rx="2" fill="${isCurrent ? 'rgba(59, 130, 246, 0.35)' : 'rgba(255, 255, 255, 0.08)'}" stroke="${isCurrent ? 'var(--color-accent, #3b82f6)' : 'rgba(255, 255, 255, 0.22)'}" stroke-width="${isCurrent ? '1.5' : '1'}"/>`
-            )
-            .join('');
-
-          const spine = `<line x1="${((dims ? (dims.pageWidth + dims.gutterWidth / 2) * scaleX : 70)).toFixed(1)}" y1="4" x2="${((dims ? (dims.pageWidth + dims.gutterWidth / 2) * scaleX : 70)).toFixed(1)}" y2="66" stroke="rgba(255,255,255,0.18)" stroke-dasharray="2 2" stroke-width="1"/>`;
-
-          const svg = `<svg width="140" height="70" viewBox="0 0 140 70" xmlns="http://www.w3.org/2000/svg"><rect width="140" height="70" rx="4" fill="var(--color-bg-secondary, #18181b)"/>${spine}${svgRects}</svg>`;
-
           return (
-            <div
+            <AdaptiveVariationCardItem
               key={variation.id}
-              className={`${styles.templateCard} ${isCurrent ? styles.activeCard : ''}`}
-              onClick={() => handleApplyAdaptive(index, variation.name)}
-            >
-              <div
-                className={styles.svgWrapper}
-                dangerouslySetInnerHTML={{ __html: svg }}
-              />
-              <div className={styles.cardMeta}>
-                <span className={styles.templateTitle}>{variation.name}</span>
-                <span className={styles.templateDesc}>{variation.description}</span>
-                <div className={styles.tagRow}>
-                  <span className={styles.tagPill}>{index + 1} of {adaptiveVariations.length}</span>
-                  {variation.score !== undefined && (
-                    <span
-                      className={styles.tagPill}
-                      style={{
-                        background: variation.score >= 85 ? 'rgba(52,211,153,0.2)' : variation.score >= 70 ? 'rgba(251,191,36,0.2)' : 'rgba(255,255,255,0.08)',
-                        color: variation.score >= 85 ? '#34d399' : variation.score >= 70 ? '#fbbf24' : '#94a3b8',
-                        fontWeight: 600,
-                      }}
-                    >
-                      <Star size={10} strokeWidth={1.75} fill="currentColor" style={{ verticalAlign: 'middle', marginRight: 2 }} />
-                      {variation.score}%
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
+              variation={variation}
+              index={index}
+              totalCount={adaptiveVariations.length}
+              isCurrent={isCurrent}
+              totalW={totalW}
+              totalH={totalH}
+              spineX={spineX}
+              onSelect={handleApplyAdaptive}
+            />
           );
         })}
       </div>

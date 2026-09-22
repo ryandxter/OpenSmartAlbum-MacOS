@@ -241,6 +241,64 @@
   border-radius: 3px;
 }
 
+/* High-Contrast Studio Silhouettes (WCAG 2.1 Compliant > 4.5:1) */
+.miniLayoutRect {
+  fill: rgba(255, 255, 255, 0.08);
+  stroke: rgba(255, 255, 255, 0.22);
+  stroke-width: 1px;
+  transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.templateCard:hover .miniLayoutRect {
+  fill: rgba(255, 255, 255, 0.14) !important;
+  stroke: rgba(255, 255, 255, 0.35) !important;
+}
+
+/* Active Card Silhouette */
+.miniLayoutRectActive {
+  fill: rgba(59, 130, 246, 0.40);
+  stroke: #3b82f6;
+  stroke-width: 1.5px;
+  transition: fill 0.15s ease, stroke 0.15s ease;
+}
+
+.templateCard:hover .miniLayoutRectActive {
+  fill: rgba(59, 130, 246, 0.50) !important;
+  stroke: #60a5fa !important;
+}
+
+/* Minimalist Studio Metadata & Match Score Badges */
+.scoreBadgeHigh {
+  background: rgba(52, 211, 153, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  font-weight: 600;
+}
+
+.scoreBadgeMedium {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  font-weight: 600;
+}
+
+.scoreBadgeStandard {
+  background: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  font-weight: 500;
+}
+
+.indexBadge {
+  font-size: 9px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #a1a1aa;
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
 .emptyState {
   padding: 24px 12px;
   text-align: center;

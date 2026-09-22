@@ -916,17 +916,144 @@ function computeFreePageSubBoxes(
   return maximalBoxes.sort((a, b) => b.width * b.height - a.width * a.height);
 }
 
-export function generateAdaptiveLayoutVariations(
-  params: TemplateParams,
-  photos: AdaptivePhoto[] = []
+export const MAX_ADAPTIVE_CACHE_ENTRIES = 50;
+
+export class LRUCache<K, V> {
+  private max: number;
+  private map: Map<K, V>;
+
+  constructor(max: number = MAX_ADAPTIVE_CACHE_ENTRIES) {
+    this.max = max;
+    this.map = new Map<K, V>();
+  }
+
+  get(key: K): V | undefined {
+    if (!this.map.has(key)) return undefined;
+    const val = this.map.get(key)!;
+    this.map.delete(key);
+    this.map.set(key, val);
+    return val;
+  }
+
+  set(key: K, val: V): void {
+    if (this.map.has(key)) {
+      this.map.delete(key);
+    } else if (this.map.size >= this.max) {
+      const oldestKey = this.map.keys().next().value;
+      if (oldestKey !== undefined) {
+        this.map.delete(oldestKey);
+      }
+    }
+    this.map.set(key, val);
+  }
+
+  has(key: K): boolean {
+    return this.map.has(key);
+  }
+
+  get size(): number {
+    return this.map.size;
+  }
+
+  clear(): void {
+    this.map.clear();
+  }
+}
+
+const rawPartitionsCache = new LRUCache<string, AdaptiveLayoutVariation[]>(MAX_ADAPTIVE_CACHE_ENTRIES);
+const scoredVariationsCache = new LRUCache<string, AdaptiveLayoutVariation[]>(MAX_ADAPTIVE_CACHE_ENTRIES);
+
+let cacheHits = 0;
+let cacheMisses = 0;
+
+export function clearAdaptiveLayoutCache(): void {
+  rawPartitionsCache.clear();
+  scoredVariationsCache.clear();
+  cacheHits = 0;
+  cacheMisses = 0;
+}
+
+export function getAdaptiveLayoutCacheStats(): {
+  rawEntries: number;
+  scoredEntries: number;
+  hits: number;
+  misses: number;
+} {
+  return {
+    rawEntries: rawPartitionsCache.size,
+    scoredEntries: scoredVariationsCache.size,
+    hits: cacheHits,
+    misses: cacheMisses,
+  };
+}
+
+export function getRawPartitionCacheKey(params: TemplateParams, photoCount: number): string {
+  const lockedSig = (params.lockedElements || [])
+    .map((l) => `${round4(l.x)},${round4(l.y)},${round4(l.width)},${round4(l.height)}`)
+    .sort()
+    .join(';');
+  return [
+    round4(params.spreadWidth),
+    round4(params.spreadHeight),
+    params.isSpread ? 1 : 0,
+    round4(params.gutterWidth),
+    round4(params.spacing),
+    round4(params.safeMargin),
+    round4(params.safeMarginTop ?? params.safeMargin),
+    round4(params.safeMarginBottom ?? params.safeMargin),
+    round4(params.safeMarginOutside ?? params.safeMargin),
+    round4(params.safeMarginSpine ?? params.safeMargin),
+    photoCount,
+    lockedSig,
+  ].join('|');
+}
+
+export function getScoredVariationsCacheKey(rawKey: string, photos: AdaptivePhoto[]): string {
+  const photoSig = photos
+    .map((p) => `${p.id || p.photoId || ''}:${round4(p.photoAspect || 1.5)}:${p.rating || 0}:${p.isFavorite ? 1 : 0}`)
+    .join(',');
+  return `${rawKey}#photos:${photoSig}`;
+}
+
+export function scoreAndSortVariations(
+  rawVariations: AdaptiveLayoutVariation[],
+  photos: AdaptivePhoto[],
+  locked: PhotoFrameElement[] = []
 ): AdaptiveLayoutVariation[] {
-  const count = photos.length;
+  const fingerprint = getPhotosFingerprint(photos);
+  // Mathematical guarantee: Exclude any variation where any rect intersects or covers a locked frame
+  const nonColliding = locked.length > 0
+    ? rawVariations.filter((v) =>
+        v.rects.every((r) => locked.every((l) => !rectsIntersect(r, l)))
+      )
+    : rawVariations;
+
+  const sourceVariations = nonColliding.length > 0 ? nonColliding : rawVariations;
+
+  const enriched = sourceVariations.map((v) => {
+    const matchRes = findOptimalPhotoSlotMapping(photos, v.rects);
+    return {
+      ...v,
+      score: matchRes.score,
+      cropPenalty: matchRes.avgCropPenalty,
+      fingerprint,
+      photoAssignments: matchRes.mapping,
+    };
+  });
+
+  // Sort descending by match score
+  return enriched.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+}
+
+export function computeRawLayoutPartitions(
+  params: TemplateParams,
+  count: number
+): AdaptiveLayoutVariation[] {
   if (count === 0) return [];
 
   const { leftPageArea, rightPageArea, spreadArea } = getUsableAreas(params);
   const spacing = params.spacing;
   const isCover = !params.isSpread;
-  const fingerprint = getPhotosFingerprint(photos);
   const locked = params.lockedElements || [];
   const marginSpine = params.safeMarginSpine ?? params.safeMargin;
   const allowFullBleed = [
@@ -935,32 +1062,6 @@ export function generateAdaptiveLayoutVariations(
     params.safeMarginOutside ?? params.safeMargin,
     marginSpine,
   ].every(margin => margin === 0);
-
-  // Helper to score, filter collisions, and enrich raw variations
-  const scoreAndSortVariations = (rawVariations: AdaptiveLayoutVariation[]): AdaptiveLayoutVariation[] => {
-    // Mathematical guarantee: Exclude any variation where any rect intersects or covers a locked frame
-    const nonColliding = locked.length > 0
-      ? rawVariations.filter((v) =>
-          v.rects.every((r) => locked.every((l) => !rectsIntersect(r, l)))
-        )
-      : rawVariations;
-
-    const sourceVariations = nonColliding.length > 0 ? nonColliding : rawVariations;
-
-    const enriched = sourceVariations.map((v) => {
-      const matchRes = findOptimalPhotoSlotMapping(photos, v.rects);
-      return {
-        ...v,
-        score: matchRes.score,
-        cropPenalty: matchRes.avgCropPenalty,
-        fingerprint,
-        photoAssignments: matchRes.mapping,
-      };
-    });
-
-    // Sort descending by match score
-    return enriched.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-  };
 
   // If there are locked frames, we place unlocked photos in all valid unoccupied surrounding zones
   if (locked.length > 0) {
@@ -981,7 +1082,7 @@ export function generateAdaptiveLayoutVariations(
           });
         }
       }
-      return scoreAndSortVariations(variations);
+      return variations;
     }
 
     // 2-Page Spread with locked elements:
@@ -1130,7 +1231,7 @@ export function generateAdaptiveLayoutVariations(
       }
     }
 
-    return scoreAndSortVariations(variations);
+    return variations;
   }
 
   // Single page / Cover mode
@@ -1148,7 +1249,7 @@ export function generateAdaptiveLayoutVariations(
         tags: ['cover', `${count}p`],
       });
     }
-    return scoreAndSortVariations(variations);
+    return variations;
   }
 
   // Spread Mode (2-Page Spread)
@@ -1206,7 +1307,7 @@ export function generateAdaptiveLayoutVariations(
         tags: ['safe', 'hero', 'spread', 'fill'],
       }
     );
-    return scoreAndSortVariations(variations);
+    return variations;
   }
 
   // Multi-photo count >= 2: Generate all valid page split combinations (nLeft, nRight)
@@ -1316,7 +1417,37 @@ export function generateAdaptiveLayoutVariations(
     }
   });
 
-  return scoreAndSortVariations(variations);
+  return variations;
+}
+
+export function generateAdaptiveLayoutVariations(
+  params: TemplateParams,
+  photos: AdaptivePhoto[] = []
+): AdaptiveLayoutVariation[] {
+  const count = photos.length;
+  if (count === 0) return [];
+
+  const rawKey = getRawPartitionCacheKey(params, count);
+  const scoredKey = getScoredVariationsCacheKey(rawKey, photos);
+
+  const cachedScored = scoredVariationsCache.get(scoredKey);
+  if (cachedScored) {
+    cacheHits++;
+    return cachedScored;
+  }
+
+  cacheMisses++;
+
+  let rawVariations = rawPartitionsCache.get(rawKey);
+  if (!rawVariations) {
+    rawVariations = computeRawLayoutPartitions(params, count);
+    rawPartitionsCache.set(rawKey, rawVariations);
+  }
+
+  const scoredVariations = scoreAndSortVariations(rawVariations, photos, params.lockedElements || []);
+  scoredVariationsCache.set(scoredKey, scoredVariations);
+
+  return scoredVariations;
 }
 
 /**
