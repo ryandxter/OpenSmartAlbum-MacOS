@@ -97,8 +97,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 05-01: Implement Rust-based layered PSD serializer and multi-slide Instagram carousel slice exporter.
-- [ ] 05-02: Enhance TIFF and PDF/X print-ready export pipeline with bleed, color profile tagging, and crop marks.
+- [x] 05-01: Implement Rust-based layered PSD serializer and multi-slide Instagram carousel slice exporter.
+- [x] 05-02: Enhance TIFF and PDF/X print-ready export pipeline with bleed, color profile tagging, and crop marks.
 
 ---
 
@@ -110,11 +110,11 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. macOS Foundation & Pure Rust Pipeline | 2/2 | Complete | 2026-09-22 |
-| 2. Lucide Iconography & macOS Pro Studio UI | 0/4 | Not started | - |
-| 3. Instagram & Social Media Carousel Mode | 0/2 | Not started | - |
-| 4. Shape Presets, Clipping Masks & Border Styling | 0/2 | Not started | - |
-| 5. Advanced Layered Export Suite | 0/2 | Not started | - |
+| 2. Lucide Iconography & macOS Pro Studio UI | 4/4 | Complete | 2026-09-22 |
+| 3. Instagram & Social Media Carousel Mode | 2/2 | Complete | 2026-09-22 |
+| 4. Shape Presets, Clipping Masks & Border Styling | 2/2 | Complete | 2026-09-22 |
+| 5. Advanced Layered Export Suite | 2/2 | Complete | 2026-09-22 |
 
 ---
 *Roadmap defined: 2026-09-21*
-*Last updated: 2026-09-21 after initialization*
+*Last updated: 2026-09-22 after Phase 5 completion*

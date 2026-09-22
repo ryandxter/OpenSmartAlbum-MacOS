@@ -44,10 +44,10 @@
 
 ### 6. Advanced Layered Export Engine (EXPO)
 
-- [ ] **EXPO-01**: Layered Adobe Photoshop document (`.psd`) export with discrete raster layers for photo frames, alpha clipping masks, background, and vector/raster text.
-- [ ] **EXPO-02**: Automated multi-slide slice export for Instagram carousels, generating numbered individual high-resolution images (`slide_01.jpg`, `slide_02.jpg`, ...) with perfect pixel bounds.
-- [ ] **EXPO-03**: High-bit-depth TIFF export with embedded color profiles for professional photo print labs.
-- [ ] **EXPO-04**: Print-ready PDF/X export with configurable bleed margins, slug, and vector trim/crop marks.
+- [x] **EXPO-01**: Layered Adobe Photoshop document (`.psd`) export with discrete raster layers for photo frames, alpha clipping masks, background, and vector/raster text.
+- [x] **EXPO-02**: Automated multi-slide slice export for Instagram carousels, generating numbered individual high-resolution images (`slide_01.jpg`, `slide_02.jpg`, ...) with perfect pixel bounds.
+- [x] **EXPO-03**: High-bit-depth TIFF export with embedded color profiles for professional photo print labs.
+- [x] **EXPO-04**: Print-ready PDF/X export with configurable bleed margins, slug, and vector trim/crop marks.
 
 ## v2 Requirements
 
@@ -91,10 +91,10 @@
 | SHAPE-04 | Phase 4 | Complete |
 | SHAPE-05 | Phase 4 | Complete |
 | SHAPE-06 | Phase 4 | Complete |
-| EXPO-01 | Phase 5 | Pending |
-| EXPO-02 | Phase 5 | Pending |
-| EXPO-03 | Phase 5 | Pending |
-| EXPO-04 | Phase 5 | Pending |
+| EXPO-01 | Phase 5 | Complete |
+| EXPO-02 | Phase 5 | Complete |
+| EXPO-03 | Phase 5 | Complete |
+| EXPO-04 | Phase 5 | Complete |
 
 **Coverage:**
 - v1 requirements: 26 total
