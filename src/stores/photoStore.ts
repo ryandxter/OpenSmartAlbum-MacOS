@@ -154,6 +154,7 @@ interface PhotoState {
   selectedPhotoIds: string[];
   lastSelectedPhotoId: string | null;
   clipboardPhotoIds: string[];
+  draggedPhotoIds: string[];
 
   filter: PhotoFilter;
   sortBy: PhotoSortBy;
@@ -248,6 +249,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
   selectedPhotoIds: [],
   lastSelectedPhotoId: null,
   clipboardPhotoIds: [],
+  draggedPhotoIds: [],
 
   filter: 'all',
   sortBy: 'name',
@@ -363,31 +365,59 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
             if (!isCurrentProject(payload?.projectId)) return;
             if (payload) {
               if (payload.cancelled) {
-                set({ importNotice: payload });
+                set({
+                  importNotice: payload,
+                  isImporting: false,
+                  isCancelling: false,
+                  importProgress: null,
+                  currentImportTask: null,
+                });
               } else if (payload.total > 0) {
                 set((s) => {
                   // Only accumulate if part of an ongoing multi-batch import queue session
-                  const isOngoingQueueSession = s.isImporting || s.importQueue.length > 0;
+                  const isOngoingQueueSession = s.importQueue.length > 0;
                   const currentNotice = isOngoingQueueSession && s.importNotice && !s.importNotice.cancelled
                     ? s.importNotice
                     : null;
 
-                  if (!currentNotice) {
-                    return { importNotice: payload };
+                  const newNotice = !currentNotice
+                    ? payload
+                    : {
+                        ...currentNotice,
+                        total: currentNotice.total + payload.total,
+                        imported: currentNotice.imported + payload.imported,
+                        existing: currentNotice.existing + payload.existing,
+                        relinked: currentNotice.relinked + payload.relinked,
+                        failed: (currentNotice.failed || 0) + (payload.failed || 0),
+                        previewFailed: (currentNotice.previewFailed || 0) + (payload.previewFailed || 0),
+                        failures: [...(currentNotice.failures || []), ...(payload.failures || [])],
+                        cancelled: false,
+                      };
+
+                  // If no more tasks in queue, clear importing and progress states completely
+                  if (s.importQueue.length === 0) {
+                    return {
+                      importNotice: newNotice,
+                      isImporting: false,
+                      isCancelling: false,
+                      importProgress: null,
+                      currentImportTask: null,
+                    };
                   }
-                  return {
-                    importNotice: {
-                      ...currentNotice,
-                      total: currentNotice.total + payload.total,
-                      imported: currentNotice.imported + payload.imported,
-                      existing: currentNotice.existing + payload.existing,
-                      relinked: currentNotice.relinked + payload.relinked,
-                      failed: (currentNotice.failed || 0) + (payload.failed || 0),
-                      previewFailed: (currentNotice.previewFailed || 0) + (payload.previewFailed || 0),
-                      failures: [...(currentNotice.failures || []), ...(payload.failures || [])],
-                      cancelled: false,
-                    },
-                  };
+
+                  return { importNotice: newNotice };
+                });
+              } else {
+                set((s) => {
+                  if (s.importQueue.length === 0) {
+                    return {
+                      isImporting: false,
+                      isCancelling: false,
+                      importProgress: null,
+                      currentImportTask: null,
+                    };
+                  }
+                  return {};
                 });
               }
               if (payload.failures?.length) {
@@ -683,6 +713,15 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
       console.error('[AFSN] importPathsAndGetPhotos error:', err);
       set({ error: String(err) });
       return [];
+    } finally {
+      if (get().importQueue.length === 0) {
+        set({
+          isImporting: false,
+          isCancelling: false,
+          importProgress: null,
+          currentImportTask: null,
+        });
+      }
     }
   },
 
@@ -693,6 +732,14 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
       await invoke('cancel_photo_import');
     } catch (err) {
       console.warn('[AFSN] cancel_photo_import error:', err);
+    }
+    if (get().importQueue.length === 0) {
+      set({
+        isImporting: false,
+        isCancelling: false,
+        importProgress: null,
+        currentImportTask: null,
+      });
     }
   },
 

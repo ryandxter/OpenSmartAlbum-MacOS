@@ -40,6 +40,7 @@ Progress: [██████████] 100%
 
 ## Session Continuity
 
-Last session: 2026-09-23 04:32
-Stopped at: Milestone v1.1.0 complete. All code pushed to GitHub `main`.
-Resume file: None
+Last session: 2026-09-23 05:20
+Stopped at: Completed forensics investigation FOR-20260923-01 (Filmstrip Ingestion Hang & Drag-and-Drop Placement Failure).
+Resume file: .planning/forensics/report-2026-09-23-0520.md
+

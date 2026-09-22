@@ -378,7 +378,8 @@ export function CarouselCanvas({
     setHoveredDropSlideIndex(null);
     if (!currentCarousel) return;
 
-    // Extract photo IDs from drag payload
+    // Extract photo IDs from drag payload with WebKit pasteboard fallbacks
+    const transferTypes = Array.from(e.dataTransfer.types);
     let photoIds: string[] = [];
     try {
       const raw = e.dataTransfer.getData('application/x-afsn-photo-ids') || e.dataTransfer.getData('application/json');
@@ -392,6 +393,17 @@ export function CarouselCanvas({
       const textId = e.dataTransfer.getData('text/plain');
       if (textId) photoIds = [textId];
     }
+    if (photoIds.length === 0) {
+      const draggedIds = usePhotoStore.getState().draggedPhotoIds;
+      if (draggedIds && draggedIds.length > 0) {
+        photoIds = [...draggedIds];
+      }
+    }
+    if (photoIds.length === 0 && transferTypes.includes('application/x-afsn-photo-ids')) {
+      photoIds = usePhotoStore.getState().selectedPhotoIds;
+    }
+
+    usePhotoStore.setState({ draggedPhotoIds: [] });
 
     const libraryPhotos = usePhotoStore.getState().photos;
     const byId = new Map(libraryPhotos.map((p) => [p.id, p]));

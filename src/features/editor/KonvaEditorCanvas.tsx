@@ -2161,9 +2161,18 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
       if (byId.has(textId)) photoIds = [textId];
     }
 
+    if (photoIds.length === 0) {
+      const draggedIds = usePhotoStore.getState().draggedPhotoIds;
+      if (draggedIds && draggedIds.length > 0) {
+        photoIds = [...draggedIds];
+      }
+    }
+
     if (photoIds.length === 0 && transferTypes.includes('application/x-afsn-photo-ids')) {
       photoIds = usePhotoStore.getState().selectedPhotoIds;
     }
+
+    usePhotoStore.setState({ draggedPhotoIds: [] });
 
     const photosToPlace = [...new Set(photoIds)].map((id) => byId.get(id))
       .filter((photo): photo is Photo => Boolean(photo && photo.projectId === currentProject?.id));

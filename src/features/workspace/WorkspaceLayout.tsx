@@ -275,14 +275,6 @@ export function WorkspaceLayout() {
       return;
     }
 
-    // Mark photos as used in photoStore
-    const newPhotoIdSet = new Set(newPhotos.map((p) => p.id));
-    usePhotoStore.setState((s) => ({
-      photos: s.photos.map((p) =>
-        newPhotoIdSet.has(p.id) ? { ...p, usedCount: (p.usedCount || 0) + 1 } : p
-      ),
-    }));
-
     if (activeMode === 'print') {
       const { currentAlbum, activeSpreadId } = useAlbumStore.getState();
       if (!currentAlbum) return;
@@ -327,8 +319,12 @@ export function WorkspaceLayout() {
         );
 
         if (targetFrame) {
-          useEditorStore.getState().replacePhotoInFrame(targetSpread.id, targetFrame.id, newPhotos[0]!);
+          const replacedPhoto = newPhotos[0]!;
+          useEditorStore.getState().replacePhotoInFrame(targetSpread.id, targetFrame.id, replacedPhoto);
           useEditorStore.getState().clearSelection();
+          usePhotoStore.setState((s) => ({
+            photos: s.photos.map((p) => (p.id === replacedPhoto.id ? { ...p, usedCount: (p.usedCount || 0) + 1 } : p)),
+          }));
           showToast('Replaced photo in frame');
           return;
         }
@@ -415,6 +411,11 @@ export function WorkspaceLayout() {
             selectionGroupRotation: null,
           });
 
+          const placedIdSet = new Set(newPhotos.map((p) => p.id));
+          usePhotoStore.setState((s) => ({
+            photos: s.photos.map((p) => (placedIdSet.has(p.id) ? { ...p, usedCount: (p.usedCount || 0) + 1 } : p)),
+          }));
+
           showToast(`Placed ${newPhotos.length} photos with Smart Auto-Partitioning`);
           return;
         }
@@ -426,6 +427,12 @@ export function WorkspaceLayout() {
         newPhotos,
         physicalPt ?? undefined
       );
+
+      const placedIdSet = new Set(newPhotos.map((p) => p.id));
+      usePhotoStore.setState((s) => ({
+        photos: s.photos.map((p) => (placedIdSet.has(p.id) ? { ...p, usedCount: (p.usedCount || 0) + 1 } : p)),
+      }));
+
       showToast(`Added ${newPhotos.length} photo${newPhotos.length > 1 ? 's' : ''} to spread`);
       return;
     }
@@ -470,6 +477,11 @@ export function WorkspaceLayout() {
           });
         });
 
+        const placedIdSet = new Set(newPhotos.map((p) => p.id));
+        usePhotoStore.setState((s) => ({
+          photos: s.photos.map((p) => (placedIdSet.has(p.id) ? { ...p, usedCount: (p.usedCount || 0) + 1 } : p)),
+        }));
+
         showToast(`Placed ${newPhotos.length} photos onto slide`);
         return;
       }
@@ -504,6 +516,11 @@ export function WorkspaceLayout() {
           rotation: 0,
         });
       });
+
+      const placedIdSet = new Set(newPhotos.map((p) => p.id));
+      usePhotoStore.setState((s) => ({
+        photos: s.photos.map((p) => (placedIdSet.has(p.id) ? { ...p, usedCount: (p.usedCount || 0) + 1 } : p)),
+      }));
 
       showToast(`Added ${newPhotos.length} photo${newPhotos.length > 1 ? 's' : ''} to slide`);
     }

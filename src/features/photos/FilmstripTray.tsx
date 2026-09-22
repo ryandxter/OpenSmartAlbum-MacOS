@@ -358,6 +358,7 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
       selectPhoto(photo.id, 'single', sortedPhotos);
     }
     const ids = isSelected ? sortedPhotos.filter((item) => selectedPhotoIds.includes(item.id)).map((item) => item.id) : [photo.id];
+    usePhotoStore.setState({ draggedPhotoIds: ids });
     e.dataTransfer.setData('application/x-afsn-photo-ids', JSON.stringify(ids));
     if (ids.length > 1) e.dataTransfer.setData('application/x-afsn-multi-photo', String(ids.length));
     e.dataTransfer.setData('application/json', JSON.stringify(ids));
@@ -629,7 +630,6 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
                     className={`${styles.photoCard} ${isSelected ? styles.cardSelected : ''} ${isActive ? styles.cardActive : ''} ${photo.isMissing ? styles.cardMissing : ''} ${isUsed ? styles.cardUsed : ''}`}
                     onClick={(e) => handleCardClick(e, photo)}
                     onDoubleClick={() => {
-                      if (isUsed) return;
                       if (activeMode === 'carousel') {
                         const { currentCarousel, activeSlideIndex, addPhotoFrame } = useCarouselStore.getState();
                         if (!currentCarousel) return;
@@ -678,6 +678,9 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
                         const activeSpread = allSpreads.find((s) => s.id === activeSpreadId) || allSpreads[0];
                         if (activeSpread) {
                           useEditorStore.getState().addPhotoToSpread(activeSpread.id, photo);
+                          usePhotoStore.setState((s) => ({
+                            photos: s.photos.map((p) => (p.id === photo.id ? { ...p, usedCount: (p.usedCount || 0) + 1 } : p)),
+                          }));
                         }
                       }
                     }}
@@ -686,9 +689,12 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
                     onDragStart={(e) => {
                       handleCardDragStart(e, photo);
                     }}
+                    onDragEnd={() => {
+                      usePhotoStore.setState({ draggedPhotoIds: [] });
+                    }}
                     title={
                       isUsed
-                        ? `${photo.fileName}\n(Placed in ${activeMode === 'carousel' ? 'carousel slide' : 'album spread'} — Drag onto a canvas frame to replace or swap)`
+                        ? `${photo.fileName}\n(Placed in ${activeMode === 'carousel' ? 'carousel slide' : 'album spread'} — Double-click to place again, or drag onto canvas)`
                         : `${photo.fileName}\n${photo.width} × ${photo.height} px • ${formatFileSize(photo.fileSize)}\nDouble-click to add or drag onto canvas to place/replace\nRight-click for options`
                     }
                   >
