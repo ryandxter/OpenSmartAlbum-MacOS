@@ -307,7 +307,7 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport, activeMode =
       // Pre-Flight 100% clean -> proceed to export!
       onStartExport(exportOpts);
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setIsVerifyingPreflight(false);
       console.error('Pre-flight check error:', err);
       // Fallback: proceed directly if preflight check call fails
@@ -409,10 +409,11 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport, activeMode =
       setCarouselSuccessMsg(
         `Exported ${result.totalSlides} slides${result.panoramaFile ? ' + panorama' : ''} to: ${result.outputFolder}`
       );
-    } catch (err: any) {
+    } catch (err: unknown) {
       setIsExportingCarousel(false);
       console.error('Failed to export carousel slices:', err);
-      setErrorMsg(`Carousel export failed: ${err?.message || err}`);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      setErrorMsg(`Carousel export failed: ${errMsg}`);
     }
   };
 
