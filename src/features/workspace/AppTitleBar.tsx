@@ -440,11 +440,10 @@ export function AppTitleBar({
                 onClick={() => {
                   onModeSelect?.('carousel');
                 }}
-                title="Instagram Carousel Mode (Coming in Phase 3)"
+                title="Instagram & Social Carousel Mode"
               >
                 <Layers size={13} strokeWidth={1.5} />
                 <span>Social Carousel</span>
-                <span className={styles.modeBadge}>Soon</span>
               </button>
             </div>
 

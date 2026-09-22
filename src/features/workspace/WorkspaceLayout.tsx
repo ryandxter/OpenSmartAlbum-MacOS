@@ -5,6 +5,7 @@ import { useProjectStore } from '../../stores/projectStore';
 import { useAlbumStore } from '../../stores/albumStore';
 import { useEditorStore } from '../../stores/editorStore';
 import { usePhotoStore } from '../../stores/photoStore';
+import { useCarouselStore } from '../../stores/carouselStore';
 import { useAutoSave } from '../persistence/useAutoSave';
 import { useTauriInfo } from '../../hooks/useTauriInfo';
 import { WelcomeScreen } from './WelcomeScreen';
@@ -67,8 +68,9 @@ export function WorkspaceLayout() {
   }, []);
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
   const [isFilmstripOpen, setIsFilmstripOpen] = useState(true);
+  const [activeMode, setActiveMode] = useState<'print' | 'carousel'>('print');
 
-    const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
   const [exportZipProgress, setExportZipProgress] = useState<ExportZipProgressPayload | null>(null);
   const exportZipTimeoutRef = useRef<number | null>(null);
@@ -445,6 +447,16 @@ export function WorkspaceLayout() {
         zoomLevel={zoomLevel}
         onZoomChange={setZoomLevel}
         onFitToScreen={handleFitToScreen}
+        activeMode={activeMode}
+        onModeSelect={(mode) => {
+          setActiveMode(mode);
+          if (mode === 'carousel' && currentProject) {
+            const cs = useCarouselStore.getState();
+            if (!cs.currentCarousel || cs.currentCarousel.projectId !== currentProject.id) {
+              cs.initializeCarousel(currentProject.id);
+            }
+          }
+        }}
       />
 
       {/* Center Editor Area (contains Canvas + Bottom Full-Width PageNavigator) */}
@@ -472,6 +484,7 @@ export function WorkspaceLayout() {
             zoomLevel={zoomLevel}
             onZoomChange={setZoomLevel}
             onFitToScreen={handleFitToScreen}
+            activeMode={activeMode}
           />
         )}
       </div>
