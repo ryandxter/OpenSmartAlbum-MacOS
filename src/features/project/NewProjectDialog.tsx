@@ -15,6 +15,9 @@ import {
   Check,
   Columns2,
   Eye,
+  Smartphone,
+  Grid2x2,
+  Layers,
 } from 'lucide-react';
 import { Dialog } from '../../components/ui/Dialog';
 import { Button } from '../../components/ui/Button';
@@ -35,12 +38,25 @@ import {
   deleteCustomPreset,
 } from '../../domain/presets';
 import { validateProjectSettings } from '../../domain/project';
+import { useCarouselStore } from '../../stores/carouselStore';
+import { CarouselRatio, CAROUSEL_RATIO_PRESETS } from '../../domain/carousel';
 import styles from './NewProjectDialog.module.css';
 
 export function NewProjectDialog() {
   const isOpen = useProjectStore((s) => s.isNewProjectOpen);
   const closeNewProject = useProjectStore((s) => s.closeNewProject);
   const createNewProject = useProjectStore((s) => s.createNewProject);
+
+  const initializeCarousel = useCarouselStore((s) => s.initializeCarousel);
+
+  // Project mode selector: album (print) or carousel (social media)
+  const [projectMode, setProjectMode] = useState<'album' | 'carousel'>('album');
+
+  // Carousel-specific settings
+  const [carouselRatio, setCarouselRatio] = useState<CarouselRatio>('4:5');
+  const [carouselSlideCount, setCarouselSlideCount] = useState(5);
+  const [carouselBgColor, setCarouselBgColor] = useState('#FFFFFF');
+  const [carouselName, setCarouselName] = useState('Untitled Carousel');
 
   const [allPresets, setAllPresets] = useState<AlbumPreset[]>([]);
   const [isSavePresetOpen, setIsSavePresetOpen] = useState(false);
@@ -80,6 +96,7 @@ export function NewProjectDialog() {
 
   const [activeTab, setActiveTab] = useState<'page' | 'margins' | 'appearance'>('page');
 
+
   // Helper to round values cleanly based on unit
   const roundUnit = (val: number, unit: Unit): number => {
     if (unit === 'inch') return Math.round(val * 100) / 100;
@@ -94,6 +111,11 @@ export function NewProjectDialog() {
     if (isOpen) {
       const presets = getAllPresets();
       setAllPresets(presets);
+      setProjectMode('album');
+      setCarouselName('Untitled Carousel');
+      setCarouselRatio('4:5');
+      setCarouselSlideCount(5);
+      setCarouselBgColor('#FFFFFF');
       setName('Untitled Album');
       setPresetId('square-20x20-cm');
       setCanvasWidth(20);
@@ -338,6 +360,38 @@ export function NewProjectDialog() {
     e.preventDefault();
     setErrorMessage(null);
 
+    // --- Carousel mode: initialize carousel store and create a minimal project ---
+    if (projectMode === 'carousel') {
+      const preset = CAROUSEL_RATIO_PRESETS[carouselRatio];
+      const carouselSettings = {
+        name: carouselName.trim() || 'Untitled Carousel',
+        canvas: {
+          width: preset.width,
+          height: preset.height,
+          unit: 'px' as const,
+          dpi: 96,
+        },
+        spacing: { value: 0, unit: 'px' as const },
+        margin: { enabled: false, value: 0, unit: 'px' as const, top: 0, bottom: 0, outside: 0, spine: 0 },
+        border: { enabled: false, width: 0, unit: 'px' as const, color: '#FFFFFF' },
+        background: { type: 'solid' as const, color: carouselBgColor },
+      };
+      try {
+        setIsSubmitting(true);
+        const project = await createNewProject(carouselSettings);
+        // Initialize carousel store for this project after creation
+        const projectId = (project as { id?: string })?.id ?? `carousel-${Date.now()}`;
+        initializeCarousel(projectId, carouselRatio, carouselSlideCount);
+      } catch (err) {
+        console.error('[AFSN] Error creating carousel project:', err);
+        setErrorMessage(`Failed to create project: ${err}`);
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    // --- Album / Print mode ---
     const settings = {
       name: name.trim() || 'Untitled Album',
       canvas: {
@@ -388,16 +442,37 @@ export function NewProjectDialog() {
     }
   };
 
+
   return (
     <Dialog
       isOpen={isOpen}
       onClose={closeNewProject}
-      title="New Album Project"
+      title={projectMode === 'carousel' ? 'New Instagram Carousel Project' : 'New Album Project'}
       width={840}
       closeOnOverlayClick={false}
       closeOnEscape={false}
     >
       <form onSubmit={handleSubmit} onContextMenu={(e) => e.preventDefault()}>
+        {/* Project Type Mode Selector */}
+        <div className={styles.modeSwitcher}>
+          <button
+            type="button"
+            className={`${styles.modeBtn} ${projectMode === 'album' ? styles.modeBtnActive : ''}`}
+            onClick={() => setProjectMode('album')}
+          >
+            <Layers size={14} strokeWidth={1.5} />
+            <span>Print Album</span>
+          </button>
+          <button
+            type="button"
+            className={`${styles.modeBtn} ${projectMode === 'carousel' ? styles.modeBtnActive : ''}`}
+            onClick={() => setProjectMode('carousel')}
+          >
+            <Smartphone size={14} strokeWidth={1.5} />
+            <span>Instagram Carousel</span>
+          </button>
+        </div>
+
         {errorMessage && (
           <div className={styles.errorBanner}>
             <AlertCircle size={16} strokeWidth={1.5} />
@@ -405,9 +480,187 @@ export function NewProjectDialog() {
           </div>
         )}
 
+        {/* ——— CAROUSEL MODE FORM ——— */}
+        {projectMode === 'carousel' && (
+          <div className={styles.dialogContainer}>
+            {/* Left Column: Carousel Settings */}
+            <div className={styles.leftColumn}>
+              {/* Project Name */}
+              <div className={styles.nameRow}>
+                <span className={styles.nameIcon}>
+                  <Smartphone size={14} strokeWidth={1.5} />
+                </span>
+                <input
+                  type="text"
+                  className={styles.nameInput}
+                  value={carouselName}
+                  onChange={(e) => setCarouselName(e.target.value)}
+                  placeholder="Carousel Project Name (e.g. Client Shoot June 2026)"
+                  autoFocus
+                />
+              </div>
+
+              {/* Aspect Ratio Picker */}
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <span className={styles.cardTitle}>
+                    <Grid2x2 size={14} strokeWidth={1.5} />
+                    Slide Aspect Ratio
+                  </span>
+                  <span className={styles.cardSubtitle}>Instagram feed format</span>
+                </div>
+                <div className={styles.carouselRatioGrid}>
+                  {(Object.entries(CAROUSEL_RATIO_PRESETS) as [CarouselRatio, typeof CAROUSEL_RATIO_PRESETS[CarouselRatio]][]).map(([key, preset]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`${styles.carouselRatioTile} ${carouselRatio === key ? styles.carouselRatioTileActive : ''}`}
+                      onClick={() => setCarouselRatio(key)}
+                    >
+                      <div
+                        className={styles.carouselRatioIcon}
+                        style={{
+                          width: key === '1:1' ? 36 : key === '4:5' ? 29 : 20,
+                          height: key === '1:1' ? 36 : key === '4:5' ? 36 : 36,
+                        }}
+                      />
+                      <span className={styles.carouselRatioLabel}>{key}</span>
+                      <span className={styles.carouselRatioDesc}>{key === '1:1' ? 'Square Feed' : key === '4:5' ? 'Portrait Feed' : 'Story / Reel'}</span>
+                      <span className={styles.carouselRatioSize}>{preset.width} × {preset.height}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Slide Count */}
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <span className={styles.cardTitle}>
+                    <Columns2 size={14} strokeWidth={1.5} />
+                    Number of Slides
+                  </span>
+                  <span className={styles.cardSubtitle}>1 – 10 slides</span>
+                </div>
+                <div className={styles.carouselSlideRow}>
+                  <button
+                    type="button"
+                    className={styles.carouselCountBtn}
+                    onClick={() => setCarouselSlideCount(Math.max(1, carouselSlideCount - 1))}
+                    disabled={carouselSlideCount <= 1}
+                    aria-label="Decrease slide count"
+                  >−</button>
+                  <span className={styles.carouselCountValue}>{carouselSlideCount}</span>
+                  <button
+                    type="button"
+                    className={styles.carouselCountBtn}
+                    onClick={() => setCarouselSlideCount(Math.min(10, carouselSlideCount + 1))}
+                    disabled={carouselSlideCount >= 10}
+                    aria-label="Increase slide count"
+                  >+</button>
+                  <span className={styles.carouselCountUnit}>slides</span>
+                </div>
+              </div>
+
+              {/* Background Color */}
+              <div className={styles.card}>
+                <div className={styles.cardHeader}>
+                  <span className={styles.cardTitle}>
+                    <Palette size={14} strokeWidth={1.5} />
+                    Slide Background Color
+                  </span>
+                </div>
+                <ColorPicker label="Background Color" value={carouselBgColor} onChange={setCarouselBgColor} />
+              </div>
+
+              {/* Auto-Crop Badge */}
+              <div className={styles.seamlessSpineBadge}>
+                <Check size={13} strokeWidth={1.5} />
+                <span>Auto-Crop enabled — photos will be cropped to {carouselRatio} automatically</span>
+              </div>
+            </div>
+
+            {/* Right Column: Carousel Preview */}
+            <div className={styles.rightColumn}>
+              <div className={styles.previewHeader}>
+                <span className={styles.previewHeading}>
+                  <Eye size={13} strokeWidth={1.5} />
+                  Slide Preview
+                </span>
+                <span className={styles.aspectBadge}>{carouselRatio} · {CAROUSEL_RATIO_PRESETS[carouselRatio].width} × {CAROUSEL_RATIO_PRESETS[carouselRatio].height} px</span>
+              </div>
+
+              {/* Single Slide Mockup */}
+              <div className={styles.mockupStage}>
+                {(() => {
+                  const preset = CAROUSEL_RATIO_PRESETS[carouselRatio];
+                  const ratio = preset.width / preset.height;
+                  let w = 160;
+                  let h = Math.round(160 / ratio);
+                  if (h > 220) { h = 220; w = Math.round(220 * ratio); }
+                  return (
+                    <div
+                      style={{
+                        width: `${w}px`,
+                        height: `${h}px`,
+                        backgroundColor: carouselBgColor,
+                        borderRadius: '8px',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
+                      }}
+                    >
+                      <Smartphone size={28} strokeWidth={1} style={{ opacity: 0.15 }} />
+                      <span style={{ position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)', fontSize: 10, color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap' }}>
+                        Slide 1 of {carouselSlideCount}
+                      </span>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Carousel Specs */}
+              <div className={styles.specsCard}>
+                <div className={styles.specRow}>
+                  <span className={styles.specLabel}>Format:</span>
+                  <span className={styles.specValue}>Instagram Carousel</span>
+                </div>
+                <div className={styles.specRow}>
+                  <span className={styles.specLabel}>Ratio:</span>
+                  <span className={styles.specValue}>{carouselRatio} — {CAROUSEL_RATIO_PRESETS[carouselRatio].label.split('—')[1]?.trim()}</span>
+                </div>
+                <div className={styles.specDivider} />
+                <div className={styles.specRow}>
+                  <span className={styles.specLabel}>Slide Canvas:</span>
+                  <span className={styles.specValueHighlight}>{CAROUSEL_RATIO_PRESETS[carouselRatio].width} × {CAROUSEL_RATIO_PRESETS[carouselRatio].height} px</span>
+                </div>
+                <div className={styles.specRow}>
+                  <span className={styles.specLabel}>Total Slides:</span>
+                  <span className={styles.specValue}>{carouselSlideCount}</span>
+                </div>
+                <div className={styles.specDivider} />
+                <div className={styles.specRow}>
+                  <span className={styles.specLabel}>Auto-Crop:</span>
+                  <span className={styles.specValue}>Enabled ({carouselRatio})</span>
+                </div>
+                <div className={styles.specRow}>
+                  <span className={styles.specLabel}>Resolution:</span>
+                  <span className={styles.specValue}>72 DPI (Screen)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ——— ALBUM / PRINT MODE FORM ——— */}
+        {projectMode === 'album' && (
         <div className={styles.dialogContainer}>
           {/* Left Column: Form Configuration */}
           <div className={styles.leftColumn}>
+
             {/* Compact Project Name Input */}
             <div className={styles.nameRow}>
               <span className={styles.nameIcon}>
@@ -1030,6 +1283,7 @@ export function NewProjectDialog() {
             </div>
           </div>
         </div>
+        )} {/* end album conditional */}
 
         {/* Dialog Footer Actions */}
         <div className={styles.dialogFooter}>
@@ -1046,7 +1300,11 @@ export function NewProjectDialog() {
             variant="primary"
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Creating Project...' : 'Create Album Project'}
+            {isSubmitting
+              ? 'Creating Project...'
+              : projectMode === 'carousel'
+              ? 'Create Carousel Project'
+              : 'Create Album Project'}
           </Button>
         </div>
       </form>
