@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { ChevronLeft, ChevronRight, Shuffle, Star } from 'lucide-react';
 import { useAlbumStore } from '../../stores/albumStore';
 import { useProjectStore } from '../../stores/projectStore';
 import { getProjectDimensionsInCanvasUnit } from '../../domain/templates';
@@ -122,16 +123,20 @@ export function TemplatesPanel({ onApplyToast }: TemplatesPanelProps) {
                 className={styles.actionBtn}
                 onClick={() => activeSpread && currentProject && cycleSpreadLayout(activeSpread.id, 'prev', currentProject)}
                 title="Previous Layout (Shift + Space)"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
               >
-                ◀ Prev Layout
+                <ChevronLeft size={12} strokeWidth={1.75} />
+                <span>Prev Layout</span>
               </button>
               <button
                 type="button"
                 className={styles.actionBtn}
                 onClick={() => activeSpread && currentProject && cycleSpreadLayout(activeSpread.id, 'next', currentProject)}
                 title="Next Layout (Space)"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
               >
-                Next Layout ▶
+                <span>Next Layout</span>
+                <ChevronRight size={12} strokeWidth={1.75} />
               </button>
             </div>
 
@@ -140,14 +145,9 @@ export function TemplatesPanel({ onApplyToast }: TemplatesPanelProps) {
               className={styles.shuffleBtn}
               onClick={() => activeSpread && shuffleSpreadPhotos(activeSpread.id)}
               title="Shuffle Photos (S)"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="16 3 21 3 21 8" />
-                <line x1="4" y1="20" x2="21" y2="3" />
-                <polyline points="21 16 21 21 16 21" />
-                <line x1="15" y1="15" x2="21" y2="21" />
-                <line x1="4" y1="4" x2="9" y2="9" />
-              </svg>
+              <Shuffle size={12} strokeWidth={1.75} />
               <span>Shuffle</span>
             </button>
           </div>
@@ -202,7 +202,8 @@ export function TemplatesPanel({ onApplyToast }: TemplatesPanelProps) {
                         fontWeight: 600,
                       }}
                     >
-                      ⭐ {variation.score}%
+                      <Star size={10} strokeWidth={1.75} fill="currentColor" style={{ verticalAlign: 'middle', marginRight: 2 }} />
+                      {variation.score}%
                     </span>
                   )}
                 </div>

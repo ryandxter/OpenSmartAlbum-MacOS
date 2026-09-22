@@ -1,5 +1,6 @@
 import React, { ReactNode, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 import styles from './Dialog.module.css';
 
 export interface DialogProps {
@@ -72,9 +73,7 @@ export const Dialog: React.FC<DialogProps> = ({
         <div className={styles.header}>
           <h2 id="dialog-title" className={styles.title}>{title}</h2>
           <button className={styles.closeButton} onClick={onClose} aria-label="Close dialog" type="button">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+            <X size={16} strokeWidth={1.5} />
           </button>
         </div>
         <div

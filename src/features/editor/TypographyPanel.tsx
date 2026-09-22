@@ -1,5 +1,17 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import {
+  ArrowUpDown,
+  Maximize2,
+  Pencil,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignVerticalJustifyStart,
+  AlignVerticalJustifyCenter,
+  AlignVerticalJustifyEnd,
+  RotateCcw,
+} from 'lucide-react';
 import { useEditorStore } from '../../stores/editorStore';
 import { useAlbumStore } from '../../stores/albumStore';
 import { useProjectStore } from '../../stores/projectStore';
@@ -200,11 +212,7 @@ export function TypographyPanel({ element, onToast }: TypographyPanelProps) {
             }}
             title="Fit Height to Text (Preserve Column Width)"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="7 6 12 1 17 6" />
-              <polyline points="7 18 12 23 17 18" />
-              <line x1="12" y1="1" x2="12" y2="23" />
-            </svg>
+            <ArrowUpDown size={15} strokeWidth={1.75} />
           </button>
           <button
             type="button"
@@ -224,12 +232,7 @@ export function TypographyPanel({ element, onToast }: TypographyPanelProps) {
             }}
             title="Fit Frame to Content (Hug Width & Height)"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="4 14 10 14 10 20" />
-              <polyline points="20 10 14 10 14 4" />
-              <line x1="14" y1="10" x2="21" y2="3" />
-              <line x1="3" y1="21" x2="10" y2="14" />
-            </svg>
+            <Maximize2 size={15} strokeWidth={1.75} />
           </button>
           <button
             type="button"
@@ -238,9 +241,9 @@ export function TypographyPanel({ element, onToast }: TypographyPanelProps) {
               width: '30px',
               height: '30px',
               borderRadius: '5px',
-              background: 'var(--color-accent-subtle, rgba(59, 130, 246, 0.12))',
-              border: '1px solid var(--color-accent, #3b82f6)',
-              color: 'var(--color-accent, #3b82f6)',
+              background: 'var(--color-surface-raised, rgba(255, 255, 255, 0.08))',
+              border: '1px solid var(--color-border, #334155)',
+              color: 'var(--color-text-primary, #e4e4e7)',
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
@@ -249,9 +252,7 @@ export function TypographyPanel({ element, onToast }: TypographyPanelProps) {
             }}
             title="Canvas Inline Editor (Double-click text)"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
-            </svg>
+            <Pencil size={15} strokeWidth={1.75} />
           </button>
         </div>
       </div>
@@ -833,12 +834,7 @@ export function TypographyPanel({ element, onToast }: TypographyPanelProps) {
                 }}
                 title="Align Left"
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-                  <line x1="17" y1="10" x2="3" y2="10" />
-                  <line x1="21" y1="6" x2="3" y2="6" />
-                  <line x1="21" y1="14" x2="3" y2="14" />
-                  <line x1="17" y1="18" x2="3" y2="18" />
-                </svg>
+                <AlignLeft size={13} strokeWidth={1.75} />
               </button>
               {/* Center */}
               <button
@@ -851,20 +847,15 @@ export function TypographyPanel({ element, onToast }: TypographyPanelProps) {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  background: style.align === 'center' ? 'var(--color-accent, #38bdf8)' : 'transparent',
-                  color: style.align === 'center' ? '#090d16' : 'var(--color-text-secondary, #94a3b8)',
+                  background: style.align === 'center' ? 'var(--color-accent, #e4e4e7)' : 'transparent',
+                  color: style.align === 'center' ? '#18181b' : 'var(--color-text-secondary, #94a3b8)',
                   border: 'none',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
                 }}
                 title="Align Center"
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-                  <line x1="18" y1="10" x2="6" y2="10" />
-                  <line x1="21" y1="6" x2="3" y2="6" />
-                  <line x1="21" y1="14" x2="3" y2="14" />
-                  <line x1="18" y1="18" x2="6" y2="18" />
-                </svg>
+                <AlignCenter size={13} strokeWidth={1.75} />
               </button>
               {/* Right */}
               <button
@@ -877,20 +868,15 @@ export function TypographyPanel({ element, onToast }: TypographyPanelProps) {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  background: style.align === 'right' ? 'var(--color-accent, #38bdf8)' : 'transparent',
-                  color: style.align === 'right' ? '#090d16' : 'var(--color-text-secondary, #94a3b8)',
+                  background: style.align === 'right' ? 'var(--color-accent, #e4e4e7)' : 'transparent',
+                  color: style.align === 'right' ? '#18181b' : 'var(--color-text-secondary, #94a3b8)',
                   border: 'none',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
                 }}
                 title="Align Right"
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-                  <line x1="21" y1="10" x2="7" y2="10" />
-                  <line x1="21" y1="6" x2="3" y2="6" />
-                  <line x1="21" y1="14" x2="3" y2="14" />
-                  <line x1="21" y1="18" x2="7" y2="18" />
-                </svg>
+                <AlignRight size={13} strokeWidth={1.75} />
               </button>
             </div>
           </div>
@@ -912,18 +898,15 @@ export function TypographyPanel({ element, onToast }: TypographyPanelProps) {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  background: style.verticalAlign === 'top' ? 'var(--color-accent, #38bdf8)' : 'transparent',
-                  color: style.verticalAlign === 'top' ? '#090d16' : 'var(--color-text-secondary, #94a3b8)',
+                  background: style.verticalAlign === 'top' ? 'var(--color-accent, #e4e4e7)' : 'transparent',
+                  color: style.verticalAlign === 'top' ? '#18181b' : 'var(--color-text-secondary, #94a3b8)',
                   border: 'none',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
                 }}
                 title="Align Top"
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-                  <line x1="4" y1="4" x2="20" y2="4" />
-                  <rect x="7" y="9" width="10" height="9" rx="1" />
-                </svg>
+                <AlignVerticalJustifyStart size={13} strokeWidth={1.75} />
               </button>
               {/* Middle */}
               <button
@@ -936,18 +919,15 @@ export function TypographyPanel({ element, onToast }: TypographyPanelProps) {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  background: (!style.verticalAlign || style.verticalAlign === 'middle') ? 'var(--color-accent, #38bdf8)' : 'transparent',
-                  color: (!style.verticalAlign || style.verticalAlign === 'middle') ? '#090d16' : 'var(--color-text-secondary, #94a3b8)',
+                  background: (!style.verticalAlign || style.verticalAlign === 'middle') ? 'var(--color-accent, #e4e4e7)' : 'transparent',
+                  color: (!style.verticalAlign || style.verticalAlign === 'middle') ? '#18181b' : 'var(--color-text-secondary, #94a3b8)',
                   border: 'none',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
                 }}
                 title="Align Middle (Center Vertically)"
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-                  <line x1="4" y1="12" x2="20" y2="12" />
-                  <rect x="7" y="7.5" width="10" height="9" rx="1" />
-                </svg>
+                <AlignVerticalJustifyCenter size={13} strokeWidth={1.75} />
               </button>
               {/* Bottom */}
               <button
@@ -960,19 +940,15 @@ export function TypographyPanel({ element, onToast }: TypographyPanelProps) {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  background: style.verticalAlign === 'bottom' ? 'var(--color-accent, #38bdf8)' : 'transparent',
-                  color: style.verticalAlign === 'bottom' ? '#090d16' : 'var(--color-text-secondary, #94a3b8)',
-                  boxShadow: style.verticalAlign === 'bottom' ? '0 0 8px rgba(56, 189, 248, 0.35)' : 'none',
+                  background: style.verticalAlign === 'bottom' ? 'var(--color-accent, #e4e4e7)' : 'transparent',
+                  color: style.verticalAlign === 'bottom' ? '#18181b' : 'var(--color-text-secondary, #94a3b8)',
                   border: 'none',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
                 }}
                 title="Align Bottom"
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-                  <line x1="4" y1="20" x2="20" y2="20" />
-                  <rect x="7" y="6" width="10" height="9" rx="1" />
-                </svg>
+                <AlignVerticalJustifyEnd size={13} strokeWidth={1.75} />
               </button>
             </div>
           </div>
@@ -1078,10 +1054,7 @@ export function TypographyPanel({ element, onToast }: TypographyPanelProps) {
             }}
             title="Reset rotation to 0°"
           >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-              <path d="M3 3v5h5" />
-            </svg>
+            <RotateCcw size={12} strokeWidth={1.75} />
           </button>
         </div>
       </div>

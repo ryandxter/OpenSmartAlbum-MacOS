@@ -1,6 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import {
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  Check,
+  Star,
+  ImagePlus,
+  FolderPlus,
+  Loader2,
+} from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { usePhotoStore } from '../../stores/photoStore';
@@ -453,8 +463,10 @@ export function FilmstripTray({ isOpen, onToggle }: FilmstripTrayProps) {
                   className={styles.missingAlertBtn}
                   onClick={() => openRelink()}
                   title="Click to relink missing photos"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
                 >
-                  ⚠️ {missingCount} Missing (Relink)
+                  <AlertTriangle size={13} strokeWidth={1.75} />
+                  <span>{missingCount} Missing (Relink)</span>
                 </button>
               )}
 
@@ -483,7 +495,14 @@ export function FilmstripTray({ isOpen, onToggle }: FilmstripTrayProps) {
             title={isOpen ? 'Collapse Photo Filmstrip' : 'Expand Photo Filmstrip'}
             className={styles.toggleBtn}
           >
-            {isOpen ? '▼' : '▲ Photos'}
+            {isOpen ? (
+              <ChevronDown size={14} strokeWidth={1.75} />
+            ) : (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <ChevronUp size={14} strokeWidth={1.75} />
+                Photos
+              </span>
+            )}
           </Button>
         </div>
       </div>
@@ -497,15 +516,7 @@ export function FilmstripTray({ isOpen, onToggle }: FilmstripTrayProps) {
                 {importProgress.current === 0 ? (
                   <div className={styles.pulseRing} />
                 ) : (
-                  <svg className={styles.activeSpinner} viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="rgba(56, 189, 248, 0.2)" strokeWidth="2.5" />
-                    <path
-                      d="M12 2a10 10 0 0 1 10 10"
-                      stroke="#38bdf8"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                    />
-                  </svg>
+                  <Loader2 className={styles.activeSpinner} size={15} strokeWidth={2} />
                 )}
               </div>
 
@@ -681,7 +692,8 @@ export function FilmstripTray({ isOpen, onToggle }: FilmstripTrayProps) {
                               {/* Used Protective Lock Badge */}
                               {isUsed && (
                                 <div className={styles.usedLockBadge}>
-                                  ✓ Used
+                                  <Check size={10} strokeWidth={2} style={{ marginRight: 2, verticalAlign: 'middle' }} />
+                                  Used
                                 </div>
                               )}
 
@@ -695,7 +707,7 @@ export function FilmstripTray({ isOpen, onToggle }: FilmstripTrayProps) {
                                 }}
                                 title={photo.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                               >
-                                ★
+                                <Star size={11} strokeWidth={1.5} fill={photo.isFavorite ? 'currentColor' : 'none'} />
                               </button>
 
                               {/* Bottom Status Overlay */}
@@ -732,9 +744,13 @@ export function FilmstripTray({ isOpen, onToggle }: FilmstripTrayProps) {
                                   zIndex: 2,
                                   border: 0,
                                   cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '3px',
                                 }}
                               >
-                                ⚠️ Missing
+                                <AlertTriangle size={10} strokeWidth={1.75} />
+                                Missing
                               </button>
                             ) : (
                               <>
@@ -757,11 +773,7 @@ export function FilmstripTray({ isOpen, onToggle }: FilmstripTrayProps) {
             </div>
           ) : !isImporting ? (
             <div className={styles.emptyState}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
-                <circle cx="9" cy="9" r="2"/>
-                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
-              </svg>
+              <ImagePlus size={24} strokeWidth={1.5} style={{ opacity: 0.5 }} />
               <span>
                 {activeFolderName
                   ? `No photos in folder "${activeFolderName}". Click "+ Import" above to add photos.`
@@ -858,7 +870,7 @@ export function FilmstripTray({ isOpen, onToggle }: FilmstripTrayProps) {
                 importFiles(currentProject.id);
               }}
             >
-              <span className={styles.importMenuIcon}>🖼️</span>
+              <span className={styles.importMenuIcon}><ImagePlus size={18} strokeWidth={1.5} /></span>
               <div className={styles.importTextCol}>
                 <span className={styles.importMainTitle}>Import Photos / Files...</span>
                 <span className={styles.importSubTitle}>Select individual or multiple photo files</span>
@@ -873,7 +885,7 @@ export function FilmstripTray({ isOpen, onToggle }: FilmstripTrayProps) {
                 importFolder(currentProject.id);
               }}
             >
-              <span className={styles.importMenuIcon}>📁</span>
+              <span className={styles.importMenuIcon}><FolderPlus size={18} strokeWidth={1.5} /></span>
               <div className={styles.importTextCol}>
                 <span className={styles.importMainTitle}>Import Entire Folder...</span>
                 <span className={styles.importSubTitle}>Import all photos in a directory</span>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Plus, FolderOpen, Clock, Image, X } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useProjectStore } from '../../stores/projectStore';
@@ -119,10 +120,7 @@ export function WelcomeScreen() {
               className={styles.primaryActionButton}
               onClick={openNewProject}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"/>
-                <line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
+              <Plus size={16} strokeWidth={1.5} />
               <span>Create New Project</span>
             </Button>
 
@@ -135,9 +133,7 @@ export function WelcomeScreen() {
               }}
               title="Open an .afsn project. Extract ZIP packages first, then open project.afsn."
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>
-              </svg>
+              <FolderOpen size={16} strokeWidth={1.5} />
               <span>Open Project</span>
             </Button>
           </div>
@@ -146,10 +142,7 @@ export function WelcomeScreen() {
           <div className={styles.recentSection}>
             <div className={styles.sectionHeader}>
               <div className={styles.sectionTitleGroup}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/>
-                  <polyline points="12 6 12 12 16 14"/>
-                </svg>
+                <Clock size={14} strokeWidth={1.5} />
                 <span>Recent Projects</span>
                 {recentProjects.length > 0 && (
                   <span className={styles.countBadge}>{recentProjects.length}</span>
@@ -177,11 +170,7 @@ export function WelcomeScreen() {
                     title={missingProjectIds.has(proj.id) ? `Project file missing from disk: ${proj.filePath}` : `Open ${proj.name}`}
                   >
                     <div className={styles.projectIconBadge}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
-                        <circle cx="9" cy="9" r="2"/>
-                        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
-                      </svg>
+                      <Image size={16} strokeWidth={1.5} />
                     </div>
                     <div className={styles.projectInfo}>
                       <span className={styles.projectName}>{proj.name}</span>
@@ -216,7 +205,7 @@ export function WelcomeScreen() {
                         title="Remove from recent list"
                         aria-label="Remove"
                       >
-                        ✕
+                        <X size={12} strokeWidth={1.5} />
                       </button>
                     </div>
                   </div>
@@ -224,7 +213,9 @@ export function WelcomeScreen() {
               </div>
             ) : (
               <div className={styles.emptyState}>
-                <div className={styles.emptyStateIcon}>📂</div>
+                <div className={styles.emptyStateIcon}>
+                  <FolderOpen size={32} strokeWidth={1.5} />
+                </div>
                 <span>No recent albums yet. Click above to create your first layout!</span>
               </div>
             )}

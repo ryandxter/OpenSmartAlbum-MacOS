@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { Pipette, Info } from 'lucide-react';
 import styles from './ColorPicker.module.css';
 
 interface ColorPickerProps {
@@ -344,11 +345,7 @@ export function ColorPicker({
           disabled={disabled}
           title="Pick color from canvas (Eyedropper)"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m2 22 1-1h3l9-9" />
-            <path d="M3 21v-3l9-9" />
-            <path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z" />
-          </svg>
+          <Pipette size={14} strokeWidth={1.5} />
         </button>
       </div>
 
@@ -417,11 +414,7 @@ export function ColorPicker({
       {/* Active Sampling Notification Badge */}
       {isSampling && (
         <div className={styles.samplingHud}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
+          <Info size={14} strokeWidth={1.5} />
           <span>Click anywhere on canvas to pick color · Esc to cancel</span>
         </div>
       )}

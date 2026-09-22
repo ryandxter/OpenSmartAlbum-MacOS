@@ -1,4 +1,5 @@
 import React, { useMemo, useRef } from 'react';
+import { Lock, Unlock } from 'lucide-react';
 import { useAlbumStore } from '../../stores/albumStore';
 import { useEditorStore } from '../../stores/editorStore';
 import { useProjectStore } from '../../stores/projectStore';
@@ -10,37 +11,11 @@ import { TextNodeElement } from '../../domain/text';
 import styles from './LockedPhotosPanel.module.css';
 
 const LockIcon = ({ size = 12 }: { size?: number }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2.2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    style={{ flexShrink: 0 }}
-  >
-    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-  </svg>
+  <Lock size={size} strokeWidth={1.75} style={{ flexShrink: 0 }} />
 );
 
 const UnlockIcon = ({ size = 12 }: { size?: number }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2.2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    style={{ flexShrink: 0 }}
-  >
-    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-    <path d="M7 11V7a5 5 0 0 1 9.9-1" />
-  </svg>
+  <Unlock size={size} strokeWidth={1.75} style={{ flexShrink: 0 }} />
 );
 
 interface LockedPhotosPanelProps {

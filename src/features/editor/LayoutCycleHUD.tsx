@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, Star, Shuffle } from 'lucide-react';
 import { useAlbumStore } from '../../stores/albumStore';
 import { useProjectStore } from '../../stores/projectStore';
 import { useEditorStore } from '../../stores/editorStore';
@@ -148,7 +149,7 @@ export function LayoutCycleHUD() {
           onClick={handlePrev}
           title="Previous Layout Variant (Shift + Space)"
         >
-          ◀
+          <ChevronLeft size={13} strokeWidth={1.75} />
         </button>
 
         <span className={styles.badge}>
@@ -161,7 +162,7 @@ export function LayoutCycleHUD() {
           onClick={handleNext}
           title="Next Layout Variant (Space)"
         >
-          ▶
+          <ChevronRight size={13} strokeWidth={1.75} />
         </button>
       </div>
 
@@ -184,7 +185,7 @@ export function LayoutCycleHUD() {
               }}
               title={`Layout Aspect-Ratio Match: ${currentVariation.score}%\nEstimated Crop Penalty: ${Math.round((currentVariation.cropPenalty || 0) * 100)}%\nFingerprint: ${currentVariation.fingerprint || 'Auto'}`}
             >
-              ⭐ {currentVariation.score}%
+              <Star size={11} strokeWidth={1.75} fill="currentColor" /> {currentVariation.score}%
             </span>
           )}
           <span className={styles.layoutName} title={currentVariation.description}>
@@ -201,13 +202,7 @@ export function LayoutCycleHUD() {
         onClick={handleShuffle}
         title="Shuffle Photo Placements (Press S)"
       >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 4 }}>
-          <polyline points="16 3 21 3 21 8" />
-          <line x1="4" y1="20" x2="21" y2="3" />
-          <polyline points="21 16 21 21 16 21" />
-          <line x1="15" y1="15" x2="21" y2="21" />
-          <line x1="4" y1="4" x2="9" y2="9" />
-        </svg>
+        <Shuffle size={12} strokeWidth={1.75} style={{ marginRight: 4 }} />
         <span>Shuffle</span>
         <span className={styles.shortcutHint}>S</span>
       </button>

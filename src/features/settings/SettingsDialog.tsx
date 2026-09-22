@@ -1,4 +1,27 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import {
+  Settings,
+  Magnet,
+  LayoutGrid,
+  Keyboard,
+  LayoutTemplate,
+  History,
+  ShieldCheck,
+  HardDrive,
+  Trash2,
+  RefreshCw,
+  Columns2,
+  Crosshair,
+  Scan,
+  Grid2x2,
+  Ruler,
+  Maximize2,
+  Info,
+  Search,
+  SearchX,
+  X,
+  Sparkles,
+} from 'lucide-react';
 import { Dialog } from '../../components/ui/Dialog';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Switch } from '../../components/ui/Switch';
@@ -764,10 +787,7 @@ export function SettingsDialog() {
               onClick={() => setActiveTab('general')}
             >
               <span className={styles.tabIcon}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="3" />
-                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                </svg>
+                <Settings size={18} strokeWidth={1.5} />
               </span>
               <span>General</span>
             </button>
@@ -779,11 +799,7 @@ export function SettingsDialog() {
               onClick={() => setActiveTab('snapping')}
             >
               <span className={styles.tabIcon}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 14a8 8 0 0 1 16 0v7a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-7a2 2 0 0 0-4 0v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7Z" />
-                  <line x1="4" y1="18" x2="8" y2="18" />
-                  <line x1="16" y1="18" x2="20" y2="18" />
-                </svg>
+                <Magnet size={18} strokeWidth={1.5} />
               </span>
               <span>Canvas & Snapping</span>
             </button>
@@ -795,11 +811,7 @@ export function SettingsDialog() {
               onClick={() => setActiveTab('layout')}
             >
               <span className={styles.tabIcon}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <path d="M3 9h18" />
-                  <path d="M9 21V9" />
-                </svg>
+                <LayoutGrid size={18} strokeWidth={1.5} />
               </span>
               <span>Multi-Frame Resize</span>
             </button>
@@ -811,10 +823,7 @@ export function SettingsDialog() {
               onClick={() => setActiveTab('shortcuts')}
             >
               <span className={styles.tabIcon}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="4" width="20" height="16" rx="2" />
-                  <path d="M6 8h.001M10 8h.001M14 8h.001M18 8h.001M8 12h.001M12 12h.001M16 12h.001M7 16h10" />
-                </svg>
+                <Keyboard size={18} strokeWidth={1.5} />
               </span>
               <span>Shortcuts</span>
             </button>
@@ -870,10 +879,7 @@ export function SettingsDialog() {
                       onClick={() => updatePreferences({ startupBehavior: 'welcome' as StartupBehavior })}
                     >
                       <span className={styles.startupChoiceIcon}>
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <rect x="3" y="4" width="18" height="16" rx="2" />
-                          <path d="M3 9h18M8 9v11" />
-                        </svg>
+                        <LayoutTemplate size={17} strokeWidth={1.5} aria-hidden="true" />
                       </span>
                       <span className={styles.startupChoiceText}>
                         <strong>Welcome Screen</strong>
@@ -891,10 +897,7 @@ export function SettingsDialog() {
                       onClick={() => updatePreferences({ startupBehavior: 'reopen_last' as StartupBehavior })}
                     >
                       <span className={styles.startupChoiceIcon}>
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
-                          <path d="M3 3v5h5M12 7v5l3 2" />
-                        </svg>
+                        <History size={17} strokeWidth={1.5} aria-hidden="true" />
                       </span>
                       <span className={styles.startupChoiceText}>
                         <strong>Last Project</strong>
@@ -958,10 +961,7 @@ export function SettingsDialog() {
                   </div>
                   <div className={styles.compactSummaryRow}>
                     <span>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
-                        <path d="m9 12 2 2 4-4" />
-                      </svg>
+                      <ShieldCheck size={13} strokeWidth={1.5} aria-hidden="true" />
                       Recovery snapshots stay protected
                     </span>
                     <span className={styles.summaryPillSuccess}>Always On</span>
@@ -983,11 +983,7 @@ export function SettingsDialog() {
                 <div className={styles.generalCardBody}>
                   <div className={styles.cacheMetricPanel}>
                     <div className={styles.cacheMetricIcon}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <ellipse cx="12" cy="5" rx="8" ry="3" />
-                        <path d="M4 5v7c0 1.7 3.6 3 8 3s8-1.3 8-3V5" />
-                        <path d="M4 12v7c0 1.7 3.6 3 8 3s8-1.3 8-3v-7" />
-                      </svg>
+                      <HardDrive size={18} strokeWidth={1.5} aria-hidden="true" />
                     </div>
                     <div className={styles.cacheMetricCopy}>
                       <strong>Photo Preview Cache</strong>
@@ -1010,11 +1006,7 @@ export function SettingsDialog() {
                       onClick={() => setConfirmAction('unused_cache')}
                       disabled={!isTauri() || isCacheStatsLoading || isGeneralActionBusy}
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M3 6h18" />
-                        <path d="M8 6V4h8v2" />
-                        <path d="M19 6l-1 14H6L5 6" />
-                      </svg>
+                      <Trash2 size={14} strokeWidth={1.5} aria-hidden="true" />
                       Clean Up
                     </button>
                   </div>
@@ -1068,9 +1060,7 @@ export function SettingsDialog() {
                       className={`${styles.generalActionButton} ${styles.generalActionButtonPrimary}`}
                       onClick={openUpdateModal}
                     >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
-                      </svg>
+                      <RefreshCw size={14} strokeWidth={1.5} aria-hidden="true" />
                       Check Now
                     </button>
                   </div>
@@ -1183,10 +1173,7 @@ export function SettingsDialog() {
                   >
                     <div className={styles.targetInfo}>
                       <div className={styles.targetIcon}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="2" y="3" width="20" height="18" rx="2" />
-                          <line x1="12" y1="3" x2="12" y2="21" strokeDasharray="3 3" />
-                        </svg>
+                        <Columns2 size={16} strokeWidth={1.5} />
                       </div>
                       <div className={styles.targetText}>
                         <span className={styles.targetTitle}>Page & Spine Edges</span>
@@ -1210,11 +1197,7 @@ export function SettingsDialog() {
                   >
                     <div className={styles.targetInfo}>
                       <div className={styles.targetIcon}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="9" />
-                          <line x1="12" y1="3" x2="12" y2="21" />
-                          <line x1="3" y1="12" x2="21" y2="12" />
-                        </svg>
+                        <Crosshair size={16} strokeWidth={1.5} />
                       </div>
                       <div className={styles.targetText}>
                         <span className={styles.targetTitle}>Page Optical Centerlines</span>
@@ -1238,10 +1221,7 @@ export function SettingsDialog() {
                   >
                     <div className={styles.targetInfo}>
                       <div className={styles.targetIcon}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="2" y="2" width="20" height="20" rx="2" />
-                          <rect x="6" y="6" width="12" height="12" rx="1" strokeDasharray="2 2" />
-                        </svg>
+                        <Scan size={16} strokeWidth={1.5} />
                       </div>
                       <div className={styles.targetText}>
                         <span className={styles.targetTitle}>Safe Zone Margins</span>
@@ -1265,10 +1245,7 @@ export function SettingsDialog() {
                   >
                     <div className={styles.targetInfo}>
                       <div className={styles.targetIcon}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="2" y="4" width="9" height="16" rx="1.5" />
-                          <rect x="13" y="4" width="9" height="16" rx="1.5" />
-                        </svg>
+                        <Grid2x2 size={16} strokeWidth={1.5} />
                       </div>
                       <div className={styles.targetText}>
                         <span className={styles.targetTitle}>Adjacent Photo Frames</span>
@@ -1292,12 +1269,7 @@ export function SettingsDialog() {
                   >
                     <div className={styles.targetInfo}>
                       <div className={styles.targetIcon}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="3" y1="12" x2="21" y2="12" />
-                          <polyline points="7 8 3 12 7 16" />
-                          <polyline points="17 8 21 12 17 16" />
-                          <line x1="12" y1="7" x2="12" y2="17" />
-                        </svg>
+                        <Ruler size={16} strokeWidth={1.5} />
                       </div>
                       <div className={styles.targetText}>
                         <span className={styles.targetTitle}>Equidistant Gap Spacing</span>
@@ -1347,9 +1319,7 @@ export function SettingsDialog() {
                   >
                     <div className={styles.modeCardHeader}>
                       <div className={styles.modeIcon}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                        </svg>
+                        <Maximize2 size={15} strokeWidth={1.5} />
                       </div>
                       <div className={`${styles.radioIndicator} ${multiResizeGapMode === 'proportional' ? styles.radioIndicatorActive : ''}`}>
                         {multiResizeGapMode === 'proportional' && <div className={styles.radioDot} />}
@@ -1374,11 +1344,7 @@ export function SettingsDialog() {
                   >
                     <div className={styles.modeCardHeader}>
                       <div className={styles.modeIcon}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="3" y="3" width="18" height="18" rx="2" />
-                          <line x1="9" y1="3" x2="9" y2="21" />
-                          <line x1="15" y1="3" x2="15" y2="21" />
-                        </svg>
+                        <Columns2 size={15} strokeWidth={1.5} />
                       </div>
                       <div className={`${styles.radioIndicator} ${multiResizeGapMode === 'fixed_gap' ? styles.radioIndicatorActive : ''}`}>
                         {multiResizeGapMode === 'fixed_gap' && <div className={styles.radioDot} />}
@@ -1388,7 +1354,7 @@ export function SettingsDialog() {
                     <div className={styles.modeTitle}>Strict Fixed Physical Gap</div>
 
                     <div>
-                      <span className={styles.modeBadge} style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', borderColor: 'rgba(56, 189, 248, 0.3)' }}>
+                      <span className={styles.modeBadge} style={{ background: 'var(--color-accent-subtle)', color: 'var(--color-text-primary)', borderColor: 'var(--color-accent-border)' }}>
                         2D Topological Graph
                       </span>
                     </div>
@@ -1416,11 +1382,7 @@ export function SettingsDialog() {
 
               <div className={styles.shortcutGuide} role="note">
                 <div className={styles.shortcutGuideIcon} aria-hidden="true">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="9" />
-                    <line x1="12" y1="11" x2="12" y2="16" />
-                    <circle cx="12" cy="8" r="1" fill="currentColor" stroke="none" />
-                  </svg>
+                  <Info size={15} strokeWidth={1.5} />
                 </div>
                 <div className={styles.shortcutGuideContent}>
                   <div className={styles.shortcutGuideTitle}>Context-aware shortcuts</div>
@@ -1434,10 +1396,7 @@ export function SettingsDialog() {
               <div className={styles.shortcutsToolbar}>
                 <div className={styles.searchBox}>
                   <span className={styles.searchIcon}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="11" cy="11" r="8" />
-                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                    </svg>
+                    <Search size={14} strokeWidth={1.5} />
                   </span>
                   <input
                     type="text"
@@ -1453,7 +1412,7 @@ export function SettingsDialog() {
                       onClick={() => setSearchQuery('')}
                       title="Clear search"
                     >
-                      ✕
+                      <X size={12} strokeWidth={1.5} />
                     </button>
                   )}
                 </div>
@@ -1477,9 +1436,7 @@ export function SettingsDialog() {
                 Object.entries(groupedShortcuts).map(([category, items]) => (
                   <div key={category} className={styles.shortcutCategory}>
                     <div className={styles.categoryTitle}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                      </svg>
+                      <Sparkles size={12} strokeWidth={1.5} />
                       {category}
                     </div>
 
@@ -1518,10 +1475,7 @@ export function SettingsDialog() {
                 ))
               ) : (
                 <div className={styles.emptySearch}>
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
+                  <SearchX size={32} strokeWidth={1.5} />
                   <div className={styles.emptySearchTitle}>No shortcuts found</div>
                   <div className={styles.emptySearchDesc}>
                     No keyboard shortcuts match &quot;{searchQuery}&quot;. Try a different keyword or select &apos;All&apos;.

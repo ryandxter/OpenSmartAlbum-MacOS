@@ -1,5 +1,14 @@
 import { TextPreviewCanvas } from '../editor/TextPreviewCanvas';
 import React, { useState, useEffect, useRef } from 'react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Trash2,
+  Plus,
+  X,
+  LayoutGrid,
+} from 'lucide-react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useAlbumStore } from '../../stores/albumStore';
 import { useEditorStore } from '../../stores/editorStore';
@@ -583,7 +592,7 @@ export function PageNavigator() {
               onClick={() => setSpreadDrawerOpen(false)}
               title="Close Spread Drawer"
             >
-              ✕
+              <X size={14} strokeWidth={1.5} />
             </button>
           </div>
 
@@ -634,7 +643,7 @@ export function PageNavigator() {
                       targetSpread: spread,
                     });
                   }}
-                  title={`${getSpreadLabel(spread)} (Ctrl+Click multi-select, Right-click for options)`}
+                  title={`Spread ${index + 1}: ${spread.name || 'Untitled'}. Click to select. Right-click for options. Drag to reorder.`}
                 >
                   {/* Miniature Spread Preview inside centered container */}
                   <div className={styles.previewContainer}>
@@ -660,9 +669,7 @@ export function PageNavigator() {
                         title={isFirst ? 'First position (cannot move left)' : 'Move spread left (earlier)'}
                         aria-label="Move spread left"
                       >
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="15 18 9 12 15 6" />
-                        </svg>
+                        <ChevronLeft size={11} strokeWidth={2} />
                       </button>
                       <button
                         type="button"
@@ -675,9 +682,7 @@ export function PageNavigator() {
                         title={isLast ? 'Last position (cannot move right)' : 'Move spread right (later)'}
                         aria-label="Move spread right"
                       >
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="9 18 15 12 9 6" />
-                        </svg>
+                        <ChevronRight size={11} strokeWidth={2} />
                       </button>
                       <button
                         type="button"
@@ -686,10 +691,7 @@ export function PageNavigator() {
                         title="Duplicate this spread"
                         aria-label="Duplicate spread"
                       >
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                        </svg>
+                        <Copy size={11} strokeWidth={1.75} />
                       </button>
                       <button
                         type="button"
@@ -699,10 +701,7 @@ export function PageNavigator() {
                         title={allSpreads.length <= 1 ? 'Cannot delete the only spread' : 'Delete this spread'}
                         aria-label="Delete spread"
                       >
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="3 6 5 6 21 6" />
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                        </svg>
+                        <Trash2 size={11} strokeWidth={1.75} />
                       </button>
                     </div>
                   </div>
@@ -717,7 +716,7 @@ export function PageNavigator() {
               onClick={handleAddSpread}
               title="Add a new spread to album"
             >
-              <span className={styles.drawerAddIcon}>+</span>
+              <span className={styles.drawerAddIcon}><Plus size={14} strokeWidth={2} /></span>
               <span>New Spread</span>
             </button>
           </div>
@@ -733,7 +732,7 @@ export function PageNavigator() {
           onClick={toggleSpreadDrawer}
           title={isSpreadDrawerOpen ? 'Hide Spread Thumbnails' : 'Show All Spread Thumbnails'}
         >
-          <span className={styles.drawerIcon}>⊞</span>
+          <LayoutGrid size={14} strokeWidth={1.5} className={styles.drawerIcon} />
           <span>Spreads ({allSpreads.length})</span>
         </button>
 
@@ -748,7 +747,8 @@ export function PageNavigator() {
             disabled={!hasPrev}
             title="Previous Spread (PageUp or Alt+Left)"
           >
-            ◀ Prev
+            <ChevronLeft size={13} strokeWidth={1.75} />
+            <span>Prev</span>
           </button>
 
           {/* Spread Dropdown Selector */}
@@ -772,7 +772,8 @@ export function PageNavigator() {
             disabled={!hasNext}
             title="Next Spread (PageDown or Alt+Right)"
           >
-            Next ▶
+            <span>Next</span>
+            <ChevronRight size={13} strokeWidth={1.75} />
           </button>
         </div>
 
@@ -785,7 +786,10 @@ export function PageNavigator() {
           onClick={handleAddSpread}
           title="Add a new spread with 2 facing pages"
         >
-          <span>+ Add Spread</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <Plus size={13} strokeWidth={2} />
+            Add Spread
+          </span>
         </button>
       </div>
 

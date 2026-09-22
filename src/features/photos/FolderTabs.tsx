@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import {
+  Folder,
+  FolderOpen,
+  MoreHorizontal,
+  Plus,
+  Edit2,
+  Trash2,
+} from 'lucide-react';
 import { usePhotoStore } from '../../stores/photoStore';
 import { useProjectStore } from '../../stores/projectStore';
 import { PhotoFolder } from '../../domain/photo';
@@ -132,7 +140,7 @@ export function FolderTabs() {
             }}
             title="Show all project photos"
           >
-            <span className={styles.folderIcon}>📁</span>
+            <span className={styles.folderIcon}><Folder size={14} strokeWidth={1.5} /></span>
             <span className={styles.tabName}>All Photos</span>
             <span className={styles.tabCount}>{totalPhotoCount}</span>
           </button>
@@ -164,7 +172,7 @@ export function FolderTabs() {
                 onDoubleClick={(e) => handleRename(e, folder)}
                 title={`Folder: ${folder.name} (${folder.photoCount} photos). Double-click to rename. Drag selected photos here to add.`}
               >
-                <span className={styles.folderIcon}>📂</span>
+                <span className={styles.folderIcon}><FolderOpen size={14} strokeWidth={1.5} /></span>
                 <span className={styles.tabName}>{folder.name}</span>
                 <span className={styles.tabCount}>{folder.photoCount}</span>
               </button>
@@ -177,11 +185,7 @@ export function FolderTabs() {
                 title="Folder options (Rename / Delete)"
                 aria-label="Folder options"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                  <circle cx="12" cy="5" r="2.2"/>
-                  <circle cx="12" cy="12" r="2.2"/>
-                  <circle cx="12" cy="19" r="2.2"/>
-                </svg>
+                <MoreHorizontal size={14} strokeWidth={1.5} />
               </button>
             </div>
           );
@@ -198,10 +202,7 @@ export function FolderTabs() {
           title="Create a new photo folder / collection"
           aria-label="New folder"
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="5" x2="12" y2="19"/>
-            <line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
+          <Plus size={13} strokeWidth={2} />
         </button>
       </div>
 
@@ -234,10 +235,7 @@ export function FolderTabs() {
               className={styles.menuItem}
               onClick={(e) => handleRename(e, menuAnchor.folder)}
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
-                <path d="m15 5 4 4"/>
-              </svg>
+              <Edit2 size={13} strokeWidth={1.5} />
               Rename Folder
             </button>
             <button
@@ -245,10 +243,7 @@ export function FolderTabs() {
               className={`${styles.menuItem} ${styles.menuItemDanger}`}
               onClick={(e) => handleDeleteRequest(e, menuAnchor.folder)}
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 6 5 6 21 6"/>
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-              </svg>
+              <Trash2 size={13} strokeWidth={1.5} />
               Delete Folder
             </button>
           </div>

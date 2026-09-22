@@ -1,3 +1,18 @@
+import {
+  Check,
+  ZoomIn,
+  ZoomOut,
+  RotateCw,
+  RotateCcw,
+  Crop,
+  Ratio,
+  Square,
+  ArrowLeftRight,
+  Group,
+  Lock,
+  Unlock,
+  Trash2,
+} from 'lucide-react';
 import { useEditorStore } from '../../stores/editorStore';
 import { useAlbumStore } from '../../stores/albumStore';
 import { getAllAlbumSpreads } from '../../domain/album';
@@ -71,9 +86,7 @@ export function FrameToolbar() {
             onClick={exitCropMode}
             title="Finish Crop Mode (Enter / Esc)"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
+            <Check size={15} strokeWidth={2.2} />
           </button>
 
           <div className={styles.divider} />
@@ -86,12 +99,7 @@ export function FrameToolbar() {
             disabled={(frame.cropScale || 1.0) >= 3.5}
             title="Zoom In Inside Frame (+1%)"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              <line x1="11" y1="8" x2="11" y2="14" />
-              <line x1="8" y1="11" x2="14" y2="11" />
-            </svg>
+            <ZoomIn size={15} strokeWidth={1.75} />
           </button>
 
           {/* Zoom % Pill */}
@@ -107,11 +115,7 @@ export function FrameToolbar() {
             disabled={(frame.cropScale || 1.0) <= 1.0}
             title="Zoom Out Inside Frame (−1%)"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              <line x1="8" y1="11" x2="14" y2="11" />
-            </svg>
+            <ZoomOut size={15} strokeWidth={1.75} />
           </button>
 
           <div className={styles.divider} />
@@ -123,10 +127,7 @@ export function FrameToolbar() {
             onClick={(e) => rotateCropBy(e.shiftKey ? -90 : 90)}
             title="Rotate Photo 90° Clockwise (Shift+Click for CCW, or press R)"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-              <path d="M21 3v5h-5" />
-            </svg>
+            <RotateCw size={15} strokeWidth={1.75} />
           </button>
 
           <div className={styles.divider} />
@@ -138,10 +139,7 @@ export function FrameToolbar() {
             onClick={() => resetCrop(activeSpread.id, frame.id)}
             title="Reset Crop (Center Fit & 100% Zoom)"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 14 4 9l5-5" />
-              <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11" />
-            </svg>
+            <RotateCcw size={15} strokeWidth={1.75} />
           </button>
         </>
       ) : (
@@ -153,10 +151,7 @@ export function FrameToolbar() {
             onClick={() => enterCropMode(frame.id)}
             title="Crop Image (Double Click)"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6 2v14a2 2 0 0 0 2 2h14" />
-              <path d="M18 22V8a2 2 0 0 0-2-2H2" />
-            </svg>
+            <Crop size={15} strokeWidth={1.75} />
           </button>
           <div className={styles.divider} />
 
@@ -171,11 +166,7 @@ export function FrameToolbar() {
             }
             title={selectedFrameIds.length > 1 ? `Reset ${selectedFrameIds.length} Frames to Original Aspect Ratio` : 'Reset to Original Aspect Ratio (3:2 / 4:3)'}
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="5" width="18" height="14" rx="2" strokeDasharray="3 2" />
-              <path d="M7 12h10" />
-              <path d="M12 7v10" />
-            </svg>
+            <Ratio size={15} strokeWidth={1.75} />
           </button>
 
           {/* 3. Rotate 90° */}
@@ -185,10 +176,7 @@ export function FrameToolbar() {
             onClick={() => rotateSelectedFrames(activeSpread.id, 'cw')}
             title={selectedFrameIds.length > 1 ? `Rotate ${selectedFrameIds.length} Frames 90° (R)` : 'Rotate 90° (R)'}
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.99 6.57 2.6L21 8" />
-              <path d="M21 3v5h-5" />
-            </svg>
+            <RotateCw size={15} strokeWidth={1.75} />
           </button>
 
           {/* 4. Border Toggle */}
@@ -202,9 +190,7 @@ export function FrameToolbar() {
             }
             title={frame.borderEnabled ? 'Disable Frame Border' : 'Enable Frame Border'}
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect width="18" height="18" x="3" y="3" rx="2" />
-            </svg>
+            <Square size={15} strokeWidth={1.75} />
           </button>
 
           {/* Contextual: Swap 2 Photos Button (When 2 frames are selected) */}
@@ -215,12 +201,7 @@ export function FrameToolbar() {
               onClick={() => swapFrames(activeSpread.id, selectedFrameIds[0]!, selectedFrameIds[1]!)}
               title="Swap 2 Photos (S)"
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m16 3 4 4-4 4" />
-                <path d="M20 7H4" />
-                <path d="m8 21-4-4 4-4" />
-                <path d="M4 17h16" />
-              </svg>
+              <ArrowLeftRight size={15} strokeWidth={1.75} />
             </button>
           )}
 
@@ -244,11 +225,7 @@ export function FrameToolbar() {
               aria-label={isGroupActive ? 'Ungroup selected frames' : `Group ${selectedFrameIds.length} selected frames`}
               aria-pressed={isGroupActive}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <rect width="11" height="11" x="3" y="3" rx="2" fill="currentColor" fillOpacity="0.12" />
-                <rect width="11" height="11" x="10" y="10" rx="2" fill="currentColor" fillOpacity="0.2" />
-                <path d="M9 9h6v6" strokeWidth="2.4" />
-              </svg>
+              <Group size={15} strokeWidth={1.75} />
             </button>
           )}
 
@@ -272,15 +249,9 @@ export function FrameToolbar() {
             }
           >
             {selectedElements.every((f) => f.locked) ? (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
+              <Lock size={15} strokeWidth={1.75} />
             ) : (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-                <path d="M7 11V7a5 5 0 0 1 9.9-1" />
-              </svg>
+              <Unlock size={15} strokeWidth={1.75} />
             )}
           </button>
 
@@ -293,11 +264,7 @@ export function FrameToolbar() {
             onClick={() => deleteSelectedFrames(activeSpread.id)}
             title="Remove Photo Frame from Canvas (Delete)"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 6h18" />
-              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-            </svg>
+            <Trash2 size={15} strokeWidth={1.75} />
           </button>
         </>
       )}

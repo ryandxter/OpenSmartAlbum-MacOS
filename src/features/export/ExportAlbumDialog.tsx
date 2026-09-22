@@ -1,5 +1,27 @@
 import { useState, useMemo, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import {
+  RectangleHorizontal,
+  PanelLeft,
+  PanelRight,
+  ShieldCheck,
+  Scissors,
+  Image,
+  FileImage,
+  FileText,
+  Sparkles,
+  AlertTriangle,
+  RotateCcw,
+  Tag,
+  X,
+  Check,
+  FolderOpen,
+  Folder,
+  Download,
+  FileDown,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import { Dialog } from '../../components/ui/Dialog';
 import { Button } from '../../components/ui/Button';
 import { useProjectStore } from '../../stores/projectStore';
@@ -348,7 +370,7 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
                   onClick={() => setPreviewViewMode('spread')}
                   title="View full facing spread"
                 >
-                  <span>◫</span>
+                  <RectangleHorizontal size={14} strokeWidth={1.5} />
                   <span>Full Spread</span>
                 </button>
                 <button
@@ -357,7 +379,7 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
                   onClick={() => setPreviewViewMode('left-page')}
                   title="Inspect left page only"
                 >
-                  <span>◧</span>
+                  <PanelLeft size={14} strokeWidth={1.5} />
                   <span>Left Page</span>
                 </button>
                 <button
@@ -366,7 +388,7 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
                   onClick={() => setPreviewViewMode('right-page')}
                   title="Inspect right page only"
                 >
-                  <span>◨</span>
+                  <PanelRight size={14} strokeWidth={1.5} />
                   <span>Right Page</span>
                 </button>
               </div>
@@ -378,7 +400,7 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
                   onClick={() => setShowSafeAreaGuide(!showSafeAreaGuide)}
                   title="Toggle dashed blue line showing safe area margins"
                 >
-                  <span>🛡️</span>
+                  <ShieldCheck size={14} strokeWidth={1.5} />
                   <span>Safe Area</span>
                 </button>
 
@@ -389,7 +411,7 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
                     onClick={() => setShowBleedGuide(!showBleedGuide)}
                     title="Toggle dashed red line showing print lab trim cut line"
                   >
-                    <span>✂</span>
+                    <Scissors size={14} strokeWidth={1.5} />
                     <span>Trim Guide</span>
                   </button>
                 )}
@@ -420,7 +442,8 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
                 disabled={!hasPrev}
                 title="Previous spread"
               >
-                ◀ Prev Spread
+                <ChevronLeft size={14} strokeWidth={1.5} />
+                <span>Prev Spread</span>
               </button>
               <div className={styles.spreadNavInfo}>
                 <span className={styles.spreadNavIndex}>
@@ -439,7 +462,8 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
                 disabled={!hasNext}
                 title="Next spread"
               >
-                Next Spread ▶
+                <span>Next Spread</span>
+                <ChevronRight size={14} strokeWidth={1.5} />
               </button>
             </div>
           </div>
@@ -457,7 +481,7 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
                     setPreflightReport(null);
                   }}
                 >
-                  <span className={styles.formatIcon}>🖼️</span>
+                  <span className={styles.formatIcon}><Image size={20} strokeWidth={1.5} /></span>
                   <span className={styles.formatName}>High-Res JPEG</span>
                   <span className={styles.formatDesc}>Standard Print Lab</span>
                 </div>
@@ -468,7 +492,7 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
                     setPreflightReport(null);
                   }}
                 >
-                  <span className={styles.formatIcon}>🎨</span>
+                  <span className={styles.formatIcon}><FileImage size={20} strokeWidth={1.5} /></span>
                   <span className={styles.formatName}>Lossless PNG</span>
                   <span className={styles.formatDesc}>Highest Precision</span>
                 </div>
@@ -479,7 +503,7 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
                     setPreflightReport(null);
                   }}
                 >
-                  <span className={styles.formatIcon}>📑</span>
+                  <span className={styles.formatIcon}><FileText size={20} strokeWidth={1.5} /></span>
                   <span className={styles.formatName}>Print PDF</span>
                   <span className={styles.formatDesc}>Multi-Page Book</span>
                 </div>
@@ -654,7 +678,7 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
               <div className={styles.sharpenCardHeader}>
                 <div className={styles.sharpenHeaderInfo}>
                   <div className={styles.sharpenTitleRow}>
-                    <span className={styles.sharpenIcon}>✨</span>
+                    <Sparkles size={16} strokeWidth={1.5} className={styles.sharpenIcon} />
                     <span className={styles.sharpenTitle}>Output Print Sharpening</span>
                   </div>
                   <span className={styles.sharpenSubtitle}>
@@ -803,22 +827,26 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
                     {rangeMode === 'pages' ? (
                       selectedPageNumbers && selectedPageNumbers.length > 0 ? (
                         <span className={styles.customScopeSuccess}>
-                          ✓ Will export {selectedPageNumbers.length} {selectedPageNumbers.length === 1 ? 'Single Page' : 'Single Pages'}:{' '}
+                          <Check size={13} strokeWidth={1.5} style={{ marginRight: 4, display: 'inline-block', verticalAlign: 'middle' }} />
+                          Will export {selectedPageNumbers.length} {selectedPageNumbers.length === 1 ? 'Single Page' : 'Single Pages'}:{' '}
                           {selectedPageNumbers.map((p) => `Page ${p}`).join(', ')}
                         </span>
                       ) : (
                         <span className={styles.customScopeWarning}>
-                          ⚠️ No pages selected. Enter comma-separated page numbers or ranges (e.g. 1, 3, 5-8).
+                          <AlertTriangle size={13} strokeWidth={1.5} style={{ marginRight: 4, display: 'inline-block', verticalAlign: 'middle' }} />
+                          No pages selected. Enter comma-separated page numbers or ranges (e.g. 1, 3, 5-8).
                         </span>
                       )
                     ) : targetSpreads.length > 0 ? (
                       <span className={styles.customScopeSuccess}>
-                        ✓ Will export {targetSpreads.length} {targetSpreads.length === 1 ? 'Spread' : 'Spreads'}:{' '}
+                        <Check size={13} strokeWidth={1.5} style={{ marginRight: 4, display: 'inline-block', verticalAlign: 'middle' }} />
+                        Will export {targetSpreads.length} {targetSpreads.length === 1 ? 'Spread' : 'Spreads'}:{' '}
                         {targetSpreads.map((s) => s.type === 'cover' ? 'Cover' : `Spread ${s.spreadIndex}`).join(', ')}
                       </span>
                     ) : (
                       <span className={styles.customScopeWarning}>
-                        ⚠️ No spreads selected. Enter comma-separated numbers or ranges (e.g. 1-3, 5).
+                        <AlertTriangle size={13} strokeWidth={1.5} style={{ marginRight: 4, display: 'inline-block', verticalAlign: 'middle' }} />
+                        No spreads selected. Enter comma-separated numbers or ranges (e.g. 1-3, 5).
                       </span>
                     )}
                   </div>
@@ -840,14 +868,14 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
                     }}
                     title="Apply current project name as prefix"
                   >
-                    <span>↺</span>
+                    <RotateCcw size={12} strokeWidth={1.5} />
                     <span>Use Project Name</span>
                   </button>
                 )}
               </div>
 
               <div className={styles.modernInputWrapper}>
-                <span className={styles.inputPrefixIcon}>🏷️</span>
+                <span className={styles.inputPrefixIcon}><Tag size={14} strokeWidth={1.5} /></span>
                 <input
                   type="text"
                   className={styles.modernInput}
@@ -868,13 +896,13 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
                     }}
                     title="Clear prefix"
                   >
-                    ✕
+                    <X size={13} strokeWidth={1.5} />
                   </button>
                 )}
               </div>
 
               <div className={styles.namingOutputTag}>
-                <span className={styles.outputTagIcon}>📄</span>
+                <span className={styles.outputTagIcon}><FileText size={13} strokeWidth={1.5} /></span>
                 <span className={styles.outputTagLabel}>Example Output:</span>
                 {(() => {
                   const ext = format === 'png' ? 'png' : format === 'pdf' ? 'pdf' : 'jpg';
@@ -901,7 +929,7 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
               <div className={styles.labelRow}>
                 <label className={styles.sectionTitle}>Destination Folder</label>
                 {outputDir && (
-                  <span className={styles.folderStatusBadge}>✓ Selected</span>
+                  <span className={styles.folderStatusBadge}><Check size={11} strokeWidth={1.5} style={{ marginRight: 3, verticalAlign: 'middle' }} />Selected</span>
                 )}
               </div>
 
@@ -911,7 +939,7 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
                 title={outputDir ? `Target: ${outputDir}` : 'Click to choose destination folder'}
               >
                 <div className={styles.folderCardIconWrap}>
-                  <span className={styles.folderCardIcon}>{outputDir ? '📂' : '📁'}</span>
+                  <span className={styles.folderCardIcon}>{outputDir ? <FolderOpen size={24} strokeWidth={1.5} /> : <Folder size={24} strokeWidth={1.5} />}</span>
                 </div>
 
                 <div className={styles.folderCardContent}>
@@ -946,7 +974,7 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
 
               {errorMsg && (
                 <div className={styles.errorBanner}>
-                  <span>⚠️</span>
+                  <AlertTriangle size={15} strokeWidth={1.5} />
                   <span>{errorMsg}</span>
                 </div>
               )}
@@ -958,7 +986,10 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
         {/* Footer Actions */}
         <div className={styles.footer}>
           <div className={styles.footerSummary}>
-            <span className={styles.readyBadge}>✓ Ready</span>
+            <span className={styles.readyBadge}>
+              <Check size={11} strokeWidth={1.5} style={{ marginRight: 3, verticalAlign: 'middle' }} />
+              Ready
+            </span>
             <span className={styles.summaryDot}>•</span>
             <span>
               {targetSpreadCount} {targetSpreadCount === 1 ? 'Spread' : 'Spreads'} ({targetPageCount} {targetPageCount === 1 ? 'Page' : 'Pages'})
@@ -976,7 +1007,12 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
               onClick={handleInitiateExport}
               disabled={isVerifyingPreflight}
             >
-              {isVerifyingPreflight ? 'Verifying Files...' : `Export Album (${targetSpreadCount}) 📤`}
+              {isVerifyingPreflight ? 'Verifying Files...' : (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <Download size={14} strokeWidth={1.5} />
+                  Export Album ({targetSpreadCount})
+                </span>
+              )}
             </Button>
           </div>
         </div>
@@ -987,7 +1023,7 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
       <Dialog
         isOpen={isOverwriteModalOpen}
         onClose={() => setIsOverwriteModalOpen(false)}
-        title="⚠️ Overwrite Warning"
+        title="Overwrite Warning"
         width={500}
         closeOnOverlayClick={false}
       >
@@ -1000,21 +1036,12 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
             {preflightReport.existingFiles.map((filename, i) => (
               <div key={i} className={styles.conflictItem}>
                 <div className={styles.conflictFile}>
-                  <svg
-                    width="15"
-                    height="15"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+                  <FileDown
+                    size={15}
+                    strokeWidth={1.5}
                     style={{ flexShrink: 0, color: 'var(--color-text-secondary)' }}
                     aria-hidden="true"
-                  >
-                    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-                    <polyline points="14 2 14 8 20 8" />
-                  </svg>
+                  />
                   <span className={styles.conflictFileName} title={filename}>
                     {filename}
                   </span>
@@ -1048,7 +1075,7 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
       <Dialog
         isOpen={isMissingModalOpen}
         onClose={() => setIsMissingModalOpen(false)}
-        title="⚠️ Missing Photos Detected"
+        title="Missing Photos Detected"
         width={520}
         closeOnOverlayClick={false}
       >

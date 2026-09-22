@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
+import { CheckCircle2, Square, FolderOpen, FileText, Image, Camera } from 'lucide-react';
 import { Dialog } from '../../components/ui/Dialog';
 import { Button } from '../../components/ui/Button';
 import styles from './ExportProgressModal.module.css';
@@ -165,9 +166,13 @@ export function ExportProgressModal({ isOpen, outputDir, onClose }: ExportProgre
       <div className={styles.container}>
         {progress.isFinished ? (
           isCancelled ? (
-            <div className={styles.iconWrapper} style={{ fontSize: '28px' }}>⏹️</div>
+            <div className={styles.iconWrapper}>
+              <Square size={32} strokeWidth={1.5} color="var(--color-danger, #ef4444)" />
+            </div>
           ) : (
-            <div className={styles.successIcon}>🎉</div>
+            <div className={styles.successIcon}>
+              <CheckCircle2 size={36} strokeWidth={1.5} color="var(--color-success, #22c55e)" />
+            </div>
           )
         ) : (
           <AnimatedExportPhotoIcon />
@@ -218,7 +223,13 @@ export function ExportProgressModal({ isOpen, outputDir, onClose }: ExportProgre
                   <div key={i} className={styles.fileItem} title={file}>
                     <div className={styles.fileItemLeft}>
                       <span className={styles.fileIcon}>
-                        {isPdf ? '📕' : isPng ? '🖼️' : '📸'}
+                        {isPdf ? (
+                          <FileText size={16} strokeWidth={1.5} />
+                        ) : isPng ? (
+                          <Image size={16} strokeWidth={1.5} />
+                        ) : (
+                          <Camera size={16} strokeWidth={1.5} />
+                        )}
                       </span>
                       <span className={styles.fileName}>{filename}</span>
                     </div>
@@ -236,8 +247,9 @@ export function ExportProgressModal({ isOpen, outputDir, onClose }: ExportProgre
           {progress.isFinished ? (
             <>
               {!isCancelled && (
-                <Button variant="secondary" onClick={handleOpenFolder}>
-                  📂 Open Export Folder
+                <Button variant="secondary" onClick={handleOpenFolder} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <FolderOpen size={15} strokeWidth={1.5} />
+                  <span>Open Export Folder</span>
                 </Button>
               )}
               <Button variant="primary" onClick={onClose}>

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { Trash2, AlertTriangle, Info } from 'lucide-react';
 import { Button } from './Button';
 import styles from './ConfirmDialog.module.css';
 
@@ -65,33 +66,20 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     if (variant === 'danger') {
       return (
         <div className={`${styles.iconWrapper} ${styles.iconDanger}`}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="3 6 5 6 21 6"/>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-            <line x1="10" y1="11" x2="10" y2="17"/>
-            <line x1="14" y1="11" x2="14" y2="17"/>
-          </svg>
+          <Trash2 size={22} strokeWidth={1.5} />
         </div>
       );
     }
     if (variant === 'warning') {
       return (
         <div className={`${styles.iconWrapper} ${styles.iconWarning}`}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
-            <line x1="12" y1="9" x2="12" y2="13"/>
-            <line x1="12" y1="17" x2="12.01" y2="17"/>
-          </svg>
+          <AlertTriangle size={22} strokeWidth={1.5} />
         </div>
       );
     }
     return (
       <div className={`${styles.iconWrapper} ${styles.iconInfo}`}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="16" x2="12" y2="12"/>
-          <line x1="12" y1="8" x2="12.01" y2="8"/>
-        </svg>
+        <Info size={22} strokeWidth={1.5} />
       </div>
     );
   };

@@ -1,4 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import {
+  AlertCircle,
+  BookOpen,
+  RectangleHorizontal,
+  RectangleVertical,
+  Square,
+  Scan,
+  Palette,
+  Bookmark,
+  Star,
+  Trash2,
+  Maximize2,
+  ArrowLeftRight,
+  Check,
+  Columns2,
+  Eye,
+} from 'lucide-react';
 import { Dialog } from '../../components/ui/Dialog';
 import { Button } from '../../components/ui/Button';
 import { NumberInput } from '../../components/ui/NumberInput';
@@ -383,11 +400,7 @@ export function NewProjectDialog() {
       <form onSubmit={handleSubmit} onContextMenu={(e) => e.preventDefault()}>
         {errorMessage && (
           <div className={styles.errorBanner}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
+            <AlertCircle size={16} strokeWidth={1.5} />
             <span>{errorMessage}</span>
           </div>
         )}
@@ -398,11 +411,7 @@ export function NewProjectDialog() {
             {/* Compact Project Name Input */}
             <div className={styles.nameRow}>
               <span className={styles.nameIcon}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
-                  <path d="M6 6h10" />
-                  <path d="M6 10h10" />
-                </svg>
+                <BookOpen size={14} strokeWidth={1.5} />
               </span>
               <input
                 type="text"
@@ -421,11 +430,7 @@ export function NewProjectDialog() {
                 className={`${styles.tabBtn} ${activeTab === 'page' ? styles.tabBtnActive : ''}`}
                 onClick={() => setActiveTab('page')}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 3H3v18h18V3z" />
-                  <path d="M3 9h18" />
-                  <path d="M9 21V9" />
-                </svg>
+                <RectangleHorizontal size={14} strokeWidth={1.5} />
                 <span>Page & Canvas</span>
               </button>
 
@@ -434,10 +439,7 @@ export function NewProjectDialog() {
                 className={`${styles.tabBtn} ${activeTab === 'margins' ? styles.tabBtnActive : ''}`}
                 onClick={() => setActiveTab('margins')}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect width="18" height="18" x="3" y="3" rx="2" />
-                  <path d="M7 7h10v10H7z" strokeDasharray="2 2" />
-                </svg>
+                <Scan size={14} strokeWidth={1.5} />
                 <span>Margins & Gap</span>
               </button>
 
@@ -446,10 +448,7 @@ export function NewProjectDialog() {
                 className={`${styles.tabBtn} ${activeTab === 'appearance' ? styles.tabBtnActive : ''}`}
                 onClick={() => setActiveTab('appearance')}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M12 2a7 7 0 1 0 7 7" />
-                </svg>
+                <Palette size={14} strokeWidth={1.5} />
                 <span>Appearance</span>
               </button>
             </div>
@@ -461,9 +460,7 @@ export function NewProjectDialog() {
                 <div className={styles.card}>
                   <div className={styles.cardHeader}>
                     <span className={styles.cardTitle}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-                      </svg>
+                      <Bookmark size={14} strokeWidth={1.5} />
                       Album Presets
                     </span>
                     <span className={styles.cardSubtitle}>Standard & Custom Sizes</span>
@@ -494,7 +491,7 @@ export function NewProjectDialog() {
                       }}
                       title="Save current dimensions as reusable preset"
                     >
-                      <span>★</span>
+                      <Star size={13} strokeWidth={1.5} />
                       <span>Save Preset</span>
                     </button>
 
@@ -505,10 +502,7 @@ export function NewProjectDialog() {
                         onClick={() => handleDeleteCustomPreset(presetId)}
                         title="Delete this custom preset"
                       >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="3 6 5 6 21 6" />
-                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                        </svg>
+                        <Trash2 size={13} strokeWidth={1.5} />
                       </button>
                     )}
                   </div>
@@ -516,9 +510,7 @@ export function NewProjectDialog() {
                   {isSavePresetOpen && (
                     <div className={styles.savePresetDrawer}>
                       <div className={styles.savePresetTitle}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                        </svg>
+                        <Bookmark size={12} strokeWidth={1.5} />
                         Save Configuration as Custom Preset
                       </div>
                       <input
@@ -570,11 +562,7 @@ export function NewProjectDialog() {
                 <div className={styles.card}>
                   <div className={styles.orientationHeader}>
                     <span className={styles.cardTitle}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-                        <path d="M2 12h20" />
-                      </svg>
+                      <Maximize2 size={14} strokeWidth={1.5} />
                       Page Geometry & Orientation
                     </span>
                     <button
@@ -583,12 +571,7 @@ export function NewProjectDialog() {
                       onClick={handleSwapDimensions}
                       title="Swap Width and Height"
                     >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="m16 3 4 4-4 4" />
-                        <path d="M20 7H4" />
-                        <path d="m8 21-4-4 4-4" />
-                        <path d="M4 17h16" />
-                      </svg>
+                      <ArrowLeftRight size={12} strokeWidth={1.5} />
                       <span>Swap W ↔ H</span>
                     </button>
                   </div>
@@ -601,9 +584,7 @@ export function NewProjectDialog() {
                       onClick={() => handleOrientation('square')}
                     >
                       <div className={styles.orientIconBox}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <rect x="4" y="4" width="16" height="16" rx="2" />
-                        </svg>
+                        <Square size={16} strokeWidth={1.5} />
                       </div>
                       <span className={styles.orientLabel}>Square</span>
                     </button>
@@ -614,9 +595,7 @@ export function NewProjectDialog() {
                       onClick={() => handleOrientation('portrait')}
                     >
                       <div className={styles.orientIconBox}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <rect x="6" y="3" width="12" height="18" rx="2" />
-                        </svg>
+                        <RectangleVertical size={16} strokeWidth={1.5} />
                       </div>
                       <span className={styles.orientLabel}>Portrait</span>
                     </button>
@@ -627,9 +606,7 @@ export function NewProjectDialog() {
                       onClick={() => handleOrientation('landscape')}
                     >
                       <div className={styles.orientIconBox}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <rect x="3" y="6" width="18" height="12" rx="2" />
-                        </svg>
+                        <RectangleHorizontal size={16} strokeWidth={1.5} />
                       </div>
                       <span className={styles.orientLabel}>Landscape</span>
                     </button>
@@ -806,9 +783,7 @@ export function NewProjectDialog() {
 
                       {marginSpine === 0 && (
                         <div className={styles.seamlessSpineBadge}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
+                          <Check size={14} strokeWidth={1.5} />
                           <span>Continuous Seamless Spread: 0 Spine Margin</span>
                         </div>
                       )}
@@ -820,10 +795,7 @@ export function NewProjectDialog() {
                 <div className={styles.card}>
                   <div className={styles.cardHeader}>
                     <span className={styles.cardTitle}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <rect width="7" height="18" x="3" y="3" rx="1" />
-                        <rect width="7" height="18" x="14" y="3" rx="1" />
-                      </svg>
+                      <Columns2 size={14} strokeWidth={1.5} />
                       Photo Spacing & Gap
                     </span>
                     <span className={styles.cardSubtitle}>Inter-frame distance</span>
@@ -862,10 +834,7 @@ export function NewProjectDialog() {
                 <div className={styles.card}>
                   <div className={styles.cardHeader}>
                     <span className={styles.cardTitle}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <rect width="18" height="18" x="3" y="3" rx="2" />
-                        <path d="M3 9h18" />
-                      </svg>
+                      <Palette size={14} strokeWidth={1.5} />
                       Spread Background Color
                     </span>
                     <span className={styles.cardSubtitle}>Canvas solid fill</span>
@@ -882,9 +851,7 @@ export function NewProjectDialog() {
                 <div className={styles.card}>
                   <div className={styles.cardHeader}>
                     <span className={styles.cardTitle}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <rect width="18" height="18" x="3" y="3" rx="2" />
-                      </svg>
+                      <Square size={14} strokeWidth={1.5} />
                       Photo Frame Border
                     </span>
                   </div>
@@ -937,10 +904,7 @@ export function NewProjectDialog() {
           <div className={styles.rightColumn}>
             <div className={styles.previewHeader}>
               <span className={styles.previewHeading}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
+                <Eye size={13} strokeWidth={1.5} />
                 Live Spread Preview
               </span>
               <span className={styles.aspectBadge}>
@@ -968,8 +932,8 @@ export function NewProjectDialog() {
                         bottom: '8px',
                         left: '12px',
                         right: isMargin4S && marginSpine === 0 ? '0px' : '8px',
-                        border: '1px dashed rgba(56, 189, 248, 0.55)',
-                        borderRight: isMargin4S && marginSpine === 0 ? 'none' : '1px dashed rgba(56, 189, 248, 0.55)',
+                        border: '1px dashed rgba(228, 228, 231, 0.55)',
+                        borderRight: isMargin4S && marginSpine === 0 ? 'none' : '1px dashed rgba(228, 228, 231, 0.55)',
                         pointerEvents: 'none',
                       }}
                       title="Safe Margin Guide"
@@ -998,8 +962,8 @@ export function NewProjectDialog() {
                         bottom: '8px',
                         left: isMargin4S && marginSpine === 0 ? '0px' : '8px',
                         right: '12px',
-                        border: '1px dashed rgba(56, 189, 248, 0.55)',
-                        borderLeft: isMargin4S && marginSpine === 0 ? 'none' : '1px dashed rgba(56, 189, 248, 0.55)',
+                        border: '1px dashed rgba(228, 228, 231, 0.55)',
+                        borderLeft: isMargin4S && marginSpine === 0 ? 'none' : '1px dashed rgba(228, 228, 231, 0.55)',
                         pointerEvents: 'none',
                       }}
                       title="Safe Margin Guide"
