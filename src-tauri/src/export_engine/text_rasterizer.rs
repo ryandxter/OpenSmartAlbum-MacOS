@@ -488,6 +488,9 @@ fn load_font_weight(family: &str, weight: u16, is_italic: bool) -> Option<Arc<Fo
                 None
             }
         }
+    } else if let Some(bytes) = super::bundled_fonts::bundled_font("inter", weight, is_italic) {
+        // Fallback to bundled Inter font if requested font is not found on host OS
+        Font::from_bytes(bytes, FontSettings::default()).ok().map(Arc::new)
     } else {
         log::warn!("No suitable font found on system for family: {}", family);
         None

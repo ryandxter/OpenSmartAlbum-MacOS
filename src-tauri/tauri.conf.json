@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "AFSNSmartAlbum",
+  "productName": "OpenSmartAlbum",
   "version": "1.0.77",
-  "identifier": "com.afsn.smartalbum",
+  "identifier": "com.opensmartalbum.app",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "AFSNSmartAlbum",
+        "title": "OpenSmartAlbum",
         "width": 1280,
         "height": 800,
         "minWidth": 1024,
@@ -35,7 +35,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "targets": ["app", "dmg", "nsis"],
     "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
@@ -44,6 +44,30 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "13.0",
+      "entitlements": "./Entitlements.plist",
+      "dmg": {
+        "background": null,
+        "windowPosition": {
+          "x": 400,
+          "y": 200
+        },
+        "windowSize": {
+          "width": 660,
+          "height": 400
+        },
+        "appPosition": {
+          "x": 180,
+          "y": 190
+        },
+        "applicationFolderPosition": {
+          "x": 480,
+          "y": 190
+        }
+      }
+    },
     "windows": {
       "nsis": {
         "installerIcon": "icons/icon.ico",
@@ -58,9 +82,9 @@
     },
     "fileAssociations": [
       {
-        "ext": ["afsn"],
-        "name": "AFSNSmartAlbum Project",
-        "description": "AFSNSmartAlbum Project File",
+        "ext": ["afsn", "opensmartalbum"],
+        "name": "OpenSmartAlbum Project",
+        "description": "OpenSmartAlbum Project File",
         "role": "Editor"
       }
     ]

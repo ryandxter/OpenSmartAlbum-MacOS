@@ -12,7 +12,7 @@ AFSNSmartAlbum is a professional offline desktop photo album layout application.
 - SQLite
 - Zustand
 - Konva.js
-- libvips
+- Pure Rust Image Engine (image, rayon)
 
 ## Priority
 Always prioritize:

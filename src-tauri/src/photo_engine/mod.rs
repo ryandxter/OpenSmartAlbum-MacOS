@@ -356,8 +356,9 @@ pub fn thumbnail_for_preview(cache_dir: &Path, photo_id: &str, preview: &str) ->
     Ok(path.to_string_lossy().to_string())
 }
 
-/// Forcefully trims and returns unused virtual memory pages from the process working set back to the OS.
-/// Crucial after large image-processing workloads on Windows to prevent allocator memory retention.
+/// Trims and returns unused virtual memory pages from the process working set back to the OS.
+/// On Windows, invokes EmptyWorkingSet. On macOS (Darwin) and Linux, memory pages are
+/// automatically reclaimed by the kernel and system allocator.
 pub fn trim_process_memory() {
     #[cfg(target_os = "windows")]
     {
@@ -371,6 +372,11 @@ pub fn trim_process_memory() {
             EmptyWorkingSet(process);
             SetProcessWorkingSetSize(process, usize::MAX, usize::MAX);
         }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        // On macOS (Darwin) and Linux, memory page compression and paging
+        // are managed automatically by the OS virtual memory allocator.
     }
 }
 

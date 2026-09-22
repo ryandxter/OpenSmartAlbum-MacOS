@@ -6,7 +6,7 @@ OpenSmartAlbum-MacOS overhaul executes across five focused phases: establishing 
 
 ## Phases
 
-- [ ] **Phase 1: macOS Foundation & Pure Rust Pipeline** - Purge Win32 dependencies, establish pure Rust image processing, and configure Tauri 2 for Universal macOS.
+- [x] **Phase 1: macOS Foundation & Pure Rust Pipeline** - Purge Win32 dependencies, establish pure Rust image processing, and configure Tauri 2 for Universal macOS.
 - [ ] **Phase 2: Lucide Iconography & macOS Pro Studio UI** - Full migration to `lucide-react`, Figma/Lightroom dark theme, integrated macOS titlebar, modular inspectors, and Apple desktop ergonomics.
 - [ ] **Phase 3: Instagram & Social Media Carousel Mode** - Dual-mode canvas engine, social aspect ratios (1:1, 4:5, 9:16), seamless cross-slide panorama photo spanning, and slide reordering.
 - [ ] **Phase 4: Shape Presets, Clipping Masks & Border Styling** - Rich vector clipping masks (Circle, Hexagon, Scallop, Heart, custom SVG), advanced borders/shadows, and 2D topological resize compatibility.
@@ -27,8 +27,8 @@ OpenSmartAlbum-MacOS overhaul executes across five focused phases: establishing 
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Remove Win32 bindings and implement cross-platform/macOS native system bridges in `src-tauri`.
-- [ ] 01-02: Consolidate pure-Rust image decoding/caching pipeline and verify macOS Tauri build/packaging.
+- [x] 01-01: Remove Win32 bindings and implement cross-platform/macOS native system bridges in `src-tauri`.
+- [x] 01-02: Consolidate pure-Rust image decoding/caching pipeline and verify macOS Tauri build/packaging.
 
 ---
 
@@ -108,7 +108,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. macOS Foundation & Pure Rust Pipeline | 0/2 | Not started | - |
+| 1. macOS Foundation & Pure Rust Pipeline | 2/2 | Complete | 2026-09-22 |
 | 2. Lucide Iconography & macOS Pro Studio UI | 0/3 | Not started | - |
 | 3. Instagram & Social Media Carousel Mode | 0/2 | Not started | - |
 | 4. Shape Presets, Clipping Masks & Border Styling | 0/2 | Not started | - |

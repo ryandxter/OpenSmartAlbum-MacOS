@@ -11,7 +11,7 @@ Tauri 2 IPC Commands
    ↓
 Rust Backend
    ├── Local SQLite Embedded Database
-   ├── Multi-threaded libvips Image Processing Engine
+   ├── Multi-threaded Pure Rust Image Processing Engine
    ├── Native OS File Dialogs & Shell Plugins
    └── Direct Local Filesystem I/O
 ```
@@ -34,7 +34,7 @@ Rust Backend
 
 ### Tauri 2 / Rust Backend (`src-tauri/`)
 - Native file and directory pickers (`rfd` / Tauri plugins).
-- Multi-threaded thumbnail (256px) and preview (1200px) generation via `libvips` / `image`.
+- Multi-threaded thumbnail (320px) and preview (1500px) generation via pure Rust `image` crate with `rayon` parallelism.
 - Embedded SQLite transaction management with migration support.
 - Local filesystem read/write.
 

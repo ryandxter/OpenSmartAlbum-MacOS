@@ -33,7 +33,7 @@ Open-source libraries and components utilized in this build:
 - Konva.js Canvas Engine (MIT)
 - SQLite Database Engine (Public Domain)
 - Rayon Parallel Processing (MIT / Apache-2.0)
-- libvips Image Engine (LGPL-2.1)
+- Rust image crate (MIT/Apache-2.0)
 
 4. RESTRICTIONS
 You may not reverse-engineer, decompile, disassemble, or distribute 

@@ -151,7 +151,7 @@ pub fn sample_screen_color(x: Option<i32>, y: Option<i32>) -> Result<String, Str
     #[cfg(not(target_os = "windows"))]
     {
         let _ = (x, y);
-        Ok("#FFFFFF".to_string())
+        Err("NATIVE_SAMPLING_UNAVAILABLE".to_string())
     }
 }
 
@@ -295,7 +295,78 @@ pub fn get_system_fonts() -> Result<Vec<SystemFontInfo>, String> {
         Ok(fonts)
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
+    {
+        use std::collections::HashSet;
+        use std::path::Path;
+
+        let mut fonts: Vec<SystemFontInfo> = Vec::new();
+        let mut seen_families = HashSet::new();
+
+        let mut font_dirs = vec![
+            Path::new("/System/Library/Fonts").to_path_buf(),
+            Path::new("/Library/Fonts").to_path_buf(),
+        ];
+        if let Ok(home) = std::env::var("HOME") {
+            font_dirs.push(Path::new(&home).join("Library/Fonts"));
+        }
+
+        for dir in font_dirs {
+            if let Ok(entries) = std::fs::read_dir(&dir) {
+                for entry in entries.flatten() {
+                    let path = entry.path();
+                    if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+                        let ext_lower = ext.to_lowercase();
+                        if ext_lower == "ttf" || ext_lower == "otf" || ext_lower == "ttc" {
+                            if let Ok(data) = std::fs::read(&path) {
+                                if let Ok(face) = ttf_parser::Face::parse(&data, 0) {
+                                    let mut family_name = None;
+                                    let mut full_name = None;
+                                    for name in face.names() {
+                                        if name.name_id == ttf_parser::name_id::FAMILY {
+                                            if let Some(s) = name.to_string() {
+                                                family_name = Some(s);
+                                            }
+                                        } else if name.name_id == ttf_parser::name_id::FULL_NAME {
+                                            if let Some(s) = name.to_string() {
+                                                full_name = Some(s);
+                                            }
+                                        }
+                                    }
+
+                                    let clean_family = family_name.unwrap_or_else(|| {
+                                        path.file_stem()
+                                            .map(|s| s.to_string_lossy().to_string())
+                                            .unwrap_or_default()
+                                    });
+                                    let clean_family = clean_family.trim().to_string();
+
+                                    let full = full_name.unwrap_or_else(|| clean_family.clone());
+                                    let file_name = path.file_name()
+                                        .map(|s| s.to_string_lossy().to_string())
+                                        .unwrap_or_default();
+
+                                    if !clean_family.is_empty() && !seen_families.contains(&clean_family.to_lowercase()) {
+                                        seen_families.insert(clean_family.to_lowercase());
+                                        fonts.push(SystemFontInfo {
+                                            family: clean_family,
+                                            full_name: full,
+                                            file_name,
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        fonts.sort_by(|a, b| a.family.to_lowercase().cmp(&b.family.to_lowercase()));
+        Ok(fonts)
+    }
+
+    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
     {
         Ok(Vec::new())
     }
@@ -314,6 +385,14 @@ mod tests {
             assert!(
                 fonts.iter().any(|f| f.family.to_lowercase().contains("arial") || f.family.to_lowercase().contains("segoe")),
                 "Should include Arial or Segoe UI"
+            );
+        }
+        #[cfg(target_os = "macos")]
+        {
+            assert!(!fonts.is_empty(), "Should find fonts on macOS system");
+            assert!(
+                fonts.iter().any(|f| f.family.to_lowercase().contains("helvetica") || f.family.to_lowercase().contains("arial") || f.family.to_lowercase().contains("times")),
+                "Should include standard system fonts like Helvetica or Arial"
             );
         }
     }

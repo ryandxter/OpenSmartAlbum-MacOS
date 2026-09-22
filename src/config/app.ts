@@ -14,7 +14,7 @@ export const APP_CONFIG = {
     { name: 'Konva.js', url: 'https://konvajs.org', license: 'MIT' },
     { name: 'Zustand', url: 'https://zustand-demo.pmnd.rs', license: 'MIT' },
     { name: 'SQLite', url: 'https://sqlite.org', license: 'Public Domain' },
-    { name: 'libvips', url: 'https://libvips.github.io/libvips', license: 'LGPL-2.1' },
+    { name: 'image', url: 'https://github.com/image-rs/image', license: 'MIT/Apache-2.0' },
   ],
 } as const;
 

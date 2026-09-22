@@ -658,7 +658,7 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport }: ExportAlbu
                     <span className={styles.sharpenTitle}>Output Print Sharpening</span>
                   </div>
                   <span className={styles.sharpenSubtitle}>
-                    Unsharp masking tailored for photo paper (libvips)
+                    Unsharp masking tailored for photo paper (Pure Rust Engine)
                   </span>
                 </div>
 

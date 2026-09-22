@@ -22,9 +22,9 @@
 
 ### 3. Platform Compatibility & Pure Rust Backend (PLAT)
 
-- [ ] **PLAT-01**: Purge all Windows-specific Win32 FFI calls (GDI color sampling, Registry font enumeration, Win32 working set trimming) and implement cross-platform equivalents.
-- [ ] **PLAT-02**: Enforce 100% pure Rust image and export pipeline (`image`, `rayon`, `fontdue`, `kamadak-exif`, `psd`, `tiff`), eliminating external `libvips` dynamic C-library linking issues.
-- [ ] **PLAT-03**: Configure Tauri 2 build targets for Universal macOS (`aarch64-apple-darwin` Apple Silicon and `x86_64-apple-darwin` Intel), producing ready-to-sign `.app` bundles and `.dmg` installers.
+- [x] **PLAT-01**: Purge all Windows-specific Win32 FFI calls (GDI color sampling, Registry font enumeration, Win32 working set trimming) and implement cross-platform equivalents.
+- [x] **PLAT-02**: Enforce 100% pure Rust image and export pipeline (`image`, `rayon`, `fontdue`, `kamadak-exif`, `psd`, `tiff`), eliminating external `libvips` dynamic C-library linking issues.
+- [x] **PLAT-03**: Configure Tauri 2 build targets for Universal macOS (`aarch64-apple-darwin` Apple Silicon and `x86_64-apple-darwin` Intel), producing ready-to-sign `.app` bundles and `.dmg` installers.
 
 ### 4. Instagram & Social Media Carousel Mode (CARO)
 
@@ -69,9 +69,9 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PLAT-01 | Phase 1 | Pending |
-| PLAT-02 | Phase 1 | Pending |
-| PLAT-03 | Phase 1 | Pending |
+| PLAT-01 | Phase 1 | Complete |
+| PLAT-02 | Phase 1 | Complete |
+| PLAT-03 | Phase 1 | Complete |
 | ICON-01 | Phase 2 | Pending |
 | ICON-02 | Phase 2 | Pending |
 | ICON-03 | Phase 2 | Pending |

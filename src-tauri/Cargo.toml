@@ -33,3 +33,5 @@ base64 = "0.22"
 kamadak-exif = "0.6"
 zip = { version = "2.2", default-features = false, features = ["deflate"] }
 fontdue = "0.9"
+ttf-parser = "0.25"
+

@@ -204,9 +204,9 @@ async fn import_paths_internal(
 fn path_identity(path: &Path) -> String {
     let path = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
     let value = path.to_string_lossy().replace('\\', "/");
-    #[cfg(windows)]
+    #[cfg(any(windows, target_os = "macos"))]
     { value.trim_start_matches("//?/").to_lowercase() }
-    #[cfg(not(windows))]
+    #[cfg(not(any(windows, target_os = "macos")))]
     { value }
 }
 

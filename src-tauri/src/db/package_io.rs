@@ -70,7 +70,7 @@ fn same_path(a: &str, b: &str) -> bool {
         })
     }
     let (a, b) = (normalized(a), normalized(b));
-    if cfg!(windows) {
+    if cfg!(any(windows, target_os = "macos")) {
         a.to_string_lossy().eq_ignore_ascii_case(&b.to_string_lossy())
     } else { a == b }
 }
