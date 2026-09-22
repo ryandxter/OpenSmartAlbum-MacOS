@@ -17,6 +17,9 @@ import { KonvaEditorCanvas } from '../editor/KonvaEditorCanvas';
 import { FrameToolbar } from '../editor/FrameToolbar';
 import { getTextRuns, resolveCssFontFamily } from '../../domain/text';
 import { PageNavigator } from '../album/PageNavigator';
+import { CarouselCanvas } from '../carousel/CarouselCanvas';
+import { SlideNavigator } from '../carousel/SlideNavigator';
+import { PhoneSwipeSimulator } from '../carousel/PhoneSwipeSimulator';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { ExportAlbumDialog, ExportOptions } from '../export/ExportAlbumDialog';
@@ -69,6 +72,7 @@ export function WorkspaceLayout() {
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
   const [isFilmstripOpen, setIsFilmstripOpen] = useState(true);
   const [activeMode, setActiveMode] = useState<'print' | 'carousel'>('print');
+  const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
@@ -464,6 +468,16 @@ export function WorkspaceLayout() {
         <main className={styles.canvas}>
           {!currentProject ? (
             <WelcomeScreen />
+          ) : activeMode === 'carousel' ? (
+            <>
+              <CarouselCanvas
+                zoomLevel={zoomLevel}
+                fitTrigger={fitTrigger}
+                onZoomChange={setZoomLevel}
+                onToast={showToast}
+              />
+              <FrameToolbar />
+            </>
           ) : (
             <>
               <KonvaEditorCanvas
@@ -477,8 +491,11 @@ export function WorkspaceLayout() {
           )}
         </main>
 
-        {/* Page & Spread Navigation Bar spanning full width of the editor */}
-        {currentProject && <PageNavigator />}
+        {/* Page & Spread / Slide Navigation Bar spanning full width of the editor */}
+        {currentProject && activeMode === 'carousel' && (
+          <SlideNavigator onOpenSimulator={() => setIsSimulatorOpen(true)} />
+        )}
+        {currentProject && activeMode !== 'carousel' && <PageNavigator />}
         {currentProject && (
           <StatusBar
             zoomLevel={zoomLevel}
@@ -660,6 +677,12 @@ export function WorkspaceLayout() {
         isOpen={isExportProgressOpen}
         outputDir={activeExportDir}
         onClose={() => setIsExportProgressOpen(false)}
+      />
+
+      {/* Phase 3: Phone Swipe Simulator Modal */}
+      <PhoneSwipeSimulator
+        isOpen={isSimulatorOpen}
+        onClose={() => setIsSimulatorOpen(false)}
       />
     </div>
   );
