@@ -1451,13 +1451,13 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
           onZoomChange?.((prev) => {
             const factor = Math.exp(zoomDelta);
             const next = Math.round(prev * factor);
-            return Math.min(350, Math.max(25, next));
+            return Math.min(350, Math.max(5, next));
           });
         } else {
           // Discrete mouse wheel or Shift ultra-fine 1% calibration
           const step = e.shiftKey ? 1 : 5;
           const delta = rawDelta < 0 ? step : -step;
-          onZoomChange?.((prev) => Math.min(350, Math.max(25, prev + delta)));
+          onZoomChange?.((prev) => Math.min(350, Math.max(5, prev + delta)));
         }
       }
     };
@@ -1812,7 +1812,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
         onZoomChange?.((z) => Math.min(350, z + 15));
       } else if ((e.ctrlKey || e.metaKey) && (e.key === '-' || e.key === '_' || e.code === 'Minus' || e.code === 'NumpadSubtract')) {
         e.preventDefault();
-        onZoomChange?.((z) => Math.max(25, z - 15));
+        onZoomChange?.((z) => Math.max(5, z - 15));
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
         const isHoveredOnSpreadDrawer = Boolean(document.querySelector('[data-spread-drawer="true"]:hover'));
         const isHoveredOnFilmstrip = Boolean(document.querySelector('[aria-label="Photo Library Filmstrip"]:hover'));

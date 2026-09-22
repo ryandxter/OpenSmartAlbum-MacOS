@@ -860,7 +860,7 @@ export function WorkspaceLayout() {
         setZoomLevel((z) => Math.min(350, z + 15));
       } else if (e.key === '-' || e.key === '_' || e.code === 'Minus' || e.code === 'NumpadSubtract') {
         e.preventDefault();
-        setZoomLevel((z) => Math.max(25, z - 15));
+        setZoomLevel((z) => Math.max(5, z - 15));
       }
     },
     [undo, redo, saveProject, exportProjectAsAfsn, importProjectFromAfsn, openNewProject, confirmSafeAction, showToast, activeSpreadId, activeSpread, selectedFrameIds, toggleLockSelectedFrames, addTextToSpread, setEditingTextElementId, currentProject, handleFitToScreen]

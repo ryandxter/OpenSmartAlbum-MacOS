@@ -3,7 +3,7 @@
   width: 100%;
   height: 100%;
   position: relative;
-  overflow: auto;
+  overflow: hidden;
   padding: 0;
   background-color: var(--color-bg-primary, #18181B);
   display: block;
@@ -29,12 +29,11 @@
 }
 
 .stageWrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 100%;
-  min-height: 100%;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 .panningMode {

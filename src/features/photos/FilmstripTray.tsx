@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronUp,
-  Check,
   Star,
   ImagePlus,
   FolderPlus,
@@ -749,14 +748,6 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
                                   className={styles.processingBottomStrip}
                                   title="Generating high-resolution canvas preview in background..."
                                 />
-                              )}
-
-                              {/* Used Protective Lock Badge */}
-                              {isUsed && (
-                                <div className={styles.usedLockBadge}>
-                                  <Check size={10} strokeWidth={2} style={{ marginRight: 2, verticalAlign: 'middle' }} />
-                                  Used
-                                </div>
                               )}
 
                               {/* Top Right: Favorite Star */}

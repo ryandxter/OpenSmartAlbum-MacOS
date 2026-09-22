@@ -453,7 +453,7 @@ export function AppTitleBar({
                 <button
                   type="button"
                   className={styles.zoomBtn}
-                  onClick={() => onZoomChange((z) => Math.max(25, z - 15))}
+                  onClick={() => onZoomChange((z) => Math.max(5, z - 15))}
                   title="Zoom Out (⌘−)"
                 >
                   −

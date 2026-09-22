@@ -246,6 +246,7 @@ export function CarouselCanvas({
   const selectedFrameId = useCarouselStore((s) => s.selectedFrameId);
   const setSelectedFrameId = useCarouselStore((s) => s.setSelectedFrameId);
   const [hoveredDropSlideIndex, setHoveredDropSlideIndex] = useState<number | null>(null);
+  const [containerSize, setContainerSize] = useState({ width: 1200, height: 800 });
   const [stagePos, setStagePos] = useState({ x: 40, y: 40 });
   const [isSpacePanning, setIsSpacePanning] = useState(false);
   const [isMouseDown, setIsMouseDown] = useState(false);
@@ -257,19 +258,48 @@ export function CarouselCanvas({
 
   const scale = zoomLevel / 100;
 
+  // Track container sizing with ResizeObserver
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const updateSize = () => {
+      if (container.clientWidth > 0 && container.clientHeight > 0) {
+        setContainerSize({
+          width: container.clientWidth,
+          height: container.clientHeight,
+        });
+      }
+    };
+    updateSize();
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry && entry.contentRect) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0) {
+          setContainerSize({
+            width: Math.round(width),
+            height: Math.round(height),
+          });
+        }
+      }
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
   // Center / Fit to screen
   const fitToScreen = useCallback(() => {
     if (!containerRef.current || !currentCarousel) return;
-    const cw = containerRef.current.clientWidth;
-    const ch = containerRef.current.clientHeight;
+    const cw = containerSize.width || containerRef.current.clientWidth;
+    const ch = containerSize.height || containerRef.current.clientHeight;
     if (cw <= 0 || ch <= 0) return;
 
-    const pad = 60;
-    const availW = cw - pad * 2;
-    const availH = ch - pad * 2;
+    const pad = 48;
+    const availW = Math.max(100, cw - pad * 2);
+    const availH = Math.max(100, ch - pad * 2);
 
     const fitScale = Math.min(availW / totalWidth, availH / totalHeight);
-    const newZoom = Math.max(10, Math.min(300, Math.round(fitScale * 100)));
+    const newZoom = Math.max(5, Math.min(300, Math.round(fitScale * 100)));
 
     if (onZoomChange) {
       onZoomChange(() => newZoom);
@@ -278,14 +308,38 @@ export function CarouselCanvas({
     const stageW = totalWidth * (newZoom / 100);
     const stageH = totalHeight * (newZoom / 100);
     setStagePos({
-      x: Math.max(pad, (cw - stageW) / 2),
-      y: Math.max(pad, (ch - stageH) / 2),
+      x: Math.round((cw - stageW) / 2),
+      y: Math.round((ch - stageH) / 2),
     });
-  }, [currentCarousel, totalWidth, totalHeight, onZoomChange]);
+  }, [containerSize, currentCarousel, totalWidth, totalHeight, onZoomChange]);
 
   useEffect(() => {
     fitToScreen();
   }, [fitTrigger]);
+
+  // Auto-bring active slide into view if outside visible canvas
+  const prevActiveSlideRef = useRef<number>(activeSlideIndex);
+  useEffect(() => {
+    if (!currentCarousel) return;
+    if (prevActiveSlideRef.current === activeSlideIndex) return;
+    prevActiveSlideRef.current = activeSlideIndex;
+
+    const cw = containerSize.width;
+    if (cw <= 0) return;
+
+    const slideX = getSlideXOffset(currentCarousel, activeSlideIndex);
+    const slideW = currentCarousel.slideWidthPx;
+    const currentScale = zoomLevel / 100;
+    const screenLeft = stagePos.x + slideX * currentScale;
+    const screenRight = stagePos.x + (slideX + slideW) * currentScale;
+
+    const pad = 48;
+    if (screenLeft < pad) {
+      setStagePos((p) => ({ ...p, x: Math.round(pad - slideX * currentScale) }));
+    } else if (screenRight > cw - pad) {
+      setStagePos((p) => ({ ...p, x: Math.round(cw - pad - (slideX + slideW) * currentScale) }));
+    }
+  }, [activeSlideIndex, currentCarousel, containerSize.width, zoomLevel, stagePos.x]);
 
   // Spacebar pan listener
   useEffect(() => {
@@ -308,14 +362,31 @@ export function CarouselCanvas({
     };
   }, []);
 
-  // Continuous wheel / trackpad pinch zoom
+  // Global mouse up for pan release safety
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      setIsMouseDown(false);
+      dragStartRef.current = null;
+    };
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, []);
+
+  // Continuous wheel / trackpad 2D pan and cursor-anchored pinch zoom
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
       if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
+        // Zoom centered at mouse pointer
+        const rect = container.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
         const rawDelta = e.deltaY;
         let deltaZoom = 0;
         if (e.deltaMode === WheelEvent.DOM_DELTA_PIXEL && Math.abs(rawDelta) < 35) {
@@ -325,9 +396,26 @@ export function CarouselCanvas({
           deltaZoom = rawDelta > 0 ? -10 : 10;
         }
 
-        if (onZoomChange) {
-          onZoomChange((prev) => Math.max(25, Math.min(350, Math.round(prev + deltaZoom))));
+        const newZoom = Math.max(5, Math.min(350, Math.round(zoomLevel + deltaZoom)));
+        const newScale = newZoom / 100;
+        const oldScale = zoomLevel / 100;
+
+        if (newScale !== oldScale && oldScale > 0) {
+          setStagePos((prev) => {
+            const worldX = (mouseX - prev.x) / oldScale;
+            const worldY = (mouseY - prev.y) / oldScale;
+            const nextX = mouseX - worldX * newScale;
+            const nextY = mouseY - worldY * newScale;
+            return { x: Math.round(nextX), y: Math.round(nextY) };
+          });
+          onZoomChange?.(() => newZoom);
         }
+      } else {
+        // Free 2D Trackpad / Mouse Wheel Panning
+        setStagePos((prev) => ({
+          x: Math.round(prev.x - e.deltaX),
+          y: Math.round(prev.y - e.deltaY),
+        }));
       }
     };
 
@@ -521,8 +609,8 @@ export function CarouselCanvas({
       <div className={styles.stageWrapper}>
         <Stage
           ref={stageRef}
-          width={Math.max(window.innerWidth, totalWidth * scale + 200)}
-          height={Math.max(window.innerHeight, totalHeight * scale + 200)}
+          width={containerSize.width}
+          height={containerSize.height}
           scaleX={scale}
           scaleY={scale}
           x={stagePos.x}
