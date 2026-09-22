@@ -23,6 +23,7 @@ import { ExportProgressModal } from '../export/ExportProgressModal';
 import { AppTitleBar } from './AppTitleBar';
 import { InspectorContainer } from '../inspector/InspectorContainer';
 import { StatusBar } from './StatusBar';
+import { isMac } from '../../utils/platform';
 import styles from './WorkspaceLayout.module.css';
 
 export interface ExportZipProgressPayload {
@@ -253,8 +254,8 @@ export function WorkspaceLayout() {
         return;
       }
 
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-      const cmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
+      const mac = isMac();
+      const cmdOrCtrl = mac ? e.metaKey : e.ctrlKey;
 
       // 0. F1 or ? -> Open Keyboard Shortcuts Dialog
       if (e.key === 'F1' || (!cmdOrCtrl && !e.altKey && e.key === '?')) {
@@ -310,7 +311,7 @@ export function WorkspaceLayout() {
             toggleLockSelectedFrames(activeSpread.id, true);
             showToast(`🔒 Locked ${selectedFrameIds.length} selected element(s)`);
           } else {
-            showToast('⚠️ Select photo(s) or text(s) to lock (Ctrl+L)');
+            showToast(`⚠️ Select photo(s) or text(s) to lock (${mac ? '⌘L' : 'Ctrl+L'})`);
           }
         }
         return;

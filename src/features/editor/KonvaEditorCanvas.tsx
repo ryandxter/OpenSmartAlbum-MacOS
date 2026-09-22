@@ -38,6 +38,7 @@ import { TextNodeElement, fitTextFrame } from '../../domain/text';
 import { convertPtToUnit, convertUnit, Unit } from '../../domain/units';
 import { ContextMenu, ContextMenuItem } from '../../components/ui';
 import { findPhotoSwapTarget } from './photoSwapDrag';
+import { isMac } from '../../utils/platform';
 import styles from './KonvaEditorCanvas.module.css';
 
 interface KonvaEditorCanvasProps {
@@ -1380,12 +1381,21 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
         const rawDelta = e.deltaY !== 0 ? e.deltaY : e.deltaX;
         if (rawDelta === 0) return;
 
-        // Dual-Speed Adaptive Precision:
-        // - Ctrl + Shift + Wheel: ultra-fine 1% calibration
-        // - Ctrl + Wheel: 5% snappy navigation
-        const step = e.shiftKey ? 1 : 5;
-        const delta = rawDelta < 0 ? step : -step;
-        onZoomChange?.((prev) => Math.min(350, Math.max(25, prev + delta)));
+        // Continuous smooth scaling for trackpad gestures:
+        // When deltaMode is DOM_DELTA_PIXEL and magnitude is fine (< 35), treat as continuous pinch
+        if (e.deltaMode === WheelEvent.DOM_DELTA_PIXEL && Math.abs(rawDelta) < 35 && !e.shiftKey) {
+          const zoomDelta = -rawDelta * 0.006;
+          onZoomChange?.((prev) => {
+            const factor = Math.exp(zoomDelta);
+            const next = Math.round(prev * factor);
+            return Math.min(350, Math.max(25, next));
+          });
+        } else {
+          // Discrete mouse wheel or Shift ultra-fine 1% calibration
+          const step = e.shiftKey ? 1 : 5;
+          const delta = rawDelta < 0 ? step : -step;
+          onZoomChange?.((prev) => Math.min(350, Math.max(25, prev + delta)));
+        }
       }
     };
 
@@ -1811,7 +1821,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
               useEditorStore.getState().toggleLockSelectedFrames(activeSpread.id, true);
               if (onToast) onToast(`🔒 Locked ${selectedFrameIds.length} selected element(s)`);
             } else if (onToast) {
-              onToast('⚠️ Select photo(s) or text(s) to lock (Ctrl+L)');
+              onToast(`⚠️ Select photo(s) or text(s) to lock (${isMac() ? '⌘L' : 'Ctrl+L'})`);
             }
           }
         } else if (e.altKey) {
@@ -2318,6 +2328,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
       pasteToastNoun = clipboardPhotoIds.length > 1 ? `${clipboardPhotoIds.length} Photos` : 'Photo';
     }
 
+    const mac = isMac();
     const targetPos = contextMenuPhysicalPosRef.current;
 
     const handleExecutePaste = () => {
@@ -2331,7 +2342,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
           id: 'paste',
           label: dynamicPasteLabel,
           icon: '📥',
-          shortcut: 'Ctrl+V',
+          shortcut: mac ? '⌘V' : 'Ctrl+V',
           disabled: !hasClipboard,
           onClick: handleExecutePaste,
         },
@@ -2339,7 +2350,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
           id: 'paste-in-place',
           label: 'Paste in Place',
           icon: '📍',
-          shortcut: 'Ctrl+Shift+V',
+          shortcut: mac ? '⌘⇧V' : 'Ctrl+Shift+V',
           disabled: !hasClipboard,
           onClick: () => {
             pasteFramesInPlace(activeSpread.id);
@@ -2350,7 +2361,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
           id: 'paste-to-all-spreads',
           label: `Paste to All Spreads (${currentAlbum?.spreads.length || 0})`,
           icon: '📑',
-          shortcut: 'Ctrl+Alt+V',
+          shortcut: mac ? '⌘⌥V' : 'Ctrl+Alt+V',
           disabled: !hasClipboard,
           onClick: () => {
             const res = pasteFramesToAllSpreads();
@@ -2417,7 +2428,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
         id: 'delete',
         label: count > 1 ? `Delete ${count} Selected ${itemNounPlural}` : `Delete ${itemNounSingular}`,
         icon: '🗑️',
-        shortcut: 'Del',
+        shortcut: mac ? '⌫' : 'Del',
         danger: true,
         onClick: () => deleteSelectedFrames(activeSpread.id),
       },
@@ -2425,7 +2436,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
         id: 'copy',
         label: count > 1 ? `Copy ${count} ${itemNounPlural}` : `Copy ${itemNounSingular}`,
         icon: '📋',
-        shortcut: 'Ctrl+C',
+        shortcut: mac ? '⌘C' : 'Ctrl+C',
         onClick: () => {
           copySelectedFrames(activeSpread.id);
           if (onToast) onToast(`✓ Copied ${count > 1 ? `${count} ${itemNounPlural}` : itemNounSingular}`);
@@ -2435,7 +2446,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
         id: 'paste',
         label: dynamicPasteLabel,
         icon: '📥',
-        shortcut: 'Ctrl+V',
+        shortcut: mac ? '⌘V' : 'Ctrl+V',
         disabled: !hasClipboard,
         onClick: handleExecutePaste,
       },
@@ -2443,7 +2454,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
         id: 'paste-in-place',
         label: 'Paste in Place',
         icon: '📍',
-        shortcut: 'Ctrl+Shift+V',
+        shortcut: mac ? '⌘⇧V' : 'Ctrl+Shift+V',
         disabled: !hasClipboard,
         onClick: () => {
           pasteFramesInPlace(activeSpread.id);
@@ -2454,7 +2465,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
         id: 'paste-to-all-spreads',
         label: `Paste to All Spreads (${currentAlbum?.spreads.length || 0})`,
         icon: '📑',
-        shortcut: 'Ctrl+Alt+V',
+        shortcut: mac ? '⌘⌥V' : 'Ctrl+Alt+V',
         disabled: !hasClipboard,
         onClick: () => {
           const res = pasteFramesToAllSpreads();
@@ -2467,7 +2478,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
         id: 'duplicate',
         label: count > 1 ? `Duplicate ${count} ${itemNounPlural}` : `Duplicate ${itemNounSingular}`,
         icon: '⧉',
-        shortcut: 'Ctrl+D',
+        shortcut: mac ? '⌘D' : 'Ctrl+D',
         onClick: () => duplicateSelectedFrames(activeSpread.id),
       }
     );
@@ -2482,7 +2493,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
         id: 'group-elements',
         label: `Group ${count} ${itemNounPlural}`,
         icon: '👥',
-        shortcut: 'Ctrl+G',
+        shortcut: mac ? '⌘G' : 'Ctrl+G',
         onClick: () => {
           groupSelectedFrames(activeSpread.id);
           if (onToast) onToast(`👥 Grouped ${count} ${itemNounPlural.toLowerCase()}`);
@@ -2495,7 +2506,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
         id: 'ungroup-elements',
         label: `Ungroup ${itemNounPlural}`,
         icon: '⊘',
-        shortcut: 'Ctrl+Shift+G',
+        shortcut: mac ? '⌘⇧G' : 'Ctrl+Shift+G',
         onClick: () => {
           ungroupSelectedFrames(activeSpread.id);
           if (onToast) onToast(`⊘ Ungrouped ${itemNounPlural.toLowerCase()}`);
@@ -2516,7 +2527,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
         ),
-        shortcut: 'Ctrl+L',
+        shortcut: mac ? '⌘L' : 'Ctrl+L',
         onClick: () => {
           useEditorStore.getState().toggleLockSelectedFrames(activeSpread.id, true);
           if (onToast) onToast(`🔒 Locked ${count} ${itemNoun.toLowerCase()}`);
@@ -2534,7 +2545,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
             <path d="M7 11V7a5 5 0 0 1 9.9-1" />
           </svg>
         ),
-        shortcut: 'Alt+L',
+        shortcut: mac ? '⌥L' : 'Alt+L',
         onClick: () => {
           useEditorStore.getState().toggleLockSelectedFrames(activeSpread.id, false);
           if (onToast) onToast(`🔓 Unlocked ${count} ${itemNoun.toLowerCase()}`);

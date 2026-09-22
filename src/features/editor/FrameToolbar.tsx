@@ -17,6 +17,7 @@ import { useEditorStore } from '../../stores/editorStore';
 import { useAlbumStore } from '../../stores/albumStore';
 import { getAllAlbumSpreads } from '../../domain/album';
 import { zoomCropAtPoint, PhotoFrameElement } from '../../domain/editor';
+import { isMac } from '../../utils/platform';
 import styles from './FrameToolbar.module.css';
 
 export function FrameToolbar() {
@@ -219,8 +220,8 @@ export function FrameToolbar() {
               }}
               title={
                 isGroupActive
-                  ? 'Ungroup Selected Frames (Ctrl+Shift+G)'
-                  : `Group ${selectedFrameIds.length} Selected Frames (Ctrl+G)`
+                  ? `Ungroup Selected Frames (${isMac() ? '⌘⇧G' : 'Ctrl+Shift+G'})`
+                  : `Group ${selectedFrameIds.length} Selected Frames (${isMac() ? '⌘G' : 'Ctrl+G'})`
               }
               aria-label={isGroupActive ? 'Ungroup selected frames' : `Group ${selectedFrameIds.length} selected frames`}
               aria-pressed={isGroupActive}
@@ -241,11 +242,11 @@ export function FrameToolbar() {
             title={
               selectedElements.some((f) => !f.locked)
                 ? selectedFrameIds.length > 1
-                  ? `Lock ${selectedFrameIds.length} Frames (Ctrl+L)`
-                  : 'Lock Photo Frame (Ctrl+L)'
+                  ? `Lock ${selectedFrameIds.length} Frames (${isMac() ? '⌘L' : 'Ctrl+L'})`
+                  : `Lock Photo Frame (${isMac() ? '⌘L' : 'Ctrl+L'})`
                 : selectedFrameIds.length > 1
-                ? `Unlock ${selectedFrameIds.length} Frames (Alt+L)`
-                : 'Unlock Photo Frame (Alt+L)'
+                ? `Unlock ${selectedFrameIds.length} Frames (${isMac() ? '⌥L' : 'Alt+L'})`
+                : `Unlock Photo Frame (${isMac() ? '⌥L' : 'Alt+L'})`
             }
           >
             {selectedElements.every((f) => f.locked) ? (

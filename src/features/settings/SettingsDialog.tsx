@@ -31,8 +31,20 @@ import { useProjectStore } from '../../stores/projectStore';
 import { convertUnit, Unit, UNIT_LABELS } from '../../domain/units';
 import { SNAPPING_LEVELS, SnappingLevel } from '../../domain/editor';
 import type { AutoSaveIntervalSeconds, StartupBehavior } from '../../domain/appPreferences';
-import { isTauri } from '../../utils/platform';
+import { isTauri, isMac } from '../../utils/platform';
 import styles from './SettingsDialog.module.css';
+
+function normalizeKeyToken(token: string): string {
+  if (!isMac()) return token;
+  const t = token.toLowerCase();
+  if (t === 'ctrl') return '⌘';
+  if (t === 'alt') return '⌥';
+  if (t === 'shift') return '⇧';
+  if (t === 'backspace' || t === 'delete') return '⌫';
+  if (t === 'esc' || t === 'escape') return '⎋';
+  return token;
+}
+
 
 // ---------------------------------------------------------------------------
 // Keyboard Shortcuts Data
@@ -1462,7 +1474,7 @@ export function SettingsDialog() {
                                 {combo.map((keyToken, tokenIdx) => (
                                   <React.Fragment key={tokenIdx}>
                                     {tokenIdx > 0 && <span className={styles.shortcutJoin}>+</span>}
-                                    <kbd className={styles.kbd}>{keyToken}</kbd>
+                                    <kbd className={styles.kbd}>{normalizeKeyToken(keyToken)}</kbd>
                                   </React.Fragment>
                                 ))}
                               </React.Fragment>

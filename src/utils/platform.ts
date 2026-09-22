@@ -16,3 +16,9 @@ export function isTauri(): boolean {
     '__TAURI__' in window
   );
 }
+
+export function isMac(): boolean {
+  if (typeof window === 'undefined') return false;
+  return /Mac|iPod|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+}
+
