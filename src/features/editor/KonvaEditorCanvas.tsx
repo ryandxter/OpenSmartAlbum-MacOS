@@ -53,6 +53,7 @@ import { TextNodeElement, fitTextFrame } from '../../domain/text';
 import { convertPtToUnit, convertUnit, Unit } from '../../domain/units';
 import { ContextMenu, ContextMenuItem } from '../../components/ui';
 import { findPhotoSwapTarget } from './photoSwapDrag';
+import { drawShapeToContext, getShapeSvgPath } from '../../domain/shapes';
 import { isMac } from '../../utils/platform';
 import styles from './KonvaEditorCanvas.module.css';
 
@@ -455,6 +456,11 @@ function PhotoFrameNode({
       height={pixelH}
       rotation={frame.rotation || 0}
       opacity={(frame.opacity ?? 1) * (isMuted ? 0.38 : 1)}
+      shadowColor={frame.shadowEnabled ? (frame.shadowColor || 'rgba(0, 0, 0, 0.6)') : undefined}
+      shadowBlur={frame.shadowEnabled ? ((frame.shadowBlur ?? 15) * scaleFactor) : undefined}
+      shadowOffsetX={frame.shadowEnabled ? ((frame.shadowOffsetX ?? 0) * scaleFactor) : undefined}
+      shadowOffsetY={frame.shadowEnabled ? ((frame.shadowOffsetY ?? 4) * scaleFactor) : undefined}
+      shadowOpacity={frame.shadowEnabled ? (frame.shadowOpacity ?? 0.5) : undefined}
       listening={!isMuted}
       draggable={!frame.locked && !isCropMode}
       onMouseDown={(e) => {
@@ -607,7 +613,9 @@ function PhotoFrameNode({
       {/* Clipped Photo Viewport */}
       <Group
         clipFunc={(ctx) => {
-          if (hasRounding && typeof ctx.roundRect === 'function') {
+          if (frame.shapeType && frame.shapeType !== 'rectangle') {
+            drawShapeToContext(ctx, frame.shapeType, pixelW, pixelH, cornerRadiiArray, frame.customSvgPath);
+          } else if (hasRounding && typeof ctx.roundRect === 'function') {
             ctx.beginPath();
             ctx.roundRect(0, 0, pixelW, pixelH, cornerRadiiArray);
           } else if (hasRounding) {
@@ -742,9 +750,26 @@ function PhotoFrameNode({
         )}
       </Group>
 
-      {/* Frame Border (Inside Stroke to maintain exact outer bounds for snapping) */}
+      {/* Frame Border (Inside Stroke or Vector Contour to match shape) */}
       {frame.borderEnabled && (() => {
         const strokePx = Math.max(1, Math.round((frame.borderWidth || 0) * scaleFactor));
+        const strokeDash = frame.borderStyle === 'dashed' ? [strokePx * 2.5, strokePx * 1.5] : undefined;
+        const isCustomShape = frame.shapeType && frame.shapeType !== 'rectangle' && frame.shapeType !== 'rounded';
+
+        if (isCustomShape) {
+          const pathData = getShapeSvgPath(frame.shapeType, pixelW, pixelH, cornerRadiiArray, frame.customSvgPath);
+          return (
+            <KonvaPath
+              data={pathData}
+              stroke={frame.borderColor || '#FFFFFF'}
+              strokeWidth={strokePx}
+              dash={strokeDash}
+              strokeScaleEnabled={false}
+              listening={false}
+            />
+          );
+        }
+
         const borderRadii: [number, number, number, number] = [
           Math.max(0, tlPx - strokePx / 2),
           Math.max(0, trPx - strokePx / 2),
@@ -759,6 +784,7 @@ function PhotoFrameNode({
             height={Math.max(0, pixelH - strokePx)}
             stroke={frame.borderColor || '#FFFFFF'}
             strokeWidth={strokePx}
+            dash={strokeDash}
             cornerRadius={hasRounding ? borderRadii : undefined}
             strokeScaleEnabled={false}
             listening={false}

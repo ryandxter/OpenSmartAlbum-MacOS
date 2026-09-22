@@ -1,3 +1,6 @@
+import type { ShapeType } from './shapes';
+export type { ShapeType };
+
 export interface PhotoFrameElement {
   id: string;
   type: 'photo';
@@ -33,14 +36,24 @@ export interface PhotoFrameElement {
   cropRotation: number;
 
   // Styling
+  shapeType?: ShapeType;
+  customSvgPath?: string;
   borderEnabled: boolean;
   borderWidth: number;
   borderColor: string;
+  borderStyle?: 'solid' | 'dashed' | 'double';
+  borderAlignment?: 'inner' | 'center' | 'outer';
   cornerRadius?: number | [number, number, number, number];
   cornerRadiusTl?: number;
   cornerRadiusTr?: number;
   cornerRadiusBr?: number;
   cornerRadiusBl?: number;
+  shadowEnabled?: boolean;
+  shadowColor?: string;
+  shadowBlur?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  shadowOpacity?: number;
   opacity: number;
   locked?: boolean;
   isMissing?: boolean;
