@@ -8,7 +8,11 @@ use crate::db::{AlbumPayload, Database, ProjectRow, SpreadPayload};
 use crate::export_engine::{
     apply_print_sharpening, assemble_pdf_from_jpegs, calculate_right_page_start_x,
     encode_jpeg_with_dpi, encode_png_with_dpi, render_spread_base_to_image_with_progress,
-    render_spread_text_to_canvas, split_spread_into_pages, ExportOptions, ExportProgressEvent,
+    render_spread_page_to_psd, render_spread_text_to_canvas, render_spread_to_psd,
+    split_spread_into_pages, ExportOptions, ExportProgressEvent,
+};
+use crate::export_engine::carousel_slicer::{
+    export_carousel_slices_worker, CarouselExportOptions, CarouselExportResult, CarouselPayload,
 };
 
 #[derive(Default)]
@@ -547,14 +551,33 @@ fn export_album_high_res_worker(
                         render_spread_text_to_canvas(&mut right_page, &project, spread, options.dpi, options.include_bleed, -(right_page_start_x as f64));
                     }
 
-                    let ext = if options.format == "png" { "png" } else { "jpg" };
+                    let ext = if options.format == "png" {
+                        "png"
+                    } else if options.format == "psd" {
+                        "psd"
+                    } else {
+                        "jpg"
+                    };
                     let left_filename = resolve_export_filename(options.file_prefix.as_deref(), &spread.r#type, spread.spread_index, Some(left_num), ext);
                     let right_filename = resolve_export_filename(options.file_prefix.as_deref(), &spread.r#type, spread.spread_index, Some(right_num), ext);
 
                     let left_path = output_path.join(&left_filename);
                     let right_path = output_path.join(&right_filename);
 
-                    if options.format == "png" {
+                    if options.format == "psd" {
+                        if should_export_left {
+                            safe_write_image(&left_path, |tmp| {
+                                render_spread_page_to_psd(&project, spread, options.dpi, options.include_bleed, true, tmp)
+                            })?;
+                            local_output_files.push(left_path.to_string_lossy().to_string());
+                        }
+                        if should_export_right {
+                            safe_write_image(&right_path, |tmp| {
+                                render_spread_page_to_psd(&project, spread, options.dpi, options.include_bleed, false, tmp)
+                            })?;
+                            local_output_files.push(right_path.to_string_lossy().to_string());
+                        }
+                    } else if options.format == "png" {
                         if should_export_left {
                             safe_write_image(&left_path, |tmp| {
                                 let png_bytes = encode_png_with_dpi(&left_page, options.dpi)?;
@@ -613,12 +636,22 @@ fn export_album_high_res_worker(
                     // Pass 2b: Render vector text elements on top of sharpened spread (preserving pristine anti-aliasing)
                     render_spread_text_to_canvas(&mut spread_img, &project, spread, options.dpi, options.include_bleed, 0.0);
 
-                    let ext = if options.format == "png" { "png" } else { "jpg" };
+                    let ext = if options.format == "png" {
+                        "png"
+                    } else if options.format == "psd" {
+                        "psd"
+                    } else {
+                        "jpg"
+                    };
                     let filename = resolve_export_filename(options.file_prefix.as_deref(), &spread.r#type, spread.spread_index, None, ext);
 
                     let file_dest = output_path.join(&filename);
 
-                    if options.format == "png" {
+                    if options.format == "psd" {
+                        safe_write_image(&file_dest, |tmp| {
+                            render_spread_to_psd(&project, spread, options.dpi, options.include_bleed, tmp)
+                        })?;
+                    } else if options.format == "png" {
                         safe_write_image(&file_dest, |tmp| {
                             let png_bytes = encode_png_with_dpi(&spread_img, options.dpi)?;
                             fs::write(tmp, &png_bytes)
@@ -831,4 +864,24 @@ pub async fn export_album_high_res(
         Ok(worker_res) => worker_res,
         Err(e) => Err(format!("Export worker execution failed: {}", e)),
     }
+}
+
+#[tauri::command]
+pub async fn export_carousel_slices(
+    _app: AppHandle,
+    payload: CarouselPayload,
+    options: CarouselExportOptions,
+) -> Result<CarouselExportResult, String> {
+    log::info!(
+        "export_carousel_slices: project_id={}, slides={}, out_dir={}",
+        payload.project_id,
+        payload.total_slides,
+        options.output_dir
+    );
+
+    tauri::async_runtime::spawn_blocking(move || {
+        export_carousel_slices_worker(&payload, &options)
+    })
+    .await
+    .map_err(|e| format!("Carousel export task failed: {}", e))?
 }

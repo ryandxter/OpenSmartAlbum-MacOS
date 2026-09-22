@@ -1476,6 +1476,8 @@ mod tests {
             corner_radius_br: 0.0,
             corner_radius_bl: 0.0,
             corner_radius: None,
+            shape_type: None,
+            custom_svg_path: None,
         };
 
         // Render at 300 DPI, scale = 1.0
@@ -1568,6 +1570,8 @@ mod tests {
             corner_radius_br: 0.0,
             corner_radius_bl: 0.0,
             corner_radius: None,
+            shape_type: None,
+            custom_svg_path: None,
         };
 
         // Scale for mm at 300 DPI: 300 / 25.4 ≈ 11.8110236
@@ -1637,6 +1641,8 @@ mod tests {
             corner_radius_br: 0.0,
             corner_radius_bl: 0.0,
             corner_radius: None,
+            shape_type: None,
+            custom_svg_path: None,
         };
 
         // Scale = 1.0 for px at 300 DPI

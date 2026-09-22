@@ -7,6 +7,8 @@ use crate::db::{ElementPayload, ProjectRow, SpreadPayload};
 
 mod bundled_fonts;
 pub mod text_rasterizer;
+pub mod psd_writer;
+pub mod carousel_slicer;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -258,6 +260,184 @@ pub fn apply_exif_orientation(mut img: image::DynamicImage, orientation: u32) ->
     }
 }
 
+/// Loads, auto-orients, rotates, crops, and resizes an image to exact target pixel dimensions.
+pub fn crop_and_rotate_photo(
+    file_path: &str,
+    preview_path: Option<&str>,
+    frame_w: f64,
+    frame_h: f64,
+    rotation: f64,
+    crop_x: f64,
+    crop_y: f64,
+    crop_scale: f64,
+    crop_rotation: Option<f64>,
+    target_px_w: u32,
+    target_px_h: u32,
+) -> Option<RgbaImage> {
+    if target_px_w == 0 || target_px_h == 0 {
+        return None;
+    }
+
+    let img_path = Path::new(file_path);
+    let (mut dynamic_img, is_original) = match image::open(img_path) {
+        Ok(img) => (img, true),
+        Err(e) => {
+            log::warn!("Could not open original image at {:?}: {}", img_path, e);
+            if let Some(prev) = preview_path {
+                match image::open(Path::new(prev)) {
+                    Ok(img) => (img, false),
+                    Err(_) => return None,
+                }
+            } else {
+                return None;
+            }
+        }
+    };
+
+    if is_original {
+        let orientation = get_image_exif_orientation(img_path);
+        if orientation > 1 {
+            dynamic_img = apply_exif_orientation(dynamic_img, orientation);
+        }
+    }
+
+    let rot = ((rotation % 360.0 + 360.0) % 360.0).round() as i64;
+    dynamic_img = match rot {
+        90 => dynamic_img.rotate90(),
+        180 => dynamic_img.rotate180(),
+        270 => dynamic_img.rotate270(),
+        _ => dynamic_img,
+    };
+
+    let (img_w, img_h) = dynamic_img.dimensions();
+    if img_w == 0 || img_h == 0 {
+        return None;
+    }
+
+    let photo_aspect = img_w as f64 / img_h as f64;
+    let frame_aspect = if frame_h > 0.0 {
+        frame_w / frame_h
+    } else if target_px_h > 0 {
+        target_px_w as f64 / target_px_h as f64
+    } else {
+        1.0
+    };
+    let scale = crop_scale.max(1.0);
+
+    let (visible_w, visible_h) = if photo_aspect > frame_aspect {
+        let vh = img_h as f64 / scale;
+        let vw = (vh * frame_aspect).min(img_w as f64);
+        (vw, vh)
+    } else {
+        let vw = img_w as f64 / scale;
+        let vh = (vw / frame_aspect.max(0.001)).min(img_h as f64);
+        (vw, vh)
+    };
+
+    let excess_x = (img_w as f64 - visible_w).max(0.0);
+    let excess_y = (img_h as f64 - visible_h).max(0.0);
+
+    let norm_x = crop_x.clamp(-1.0, 1.0);
+    let norm_y = crop_y.clamp(-1.0, 1.0);
+
+    let src_x = ((excess_x / 2.0) - (norm_x * (excess_x / 2.0))).clamp(0.0, (img_w as f64 - visible_w).max(0.0));
+    let src_y = ((excess_y / 2.0) - (norm_y * (excess_y / 2.0))).clamp(0.0, (img_h as f64 - visible_h).max(0.0));
+
+    let crop_x_px = src_x.round() as u32;
+    let crop_y_px = src_y.round() as u32;
+    let crop_w_px = (visible_w.round() as u32).min(img_w.saturating_sub(crop_x_px)).max(1);
+    let crop_h_px = (visible_h.round() as u32).min(img_h.saturating_sub(crop_y_px)).max(1);
+
+    let crop_rot_deg = crop_rotation.unwrap_or(0.0);
+    let norm_crop_rot = (crop_rot_deg % 360.0 + 360.0) % 360.0;
+
+    let resized_rgba = if norm_crop_rot.abs() < 0.1 {
+        let cropped_sub = image::imageops::crop_imm(&dynamic_img, crop_x_px, crop_y_px, crop_w_px, crop_h_px);
+        let resized_img = cropped_sub.to_image();
+        let resized_dynamic = image::DynamicImage::ImageRgba8(resized_img);
+        let final_frame_img = resized_dynamic.resize_exact(target_px_w, target_px_h, image::imageops::FilterType::Triangle);
+        final_frame_img.to_rgba8()
+    } else {
+        let img_rgba = dynamic_img.to_rgba8();
+        let frame_w_f = target_px_w as f64;
+        let frame_h_f = target_px_h as f64;
+        let orig_w = img_w as f64;
+        let orig_h = img_h as f64;
+
+        let (cover_w, cover_h) = if photo_aspect >= (frame_w_f / frame_h_f) {
+            let h = frame_h_f * scale;
+            let w = h * photo_aspect;
+            (w, h)
+        } else {
+            let w = frame_w_f * scale;
+            let h = w / photo_aspect.max(0.001);
+            (w, h)
+        };
+
+        let max_excess_x = (cover_w - frame_w_f).max(0.0);
+        let max_excess_y = (cover_h - frame_h_f).max(0.0);
+
+        let offset_x = -(max_excess_x / 2.0) + (norm_x * (max_excess_x / 2.0));
+        let offset_y = -(max_excess_y / 2.0) + (norm_y * (max_excess_y / 2.0));
+
+        let center_x = offset_x + cover_w / 2.0;
+        let center_y = offset_y + cover_h / 2.0;
+
+        let rad = norm_crop_rot * std::f64::consts::PI / 180.0;
+        let cos_t = rad.cos();
+        let sin_t = rad.sin();
+
+        let mut out_buf: RgbaImage = ImageBuffer::new(target_px_w, target_px_h);
+
+        for py in 0..target_px_h {
+            for px in 0..target_px_w {
+                let dx = px as f64 + 0.5 - center_x;
+                let dy = py as f64 + 0.5 - center_y;
+
+                let unrot_x = dx * cos_t + dy * sin_t;
+                let unrot_y = -dx * sin_t + dy * cos_t;
+
+                let u = unrot_x + cover_w / 2.0;
+                let v = unrot_y + cover_h / 2.0;
+
+                let src_xf = (u / cover_w) * orig_w;
+                let src_yf = (v / cover_h) * orig_h;
+
+                if src_xf >= 0.0 && src_xf < orig_w && src_yf >= 0.0 && src_yf < orig_h {
+                    let x0 = (src_xf.floor() as u32).min(img_w - 1);
+                    let y0 = (src_yf.floor() as u32).min(img_h - 1);
+                    let x1 = (x0 + 1).min(img_w - 1);
+                    let y1 = (y0 + 1).min(img_h - 1);
+
+                    let fx = src_xf - x0 as f64;
+                    let fy = src_yf - y0 as f64;
+
+                    let p00 = img_rgba.get_pixel(x0, y0);
+                    let p10 = img_rgba.get_pixel(x1, y0);
+                    let p01 = img_rgba.get_pixel(x0, y1);
+                    let p11 = img_rgba.get_pixel(x1, y1);
+
+                    let w00 = (1.0 - fx) * (1.0 - fy);
+                    let w10 = fx * (1.0 - fy);
+                    let w01 = (1.0 - fx) * fy;
+                    let w11 = fx * fy;
+
+                    let r = (w00 * p00[0] as f64 + w10 * p10[0] as f64 + w01 * p01[0] as f64 + w11 * p11[0] as f64).round() as u8;
+                    let g = (w00 * p00[1] as f64 + w10 * p10[1] as f64 + w01 * p01[1] as f64 + w11 * p11[1] as f64).round() as u8;
+                    let b = (w00 * p00[2] as f64 + w10 * p10[2] as f64 + w01 * p01[2] as f64 + w11 * p11[2] as f64).round() as u8;
+                    let a = (w00 * p00[3] as f64 + w10 * p10[3] as f64 + w01 * p01[3] as f64 + w11 * p11[3] as f64).round() as u8;
+
+                    out_buf.put_pixel(px, py, image::Rgba([r, g, b, a]));
+                }
+            }
+        }
+
+        out_buf
+    };
+
+    Some(resized_rgba)
+}
+
 /// Renders a single photo element onto the canvas at high resolution with maximum speed and memory efficiency
 fn render_photo_element(
     canvas: &mut RgbaImage,
@@ -384,173 +564,20 @@ fn render_photo_element(
         return;
     }
 
-    // Try loading original file, fallback to preview or thumbnail
-    let img_path = Path::new(&elem.file_path);
-    let (mut dynamic_img, is_original) = match image::open(img_path) {
-        Ok(img) => (img, true),
-        Err(e) => {
-            log::warn!("Could not open original image at {:?}: {}", img_path, e);
-            if let Some(ref prev) = elem.preview_path {
-                match image::open(Path::new(prev)) {
-                    Ok(img) => (img, false),
-                    Err(_) => return,
-                }
-            } else {
-                return;
-            }
-        }
-    };
-
-    // Auto-orient according to EXIF tags if loading original photo directly
-    if is_original {
-        let orientation = get_image_exif_orientation(img_path);
-        if orientation > 1 {
-            dynamic_img = apply_exif_orientation(dynamic_img, orientation);
-        }
-    }
-
-    // Apply frame rotation if 90, 180, 270 degrees
-    let rotation = ((elem.rotation % 360.0 + 360.0) % 360.0).round() as i64;
-    dynamic_img = match rotation {
-        90 => dynamic_img.rotate90(),
-        180 => dynamic_img.rotate180(),
-        270 => dynamic_img.rotate270(),
-        _ => dynamic_img,
-    };
-
-    let (img_w, img_h) = dynamic_img.dimensions();
-    if img_w == 0 || img_h == 0 {
+    let Some(resized_rgba) = crop_and_rotate_photo(
+        &elem.file_path,
+        elem.preview_path.as_deref(),
+        elem.width,
+        elem.height,
+        elem.rotation,
+        elem.crop_x,
+        elem.crop_y,
+        elem.crop_scale,
+        elem.crop_rotation,
+        frame_px_w,
+        frame_px_h,
+    ) else {
         return;
-    }
-
-    let photo_aspect = img_w as f64 / img_h as f64;
-    // Prefer design frame aspect ratio from elem geometry to prevent bleed expansion from distorting framing
-    let frame_aspect = if elem.height > 0.0 {
-        elem.width / elem.height
-    } else if frame_px_h > 0 {
-        frame_px_w as f64 / frame_px_h as f64
-    } else {
-        1.0
-    };
-    let crop_scale = elem.crop_scale.max(1.0);
-
-    // Calculate visible crop rectangle in original image pixel coordinates
-    let (visible_w, visible_h) = if photo_aspect > frame_aspect {
-        let vh = img_h as f64 / crop_scale;
-        let vw = (vh * frame_aspect).min(img_w as f64);
-        (vw, vh)
-    } else {
-        let vw = img_w as f64 / crop_scale;
-        let vh = (vw / frame_aspect.max(0.001)).min(img_h as f64);
-        (vw, vh)
-    };
-
-    let excess_x = (img_w as f64 - visible_w).max(0.0);
-    let excess_y = (img_h as f64 - visible_h).max(0.0);
-
-    let norm_x = elem.crop_x.clamp(-1.0, 1.0);
-    let norm_y = elem.crop_y.clamp(-1.0, 1.0);
-
-    // Center offset - pan offset (matches Konva calculateImageOffset in editor.ts:
-    // positive norm_x / norm_y moves viewport toward the start of the image axis, showing left/top features)
-    let src_x = ((excess_x / 2.0) - (norm_x * (excess_x / 2.0))).clamp(0.0, (img_w as f64 - visible_w).max(0.0));
-    let src_y = ((excess_y / 2.0) - (norm_y * (excess_y / 2.0))).clamp(0.0, (img_h as f64 - visible_h).max(0.0));
-
-    let crop_x_px = src_x.round() as u32;
-    let crop_y_px = src_y.round() as u32;
-    let crop_w_px = (visible_w.round() as u32).min(img_w.saturating_sub(crop_x_px)).max(1);
-    let crop_h_px = (visible_h.round() as u32).min(img_h.saturating_sub(crop_y_px)).max(1);
-
-    let crop_rot_deg = elem.crop_rotation.unwrap_or(0.0);
-    let norm_crop_rot = (crop_rot_deg % 360.0 + 360.0) % 360.0;
-
-    let resized_rgba = if norm_crop_rot.abs() < 0.1 {
-        // 1. Fast-path: Pre-crop the original image and bilinear resample directly to frame dimensions
-        let cropped_sub = image::imageops::crop_imm(&dynamic_img, crop_x_px, crop_y_px, crop_w_px, crop_h_px);
-        let resized_img = cropped_sub.to_image();
-        let resized_dynamic = image::DynamicImage::ImageRgba8(resized_img);
-        let final_frame_img = resized_dynamic.resize_exact(frame_px_w, frame_px_h, image::imageops::FilterType::Triangle);
-        final_frame_img.to_rgba8()
-    } else {
-        // 2. High-fidelity in-frame rotation with bilinear sampling for any angle (45°, 90°, 180°, etc.)
-        let img_rgba = dynamic_img.to_rgba8();
-        let frame_w = frame_px_w as f64;
-        let frame_h = frame_px_h as f64;
-        let orig_w = img_w as f64;
-        let orig_h = img_h as f64;
-
-        // Cover dimensions in frame pixels
-        let (cover_w, cover_h) = if photo_aspect >= (frame_w / frame_h) {
-            let h = frame_h * crop_scale;
-            let w = h * photo_aspect;
-            (w, h)
-        } else {
-            let w = frame_w * crop_scale;
-            let h = w / photo_aspect.max(0.001);
-            (w, h)
-        };
-
-        let max_excess_x = (cover_w - frame_w).max(0.0);
-        let max_excess_y = (cover_h - frame_h).max(0.0);
-
-        // Center offset - pan offset (matches Konva calculateImageOffset in editor.ts)
-        let offset_x = -(max_excess_x / 2.0) + (norm_x * (max_excess_x / 2.0));
-        let offset_y = -(max_excess_y / 2.0) + (norm_y * (max_excess_y / 2.0));
-
-        let center_x = offset_x + cover_w / 2.0;
-        let center_y = offset_y + cover_h / 2.0;
-
-        let rad = norm_crop_rot * std::f64::consts::PI / 180.0;
-        let cos_t = rad.cos();
-        let sin_t = rad.sin();
-
-        let mut out_buf: RgbaImage = ImageBuffer::new(frame_px_w, frame_px_h);
-
-        for py in 0..frame_px_h {
-            for px in 0..frame_px_w {
-                let dx = px as f64 + 0.5 - center_x;
-                let dy = py as f64 + 0.5 - center_y;
-
-                // Inverse rotate by -rad around photo center
-                let unrot_x = dx * cos_t + dy * sin_t;
-                let unrot_y = -dx * sin_t + dy * cos_t;
-
-                let u = unrot_x + cover_w / 2.0;
-                let v = unrot_y + cover_h / 2.0;
-
-                let src_xf = (u / cover_w) * orig_w;
-                let src_yf = (v / cover_h) * orig_h;
-
-                if src_xf >= 0.0 && src_xf < orig_w && src_yf >= 0.0 && src_yf < orig_h {
-                    let x0 = (src_xf.floor() as u32).min(img_w - 1);
-                    let y0 = (src_yf.floor() as u32).min(img_h - 1);
-                    let x1 = (x0 + 1).min(img_w - 1);
-                    let y1 = (y0 + 1).min(img_h - 1);
-
-                    let fx = src_xf - x0 as f64;
-                    let fy = src_yf - y0 as f64;
-
-                    let p00 = img_rgba.get_pixel(x0, y0);
-                    let p10 = img_rgba.get_pixel(x1, y0);
-                    let p01 = img_rgba.get_pixel(x0, y1);
-                    let p11 = img_rgba.get_pixel(x1, y1);
-
-                    let w00 = (1.0 - fx) * (1.0 - fy);
-                    let w10 = fx * (1.0 - fy);
-                    let w01 = (1.0 - fx) * fy;
-                    let w11 = fx * fy;
-
-                    let r = (w00 * p00[0] as f64 + w10 * p10[0] as f64 + w01 * p01[0] as f64 + w11 * p11[0] as f64).round() as u8;
-                    let g = (w00 * p00[1] as f64 + w10 * p10[1] as f64 + w01 * p01[1] as f64 + w11 * p11[1] as f64).round() as u8;
-                    let b = (w00 * p00[2] as f64 + w10 * p10[2] as f64 + w01 * p01[2] as f64 + w11 * p11[2] as f64).round() as u8;
-                    let a = (w00 * p00[3] as f64 + w10 * p10[3] as f64 + w01 * p01[3] as f64 + w11 * p11[3] as f64).round() as u8;
-
-                    out_buf.put_pixel(px, py, image::Rgba([r, g, b, a]));
-                }
-            }
-        }
-
-        out_buf
     };
 
     // Corner radii in physical canvas units converted to export pixels
@@ -610,6 +637,14 @@ fn render_photo_element(
     let inner_r_br = (r_br - border_px).max(0.0);
     let inner_r_bl = (r_bl - border_px).max(0.0);
 
+    let shape_mask = psd_writer::generate_shape_mask(
+        elem.shape_type.as_deref(),
+        elem.custom_svg_path.as_deref(),
+        (r_tl, r_tr, r_br, r_bl),
+        frame_px_w,
+        frame_px_h,
+    );
+
     for fy in 0..render_h {
         let dest_y = frame_px_y + fy as i64;
         if dest_y < 0 || dest_y >= canvas_h {
@@ -621,6 +656,12 @@ fn render_photo_element(
             if dest_x < 0 || dest_x >= canvas_w {
                 continue;
             }
+
+            let shape_alpha = if let Some(ref m) = shape_mask {
+                m.get_pixel(fx as u32, fy as u32)[0] as f64 / 255.0
+            } else {
+                1.0
+            };
 
             let corner_alpha = if has_corner_radius {
                 compute_corner_alpha(
@@ -637,7 +678,7 @@ fn render_photo_element(
                 1.0
             };
 
-            if corner_alpha < 0.001 {
+            if corner_alpha < 0.001 || shape_alpha < 0.001 {
                 continue;
             }
 
@@ -667,7 +708,7 @@ fn render_photo_element(
             };
 
             let p = resized_rgba.get_pixel(fx, fy);
-            let photo_alpha = p[3] as f64 / 255.0 * corner_alpha;
+            let photo_alpha = p[3] as f64 / 255.0 * corner_alpha * shape_alpha;
             let source_alpha = border_alpha + photo_alpha * (1.0 - border_alpha);
             let effective_alpha = (source_alpha * elem.opacity).clamp(0.0, 1.0);
             if effective_alpha < 0.001 {
@@ -1070,6 +1111,330 @@ pub fn render_spread_to_image(
     include_bleed: bool,
 ) -> RgbaImage {
     render_spread_to_image_with_progress(project, spread, dpi, include_bleed, |_, _| true)
+}
+
+/// Renders an entire spread to a layered Adobe Photoshop (.psd) file.
+pub fn render_spread_to_psd(
+    project: &ProjectRow,
+    spread: &SpreadPayload,
+    dpi: u32,
+    include_bleed: bool,
+    dest_path: &Path,
+) -> Result<(), String> {
+    let scale = calculate_export_scale(&project.canvas_unit, project.canvas_dpi, dpi);
+    let single_page_w = project.canvas_width;
+    let single_page_h = project.canvas_height;
+    let gutter_w = 0.0;
+    let bleed = spread.bleed;
+
+    let total_spread_w = single_page_w * 2.0 + gutter_w;
+    let total_spread_h = single_page_h;
+
+    let (canvas_w_px, canvas_h_px, offset_x_px, offset_y_px) = if include_bleed {
+        let w = ((total_spread_w + bleed * 2.0) * scale).round() as u32;
+        let h = ((total_spread_h + bleed * 2.0) * scale).round() as u32;
+        let ox = (bleed * scale).round();
+        let oy = (bleed * scale).round();
+        (w, h, ox, oy)
+    } else {
+        let w = (total_spread_w * scale).round() as u32;
+        let h = (total_spread_h * scale).round() as u32;
+        (w, h, 0.0, 0.0)
+    };
+
+    // Composite merged RGB canvas
+    let composite = render_spread_to_image(project, spread, dpi, include_bleed);
+
+    // Background Layer
+    let bg_color = parse_hex_color(&spread.background_color);
+    let mut bg_canvas: RgbaImage = ImageBuffer::from_pixel(canvas_w_px, canvas_h_px, bg_color);
+    let left_bg = spread.left_page.as_ref().map(|p| parse_hex_color(&p.background_color)).unwrap_or(bg_color);
+    let right_bg = spread.right_page.as_ref().map(|p| parse_hex_color(&p.background_color)).unwrap_or(bg_color);
+
+    let left_page_w_px = (offset_x_px as u32) + (single_page_w * scale).round() as u32;
+    let gutter_w_px = if gutter_w > 0.0 { (gutter_w * scale).round() as u32 } else { 0 };
+    let right_page_start_x = left_page_w_px + gutter_w_px;
+
+    if left_bg != bg_color {
+        for y in 0..canvas_h_px {
+            for x in 0..left_page_w_px.min(canvas_w_px) {
+                bg_canvas.put_pixel(x, y, left_bg);
+            }
+        }
+    }
+    if right_bg != bg_color {
+        for y in 0..canvas_h_px {
+            for x in right_page_start_x.min(canvas_w_px)..canvas_w_px {
+                bg_canvas.put_pixel(x, y, right_bg);
+            }
+        }
+    }
+
+    let mut layers: Vec<psd_writer::PsdLayer> = Vec::new();
+    layers.push(psd_writer::PsdLayer::new(
+        "Background",
+        0,
+        0,
+        canvas_h_px as i32,
+        canvas_w_px as i32,
+        bg_canvas,
+        None,
+    ));
+
+    // Sort elements by z_index
+    let aligned_bounds = align_export_element_bounds(project, spread, dpi, offset_x_px, offset_y_px);
+    let mut sorted_elements: Vec<_> = spread.elements.iter().enumerate().collect();
+    sorted_elements.sort_by_key(|(_, elem)| elem.z_index);
+
+    for (elem_idx, elem) in sorted_elements {
+        let bounds = aligned_bounds[elem_idx];
+        if bounds.width == 0 || bounds.height == 0 {
+            continue;
+        }
+
+        if elem.r#type == "text" || elem.text_payload.is_some() {
+            // Text element layer
+            let mut text_img: RgbaImage = ImageBuffer::new(bounds.width, bounds.height);
+            let local_bounds = ExportPixelBounds {
+                x: 0,
+                y: 0,
+                width: bounds.width,
+                height: bounds.height,
+            };
+            text_rasterizer::render_text_element_with_bounds(&mut text_img, elem, scale, dpi, local_bounds);
+
+            let layer_name = if let Some(ref tp) = elem.text_payload {
+                if let Ok(parsed) = serde_json::from_str::<text_rasterizer::TextElementPayload>(tp) {
+                    let preview: String = parsed.text.chars().take(20).collect();
+                    format!("Text: {}", preview.trim())
+                } else {
+                    "Text Layer".to_string()
+                }
+            } else {
+                "Text Layer".to_string()
+            };
+
+            let top = bounds.y as i32;
+            let left = bounds.x as i32;
+            let bottom = top + bounds.height as i32;
+            let right = left + bounds.width as i32;
+
+            layers.push(
+                psd_writer::PsdLayer::new(layer_name, top, left, bottom, right, text_img, None)
+                    .with_opacity((elem.opacity * 255.0).round().clamp(0.0, 255.0) as u8),
+            );
+        } else if !elem.file_path.is_empty() {
+            // Photo element layer
+            let photo_opt = crop_and_rotate_photo(
+                &elem.file_path,
+                elem.preview_path.as_deref(),
+                elem.width,
+                elem.height,
+                elem.rotation,
+                elem.crop_x,
+                elem.crop_y,
+                elem.crop_scale,
+                elem.crop_rotation,
+                bounds.width,
+                bounds.height,
+            );
+
+            let Some(photo_img) = photo_opt else {
+                continue;
+            };
+
+            // Compute non-destructive grayscale shape mask (Channel -2)
+            let raw_radii = elem.corner_radii();
+            let radii = (
+                raw_radii.0 * scale,
+                raw_radii.1 * scale,
+                raw_radii.2 * scale,
+                raw_radii.3 * scale,
+            );
+            let mask = psd_writer::generate_shape_mask(
+                elem.shape_type.as_deref(),
+                elem.custom_svg_path.as_deref(),
+                radii,
+                bounds.width,
+                bounds.height,
+            );
+
+            let top = bounds.y as i32;
+            let left = bounds.x as i32;
+            let bottom = top + bounds.height as i32;
+            let right = left + bounds.width as i32;
+
+            let name = if !elem.file_name.is_empty() {
+                elem.file_name.clone()
+            } else {
+                format!("Photo {}", elem_idx + 1)
+            };
+
+            layers.push(
+                psd_writer::PsdLayer::new(name, top, left, bottom, right, photo_img, mask)
+                    .with_opacity((elem.opacity * 255.0).round().clamp(0.0, 255.0) as u8),
+            );
+        }
+    }
+
+    psd_writer::write_psd_file(dest_path, canvas_w_px, canvas_h_px, dpi, &layers, &composite)
+}
+
+/// Renders a single split page (Left or Right) to a layered Adobe Photoshop (.psd) file.
+pub fn render_spread_page_to_psd(
+    project: &ProjectRow,
+    spread: &SpreadPayload,
+    dpi: u32,
+    include_bleed: bool,
+    is_left: bool,
+    dest_path: &Path,
+) -> Result<(), String> {
+    let scale = calculate_export_scale(&project.canvas_unit, project.canvas_dpi, dpi);
+    let single_page_w = project.canvas_width;
+    let single_page_h = project.canvas_height;
+    let gutter_w = 0.0;
+    let bleed = spread.bleed;
+
+    let total_spread_w = single_page_w * 2.0 + gutter_w;
+    let total_spread_h = single_page_h;
+
+    let (canvas_w_px, _canvas_h_px, offset_x_px, offset_y_px) = if include_bleed {
+        let w = ((total_spread_w + bleed * 2.0) * scale).round() as u32;
+        let h = ((total_spread_h + bleed * 2.0) * scale).round() as u32;
+        let ox = (bleed * scale).round();
+        let oy = (bleed * scale).round();
+        (w, h, ox, oy)
+    } else {
+        let w = (total_spread_w * scale).round() as u32;
+        let h = (total_spread_h * scale).round() as u32;
+        (w, h, 0.0, 0.0)
+    };
+
+    let total_spread_base = render_spread_base_to_image_with_progress(project, spread, dpi, include_bleed, |_, _| true);
+    let (mut left_page_img, mut right_page_img) = split_spread_into_pages(&total_spread_base, project, spread, dpi, include_bleed);
+    let right_page_start_x = calculate_right_page_start_x(project, spread, dpi, include_bleed, canvas_w_px);
+
+    render_spread_text_to_canvas(&mut left_page_img, project, spread, dpi, include_bleed, 0.0);
+    render_spread_text_to_canvas(&mut right_page_img, project, spread, dpi, include_bleed, -(right_page_start_x as f64));
+
+    let (composite, page_w, shift_x) = if is_left {
+        let w = left_page_img.width();
+        (left_page_img, w, 0.0)
+    } else {
+        let w = right_page_img.width();
+        (right_page_img, w, right_page_start_x as f64)
+    };
+
+    let page_h = composite.height();
+
+    // Background Layer
+    let bg_color = parse_hex_color(&spread.background_color);
+    let specific_bg = if is_left {
+        spread.left_page.as_ref().map(|p| parse_hex_color(&p.background_color)).unwrap_or(bg_color)
+    } else {
+        spread.right_page.as_ref().map(|p| parse_hex_color(&p.background_color)).unwrap_or(bg_color)
+    };
+    let bg_canvas = ImageBuffer::from_pixel(page_w, page_h, specific_bg);
+
+    let mut layers = vec![
+        psd_writer::PsdLayer::new("Background", 0, 0, page_h as i32, page_w as i32, bg_canvas, None),
+    ];
+
+    let aligned_bounds = align_export_element_bounds(project, spread, dpi, offset_x_px, offset_y_px);
+    let mut sorted_elements: Vec<_> = spread.elements.iter().enumerate().collect();
+    sorted_elements.sort_by_key(|(_, elem)| elem.z_index);
+
+    for (elem_idx, elem) in sorted_elements {
+        let b = aligned_bounds[elem_idx];
+        if b.width == 0 || b.height == 0 {
+            continue;
+        }
+
+        let elem_left_on_page = b.x as f64 - shift_x;
+        let elem_right_on_page = elem_left_on_page + b.width as f64;
+
+        if elem_right_on_page <= 0.0 || elem_left_on_page >= page_w as f64 {
+            continue;
+        }
+
+        let top = b.y as i32;
+        let left = elem_left_on_page.round() as i32;
+        let bottom = top + b.height as i32;
+        let right = left + b.width as i32;
+
+        if elem.r#type == "text" || elem.text_payload.is_some() {
+            let mut text_img: RgbaImage = ImageBuffer::new(b.width, b.height);
+            let local_bounds = ExportPixelBounds {
+                x: 0,
+                y: 0,
+                width: b.width,
+                height: b.height,
+            };
+            text_rasterizer::render_text_element_with_bounds(&mut text_img, elem, scale, dpi, local_bounds);
+
+            let layer_name = if let Some(ref tp) = elem.text_payload {
+                if let Ok(parsed) = serde_json::from_str::<text_rasterizer::TextElementPayload>(tp) {
+                    let preview: String = parsed.text.chars().take(20).collect();
+                    format!("Text: {}", preview.trim())
+                } else {
+                    "Text Layer".to_string()
+                }
+            } else {
+                "Text Layer".to_string()
+            };
+
+            layers.push(
+                psd_writer::PsdLayer::new(layer_name, top, left, bottom, right, text_img, None)
+                    .with_opacity((elem.opacity * 255.0).round().clamp(0.0, 255.0) as u8),
+            );
+        } else if !elem.file_path.is_empty() {
+            let photo_opt = crop_and_rotate_photo(
+                &elem.file_path,
+                elem.preview_path.as_deref(),
+                elem.width,
+                elem.height,
+                elem.rotation,
+                elem.crop_x,
+                elem.crop_y,
+                elem.crop_scale,
+                elem.crop_rotation,
+                b.width,
+                b.height,
+            );
+
+            let Some(photo_img) = photo_opt else {
+                continue;
+            };
+
+            let raw_radii = elem.corner_radii();
+            let radii = (
+                raw_radii.0 * scale,
+                raw_radii.1 * scale,
+                raw_radii.2 * scale,
+                raw_radii.3 * scale,
+            );
+            let mask = psd_writer::generate_shape_mask(
+                elem.shape_type.as_deref(),
+                elem.custom_svg_path.as_deref(),
+                radii,
+                b.width,
+                b.height,
+            );
+
+            let name = if !elem.file_name.is_empty() {
+                elem.file_name.clone()
+            } else {
+                format!("Photo {}", elem_idx + 1)
+            };
+
+            layers.push(
+                psd_writer::PsdLayer::new(name, top, left, bottom, right, photo_img, mask)
+                    .with_opacity((elem.opacity * 255.0).round().clamp(0.0, 255.0) as u8),
+            );
+        }
+    }
+
+    psd_writer::write_psd_file(dest_path, page_w, page_h, dpi, &layers, &composite)
 }
 
 /// Returns the right page start X offset in export pixels for split pages
@@ -2049,6 +2414,8 @@ mod tests {
             corner_radius_br: 0.0,
             corner_radius_bl: 0.0,
             corner_radius: None,
+            shape_type: None,
+            custom_svg_path: None,
         };
 
         let spread = SpreadPayload {

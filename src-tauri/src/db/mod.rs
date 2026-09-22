@@ -152,6 +152,10 @@ pub struct ElementPayload {
     pub corner_radius_bl: f64,
     #[serde(default)]
     pub corner_radius: Option<CornerRadiusPayload>,
+    #[serde(default)]
+    pub shape_type: Option<String>,
+    #[serde(default)]
+    pub custom_svg_path: Option<String>,
 }
 
 impl ElementPayload {
@@ -1987,6 +1991,8 @@ impl Database {
                     corner_radius_br: er.get(30).unwrap_or(0.0),
                     corner_radius_bl: er.get(31).unwrap_or(0.0),
                     corner_radius: None,
+                    shape_type: None,
+                    custom_svg_path: None,
                 })
             })?;
 
@@ -2398,6 +2404,8 @@ mod tests {
                     corner_radius_br: 0.0,
                     corner_radius_bl: 0.0,
                     corner_radius: None,
+                    shape_type: None,
+                    custom_svg_path: None,
                 }
             ],
         };
