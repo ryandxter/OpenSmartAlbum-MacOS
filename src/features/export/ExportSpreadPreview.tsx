@@ -31,7 +31,7 @@ interface ExportSpreadPreviewProps {
   showSafeAreaGuide?: boolean;
   splitPages: boolean;
   dpi: number;
-  format: 'jpeg' | 'png' | 'pdf';
+  format: 'jpeg' | 'png' | 'tiff' | 'pdf' | 'psd';
 }
 
 export const ExportSpreadPreview: React.FC<ExportSpreadPreviewProps> = ({

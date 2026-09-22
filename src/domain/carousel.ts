@@ -63,6 +63,7 @@ export interface CarouselPhotoFrame {
   rotation?: number;
   locked?: boolean;
   cornerRadius?: number;
+  shapeType?: string;
 }
 
 export type CarouselElement = CarouselPhotoFrame;

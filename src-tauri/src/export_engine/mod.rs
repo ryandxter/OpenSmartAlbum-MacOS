@@ -3,6 +3,8 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use image::{GenericImageView, ImageBuffer, Rgba, RgbaImage};
 use serde::{Deserialize, Serialize};
+use tiff::encoder::{colortype, Compression, Rational, TiffEncoder};
+use tiff::tags::ResolutionUnit;
 use crate::db::{ElementPayload, ProjectRow, SpreadPayload};
 
 mod bundled_fonts;
@@ -13,7 +15,7 @@ pub mod carousel_slicer;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExportOptions {
-    pub format: String, // "jpeg", "png", "pdf"
+    pub format: String, // "jpeg", "png", "tiff", "pdf", "psd"
     pub dpi: u32,       // e.g. 300
     #[serde(default = "default_jpeg_quality")]
     pub jpeg_quality: u8, // 1 - 100 (default 95)
@@ -30,6 +32,16 @@ pub struct ExportOptions {
     pub selected_page_numbers: Option<Vec<i32>>,
     #[serde(default)]
     pub file_prefix: Option<String>,
+    #[serde(default)]
+    pub tiff_bit_depth: Option<u8>,       // 8 or 16
+    #[serde(default)]
+    pub tiff_compression: Option<String>, // "lzw" or "none"
+    #[serde(default)]
+    pub pdf_print_ready: bool,
+    #[serde(default = "default_slug_mm")]
+    pub slug_mm: f64, // e.g. 5.0 mm
+    #[serde(default = "default_true")]
+    pub crop_marks: bool,
 }
 
 fn default_jpeg_quality() -> u8 {
@@ -38,6 +50,14 @@ fn default_jpeg_quality() -> u8 {
 
 fn default_sharpen_amount() -> String {
     "standard".to_string()
+}
+
+fn default_slug_mm() -> f64 {
+    5.0
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1547,11 +1567,79 @@ pub fn apply_print_sharpening(img: &RgbaImage, amount: &str) -> RgbaImage {
     RgbaImage::from_raw(width, height, raw_vec).unwrap_or_else(|| img.clone())
 }
 
-/// Assembles JPEG image files into a multi-page PDF document
+/// Encodes an RGBA image into an uncompressed or LZW-compressed 8-bit or 16-bit TIFF with DPI resolution metadata.
+pub fn encode_tiff_with_dpi(
+    path: &Path,
+    img: &RgbaImage,
+    dpi: u32,
+    sixteen_bit: bool,
+) -> Result<(), String> {
+    let file = File::create(path).map_err(|e| format!("Failed to create TIFF file {}: {}", path.display(), e))?;
+    let mut encoder = TiffEncoder::new(file)
+        .map_err(|e| format!("Failed to initialize TIFF encoder: {}", e))?
+        .with_compression(Compression::Lzw);
+
+    let (width, height) = img.dimensions();
+
+    if sixteen_bit {
+        let mut img_encoder = encoder
+            .new_image::<colortype::RGB16>(width, height)
+            .map_err(|e| format!("Failed to create 16-bit TIFF image: {}", e))?;
+
+        img_encoder.resolution_unit(ResolutionUnit::Inch);
+        img_encoder.x_resolution(Rational { n: dpi, d: 1 });
+        img_encoder.y_resolution(Rational { n: dpi, d: 1 });
+
+        let mut u16_data = Vec::with_capacity((width * height * 3) as usize);
+        for pixel in img.pixels() {
+            let a = pixel[3] as f32 / 255.0;
+            let r = ((pixel[0] as f32 * a + 255.0 * (1.0 - a)).round() as u16) * 257;
+            let g = ((pixel[1] as f32 * a + 255.0 * (1.0 - a)).round() as u16) * 257;
+            let b = ((pixel[2] as f32 * a + 255.0 * (1.0 - a)).round() as u16) * 257;
+            u16_data.push(r);
+            u16_data.push(g);
+            u16_data.push(b);
+        }
+
+        img_encoder
+            .write_data(&u16_data)
+            .map_err(|e| format!("Failed to write 16-bit TIFF data: {}", e))?;
+    } else {
+        let mut img_encoder = encoder
+            .new_image::<colortype::RGB8>(width, height)
+            .map_err(|e| format!("Failed to create 8-bit TIFF image: {}", e))?;
+
+        img_encoder.resolution_unit(ResolutionUnit::Inch);
+        img_encoder.x_resolution(Rational { n: dpi, d: 1 });
+        img_encoder.y_resolution(Rational { n: dpi, d: 1 });
+
+        let mut u8_data = Vec::with_capacity((width * height * 3) as usize);
+        for pixel in img.pixels() {
+            let a = pixel[3] as f32 / 255.0;
+            let r = (pixel[0] as f32 * a + 255.0 * (1.0 - a)).round() as u8;
+            let g = (pixel[1] as f32 * a + 255.0 * (1.0 - a)).round() as u8;
+            let b = (pixel[2] as f32 * a + 255.0 * (1.0 - a)).round() as u8;
+            u8_data.push(r);
+            u8_data.push(g);
+            u8_data.push(b);
+        }
+
+        img_encoder
+            .write_data(&u8_data)
+            .map_err(|e| format!("Failed to write 8-bit TIFF data: {}", e))?;
+    }
+
+    Ok(())
+}
+
+/// Assembles JPEG image files into a multi-page PDF document with optional PDF/X-3 print-ready vector marks and boxes
 pub fn assemble_pdf_from_jpegs(
     jpeg_files: &[(PathBuf, u32, u32)], // (file_path, width_px, height_px)
     pdf_dest: &Path,
     dpi: u32,
+    options: Option<&ExportOptions>,
+    project_name: Option<&str>,
+    bleed_mm: f64,
 ) -> Result<(), String> {
     let mut pdf_data = Vec::new();
     let mut object_offsets = Vec::new();
@@ -1564,9 +1652,28 @@ pub fn assemble_pdf_from_jpegs(
         return Err("No pages to assemble into PDF".to_string());
     }
 
+    let is_print_ready = options.map(|o| o.pdf_print_ready).unwrap_or(false);
+    let slug_mm = if is_print_ready {
+        options.map(|o| o.slug_mm).unwrap_or(5.0)
+    } else {
+        0.0
+    };
+    let draw_crop_marks = is_print_ready && options.map(|o| o.crop_marks).unwrap_or(true);
+    let include_bleed = options.map(|o| o.include_bleed).unwrap_or(false);
+    let effective_bleed_mm = if include_bleed { bleed_mm } else { 0.0 };
+
+    let slug_pt = (slug_mm / 25.4) * 72.0;
+    let bleed_pt = (effective_bleed_mm / 25.4) * 72.0;
+
     // Object 1: Catalog
     object_offsets.push(pdf_data.len());
-    pdf_data.extend_from_slice(b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+    if is_print_ready {
+        pdf_data.extend_from_slice(
+            b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R /OutputIntents [ << /Type /OutputIntent /S /GTS_PDFX /OutputConditionIdentifier (sRGB IEC61966-2.1) /RegistryName (http://www.color.org) /Info (sRGB IEC61966-2.1) >> ] >>\nendobj\n"
+        );
+    } else {
+        pdf_data.extend_from_slice(b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+    }
 
     // Object 2: Pages
     object_offsets.push(pdf_data.len());
@@ -1586,23 +1693,106 @@ pub fn assemble_pdf_from_jpegs(
         let content_obj_num = page_obj_num + 1;
         let image_obj_num = page_obj_num + 2;
 
-        let width_pt = (*w_px as f64 * 72.0 / dpi as f64).round();
-        let height_pt = (*h_px as f64 * 72.0 / dpi as f64).round();
+        let img_w_pt = (*w_px as f64 * 72.0 / dpi as f64).round();
+        let img_h_pt = (*h_px as f64 * 72.0 / dpi as f64).round();
 
         // Read raw JPEG stream
         let raw_jpeg = fs::read(jpg_path).map_err(|e| format!("Failed to read JPEG {}: {}", jpg_path.display(), e))?;
 
+        // Calculate geometry boxes and marks
+        let (box_attributes, font_resource, stream_cmd) = if is_print_ready {
+            let trim_w_pt = (img_w_pt - 2.0 * bleed_pt).max(1.0);
+            let trim_h_pt = (img_h_pt - 2.0 * bleed_pt).max(1.0);
+            let media_w_pt = trim_w_pt + 2.0 * slug_pt;
+            let media_h_pt = trim_h_pt + 2.0 * slug_pt;
+
+            let media_box = format!("[0 0 {:.2} {:.2}]", media_w_pt, media_h_pt);
+            let bleed_box = format!(
+                "[{:.2} {:.2} {:.2} {:.2}]",
+                slug_pt - bleed_pt,
+                slug_pt - bleed_pt,
+                slug_pt + trim_w_pt + bleed_pt,
+                slug_pt + trim_h_pt + bleed_pt
+            );
+            let trim_box = format!(
+                "[{:.2} {:.2} {:.2} {:.2}]",
+                slug_pt,
+                slug_pt,
+                slug_pt + trim_w_pt,
+                slug_pt + trim_h_pt
+            );
+
+            let boxes = format!("/MediaBox {} /BleedBox {} /TrimBox {}", media_box, bleed_box, trim_box);
+            let font = "/Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >>";
+
+            let mut cmd = String::new();
+            // 1. Draw Image with bleed offset
+            let img_x = slug_pt - bleed_pt;
+            let img_y = slug_pt - bleed_pt;
+            cmd.push_str(&format!("q {:.2} 0 0 {:.2} {:.2} {:.2} cm /Im0 Do Q\n", img_w_pt, img_h_pt, img_x, img_y));
+
+            // 2. Emit Vector Hairline Marks
+            if draw_crop_marks {
+                let offset_pt = (2.0 / 25.4) * 72.0; // 2mm outside trim
+                let mark_len_pt = (4.0 / 25.4) * 72.0; // 4mm length
+                let x0 = slug_pt;
+                let y0 = slug_pt;
+                let x1 = slug_pt + trim_w_pt;
+                let y1 = slug_pt + trim_h_pt;
+
+                cmd.push_str("q 0.5 w 0 0 0 RG\n"); // 0.5pt hairline stroke, registration black
+
+                // Corner 1: Bottom-Left (x0, y0)
+                cmd.push_str(&format!("{:.2} {:.2} m {:.2} {:.2} l S\n", x0 - offset_pt, y0, x0 - offset_pt - mark_len_pt, y0));
+                cmd.push_str(&format!("{:.2} {:.2} m {:.2} {:.2} l S\n", x0, y0 - offset_pt, x0, y0 - offset_pt - mark_len_pt));
+
+                // Corner 2: Bottom-Right (x1, y0)
+                cmd.push_str(&format!("{:.2} {:.2} m {:.2} {:.2} l S\n", x1 + offset_pt, y0, x1 + offset_pt + mark_len_pt, y0));
+                cmd.push_str(&format!("{:.2} {:.2} m {:.2} {:.2} l S\n", x1, y0 - offset_pt, x1, y0 - offset_pt - mark_len_pt));
+
+                // Corner 3: Top-Left (x0, y1)
+                cmd.push_str(&format!("{:.2} {:.2} m {:.2} {:.2} l S\n", x0 - offset_pt, y1, x0 - offset_pt - mark_len_pt, y1));
+                cmd.push_str(&format!("{:.2} {:.2} m {:.2} {:.2} l S\n", x0, y1 + offset_pt, x0, y1 + offset_pt + mark_len_pt));
+
+                // Corner 4: Top-Right (x1, y1)
+                cmd.push_str(&format!("{:.2} {:.2} m {:.2} {:.2} l S\n", x1 + offset_pt, y1, x1 + offset_pt + mark_len_pt, y1));
+                cmd.push_str(&format!("{:.2} {:.2} m {:.2} {:.2} l S\n", x1, y1 + offset_pt, x1, y1 + offset_pt + mark_len_pt));
+
+                // Center Spine Fold Ticks (top and bottom)
+                let center_x = slug_pt + trim_w_pt / 2.0;
+                cmd.push_str(&format!("{:.2} {:.2} m {:.2} {:.2} l S\n", center_x, y0 - offset_pt, center_x, y0 - offset_pt - mark_len_pt));
+                cmd.push_str(&format!("{:.2} {:.2} m {:.2} {:.2} l S\n", center_x, y1 + offset_pt, center_x, y1 + offset_pt + mark_len_pt));
+
+                // Slug Metadata Text (Project, Page/Spread name, DPI, PDF/X standard)
+                let proj_label = project_name.unwrap_or("Album");
+                let spread_stem = jpg_path.file_stem().and_then(|s| s.to_str()).unwrap_or("Page");
+                let slug_info = format!("Project: {} | {} | DPI: {} | PDF/X-3:2002", proj_label, spread_stem, dpi);
+                let clean_slug = slug_info.replace('\\', "\\\\").replace('(', "\\(").replace(')', "\\)");
+                let text_x = slug_pt;
+                let text_y = (y1 + offset_pt + 3.0).min(media_h_pt - 8.0);
+                cmd.push_str(&format!("BT /F1 8 Tf 0 0 0 rg {:.2} {:.2} Td ({}) Tj ET\n", text_x, text_y, clean_slug));
+
+                cmd.push_str("Q\n");
+            }
+
+            (boxes, font, cmd)
+        } else {
+            let boxes = format!("/MediaBox [0 0 {:.2} {:.2}]", img_w_pt, img_h_pt);
+            let font = "";
+            let cmd = format!("q {:.2} 0 0 {:.2} 0 0 cm /Im0 Do Q", img_w_pt, img_h_pt);
+            (boxes, font, cmd)
+        };
+
         // Page Object
         object_offsets.push(pdf_data.len());
         let page_obj = format!(
-            "{} 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {} {}] /Contents {} 0 R /Resources << /XObject << /Im0 {} 0 R >> >> >>\nendobj\n",
-            page_obj_num, width_pt, height_pt, content_obj_num, image_obj_num
+            "{} 0 obj\n<< /Type /Page /Parent 2 0 R {} /Contents {} 0 R /Resources << /XObject << /Im0 {} 0 R >> {} >> >>\nendobj\n",
+            page_obj_num, box_attributes, content_obj_num, image_obj_num, font_resource
         );
         pdf_data.extend_from_slice(page_obj.as_bytes());
 
-        // Content Stream (Draw Image)
+        // Content Stream (Draw Image and Vector Marks)
         object_offsets.push(pdf_data.len());
-        let stream_cmd = format!("q {} 0 0 {} 0 0 cm /Im0 Do Q", width_pt, height_pt);
         let content_obj = format!(
             "{} 0 obj\n<< /Length {} >>\nstream\n{}\nendstream\nendobj\n",
             content_obj_num, stream_cmd.len(), stream_cmd
@@ -1620,9 +1810,26 @@ pub fn assemble_pdf_from_jpegs(
         pdf_data.extend_from_slice(b"\nendstream\nendobj\n");
     }
 
+    // Info Object (PDF/X-3 version and metadata)
+    let info_obj_num = 3 + num_pages * 3;
+    object_offsets.push(pdf_data.len());
+    let title = project_name.unwrap_or("Album Print Export").replace('\\', "\\\\").replace('(', "\\(").replace(')', "\\)");
+    let info_obj = if is_print_ready {
+        format!(
+            "{} 0 obj\n<< /Title ({}) /Creator (OpenSmartAlbum macOS) /GTS_PDFXVersion (PDF/X-3:2002) >>\nendobj\n",
+            info_obj_num, title
+        )
+    } else {
+        format!(
+            "{} 0 obj\n<< /Title ({}) /Creator (OpenSmartAlbum macOS) >>\nendobj\n",
+            info_obj_num, title
+        )
+    };
+    pdf_data.extend_from_slice(info_obj.as_bytes());
+
     // XRef Table
     let xref_start = pdf_data.len();
-    let total_objs = 2 + num_pages * 3;
+    let total_objs = info_obj_num;
     let mut xref = format!("xref\n0 {}\n0000000000 65535 f \n", total_objs + 1);
     for offset in &object_offsets {
         xref.push_str(&format!("{:010} 00000 n \n", offset));
@@ -1631,8 +1838,9 @@ pub fn assemble_pdf_from_jpegs(
 
     // Trailer
     let trailer = format!(
-        "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{}\n%%EOF\n",
+        "trailer\n<< /Size {} /Root 1 0 R /Info {} 0 R >>\nstartxref\n{}\n%%EOF\n",
         total_objs + 1,
+        info_obj_num,
         xref_start
     );
     pdf_data.extend_from_slice(trailer.as_bytes());
@@ -2178,11 +2386,58 @@ mod tests {
 
         let pdf_path = temp_dir.join("test_album.pdf");
         let jpegs = vec![(jpg_path.clone(), rgb_img.width(), rgb_img.height())];
-        assemble_pdf_from_jpegs(&jpegs, &pdf_path, 72).unwrap();
+        assemble_pdf_from_jpegs(&jpegs, &pdf_path, 72, None, None, 0.0).unwrap();
 
         assert!(pdf_path.exists());
         let pdf_bytes = fs::read(&pdf_path).unwrap();
         assert!(pdf_bytes.starts_with(b"%PDF-1.4"));
+
+        // Test Print-Ready PDF/X with Vector Marks
+        let pdf_x_path = temp_dir.join("test_album_pdfx.pdf");
+        let pdf_opts = ExportOptions {
+            format: "pdf".to_string(),
+            dpi: 300,
+            jpeg_quality: 95,
+            include_bleed: true,
+            split_pages: false,
+            sharpen_enabled: false,
+            sharpen_amount: "standard".to_string(),
+            output_dir: temp_dir.to_string_lossy().to_string(),
+            selected_spread_ids: None,
+            selected_page_numbers: None,
+            file_prefix: None,
+            tiff_bit_depth: None,
+            tiff_compression: None,
+            pdf_print_ready: true,
+            slug_mm: 5.0,
+            crop_marks: true,
+        };
+        assemble_pdf_from_jpegs(&jpegs, &pdf_x_path, 300, Some(&pdf_opts), Some("Prepress Wedding Album"), 3.0).unwrap();
+        assert!(pdf_x_path.exists());
+        let pdf_x_bytes = fs::read(&pdf_x_path).unwrap();
+        let pdf_x_str = String::from_utf8_lossy(&pdf_x_bytes);
+        assert!(pdf_x_str.contains("/TrimBox"));
+        assert!(pdf_x_str.contains("/BleedBox"));
+        assert!(pdf_x_str.contains("/MediaBox"));
+        assert!(pdf_x_str.contains("/GTS_PDFXVersion (PDF/X-3:2002)"));
+        assert!(pdf_x_str.contains("/OutputIntents"));
+        assert!(pdf_x_str.contains("0.5 w 0 0 0 RG")); // vector marks hairline
+        assert!(pdf_x_str.contains("/Helvetica"));
+
+        // Test Lossless Prepress TIFF Encoder (8-bit and 16-bit)
+        let tiff_8_path = temp_dir.join("test_8bit.tif");
+        encode_tiff_with_dpi(&tiff_8_path, &img, 300, false).unwrap();
+        assert!(tiff_8_path.exists());
+        let tiff_8_img = image::open(&tiff_8_path).expect("Failed to open generated 8-bit TIFF");
+        assert_eq!(tiff_8_img.width(), img.width());
+        assert_eq!(tiff_8_img.height(), img.height());
+
+        let tiff_16_path = temp_dir.join("test_16bit.tif");
+        encode_tiff_with_dpi(&tiff_16_path, &img, 300, true).unwrap();
+        assert!(tiff_16_path.exists());
+        let tiff_16_img = image::open(&tiff_16_path).expect("Failed to open generated 16-bit TIFF");
+        assert_eq!(tiff_16_img.width(), img.width());
+        assert_eq!(tiff_16_img.height(), img.height());
 
         let _ = fs::remove_dir_all(&temp_dir);
     }

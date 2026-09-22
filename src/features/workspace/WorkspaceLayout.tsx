@@ -670,6 +670,7 @@ export function WorkspaceLayout() {
         isOpen={isExportDialogOpen}
         onClose={() => setIsExportDialogOpen(false)}
         onStartExport={handleStartExport}
+        activeMode={activeMode}
       />
 
       {/* Phase 8: Export Progress Modal */}

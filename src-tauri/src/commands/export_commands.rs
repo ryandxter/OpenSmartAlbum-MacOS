@@ -7,9 +7,10 @@ use tauri::{AppHandle, Emitter, State};
 use crate::db::{AlbumPayload, Database, ProjectRow, SpreadPayload};
 use crate::export_engine::{
     apply_print_sharpening, assemble_pdf_from_jpegs, calculate_right_page_start_x,
-    encode_jpeg_with_dpi, encode_png_with_dpi, render_spread_base_to_image_with_progress,
-    render_spread_page_to_psd, render_spread_text_to_canvas, render_spread_to_psd,
-    split_spread_into_pages, ExportOptions, ExportProgressEvent,
+    encode_jpeg_with_dpi, encode_png_with_dpi, encode_tiff_with_dpi,
+    render_spread_base_to_image_with_progress, render_spread_page_to_psd,
+    render_spread_text_to_canvas, render_spread_to_psd, split_spread_into_pages,
+    ExportOptions, ExportProgressEvent,
 };
 use crate::export_engine::carousel_slicer::{
     export_carousel_slices_worker, CarouselExportOptions, CarouselExportResult, CarouselPayload,
@@ -172,7 +173,15 @@ pub async fn preflight_check_export(
 
     // Check if any output files already exist in destination directory
     let mut existing_files = Vec::new();
-    let ext = if options.format == "png" { "png" } else { "jpg" };
+    let ext = if options.format == "png" {
+        "png"
+    } else if options.format == "psd" {
+        "psd"
+    } else if options.format == "tiff" || options.format == "tif" {
+        "tif"
+    } else {
+        "jpg"
+    };
     let prefix = options.file_prefix.as_deref();
 
     if options.format == "pdf" {
@@ -555,6 +564,8 @@ fn export_album_high_res_worker(
                         "png"
                     } else if options.format == "psd" {
                         "psd"
+                    } else if options.format == "tiff" || options.format == "tif" {
+                        "tif"
                     } else {
                         "jpg"
                     };
@@ -574,6 +585,20 @@ fn export_album_high_res_worker(
                         if should_export_right {
                             safe_write_image(&right_path, |tmp| {
                                 render_spread_page_to_psd(&project, spread, options.dpi, options.include_bleed, false, tmp)
+                            })?;
+                            local_output_files.push(right_path.to_string_lossy().to_string());
+                        }
+                    } else if options.format == "tiff" || options.format == "tif" {
+                        let is_16 = options.tiff_bit_depth.unwrap_or(8) == 16;
+                        if should_export_left {
+                            safe_write_image(&left_path, |tmp| {
+                                encode_tiff_with_dpi(tmp, &left_page, options.dpi, is_16)
+                            })?;
+                            local_output_files.push(left_path.to_string_lossy().to_string());
+                        }
+                        if should_export_right {
+                            safe_write_image(&right_path, |tmp| {
+                                encode_tiff_with_dpi(tmp, &right_page, options.dpi, is_16)
                             })?;
                             local_output_files.push(right_path.to_string_lossy().to_string());
                         }
@@ -640,6 +665,8 @@ fn export_album_high_res_worker(
                         "png"
                     } else if options.format == "psd" {
                         "psd"
+                    } else if options.format == "tiff" || options.format == "tif" {
+                        "tif"
                     } else {
                         "jpg"
                     };
@@ -650,6 +677,11 @@ fn export_album_high_res_worker(
                     if options.format == "psd" {
                         safe_write_image(&file_dest, |tmp| {
                             render_spread_to_psd(&project, spread, options.dpi, options.include_bleed, tmp)
+                        })?;
+                    } else if options.format == "tiff" || options.format == "tif" {
+                        let is_16 = options.tiff_bit_depth.unwrap_or(8) == 16;
+                        safe_write_image(&file_dest, |tmp| {
+                            encode_tiff_with_dpi(tmp, &spread_img, options.dpi, is_16)
                         })?;
                     } else if options.format == "png" {
                         safe_write_image(&file_dest, |tmp| {
@@ -784,7 +816,15 @@ fn export_album_high_res_worker(
         };
         let pdf_dest = output_path.join(&pdf_filename);
 
-        let pdf_result = assemble_pdf_from_jpegs(&temp_jpegs_for_pdf, &pdf_dest, options.dpi);
+        let bleed_mm = spreads.first().map(|s| s.bleed).unwrap_or(3.0);
+        let pdf_result = assemble_pdf_from_jpegs(
+            &temp_jpegs_for_pdf,
+            &pdf_dest,
+            options.dpi,
+            Some(&options),
+            Some(&project.name),
+            bleed_mm,
+        );
         for (temp_jpeg, _, _) in &temp_jpegs_for_pdf {
             if let Err(err) = fs::remove_file(temp_jpeg) {
                 log::warn!("Failed to remove temporary PDF JPEG {}: {}", temp_jpeg.display(), err);
