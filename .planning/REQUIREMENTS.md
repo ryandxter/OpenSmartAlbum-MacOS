@@ -35,12 +35,12 @@
 
 ### 5. Canva/Photoshop Shape Presets & Clipping Masks (SHAPE)
 
-- [ ] **SHAPE-01**: Frame shape clipping presets: Rectangle, Rounded Rect (with individual corner radii), Circle, Oval, Hexagon, Octagon, Star, Scallop/Cloud, and Heart.
-- [ ] **SHAPE-02**: Custom SVG Path clipping mask support allowing users to load vector silhouettes as photo clipping shapes.
-- [ ] **SHAPE-03**: Customizable borders & strokes: inner/outer border alignment, solid/dashed/double stroke styles, custom colors, and stroke widths.
-- [ ] **SHAPE-04**: Drop shadow and depth effects: configurable offset X/Y, blur radius, opacity, and shadow color.
-- [ ] **SHAPE-05**: Freeform corner-pin and perspective skew transform controls with accurate Konva hit-detection.
-- [ ] **SHAPE-06**: Interoperability with the 2D Topological Spatial Neighbor Graph multi-resize engine to ensure non-rectangular frames maintain gap spacing.
+- [x] **SHAPE-01**: Frame shape clipping presets: Rectangle, Rounded Rect (with individual corner radii), Circle, Oval, Hexagon, Octagon, Star, Scallop/Cloud, and Heart.
+- [x] **SHAPE-02**: Custom SVG Path clipping mask support allowing users to load vector silhouettes as photo clipping shapes.
+- [x] **SHAPE-03**: Customizable borders & strokes: inner/outer border alignment, solid/dashed/double stroke styles, custom colors, and stroke widths.
+- [x] **SHAPE-04**: Drop shadow and depth effects: configurable offset X/Y, blur radius, opacity, and shadow color.
+- [x] **SHAPE-05**: Freeform corner-pin and perspective skew transform controls with accurate Konva hit-detection.
+- [x] **SHAPE-06**: Interoperability with the 2D Topological Spatial Neighbor Graph multi-resize engine to ensure non-rectangular frames maintain gap spacing.
 
 ### 6. Advanced Layered Export Engine (EXPO)
 
@@ -85,12 +85,12 @@
 | CARO-02 | Phase 3 | Complete |
 | CARO-03 | Phase 3 | Complete |
 | CARO-04 | Phase 3 | Complete |
-| SHAPE-01 | Phase 4 | Pending |
-| SHAPE-02 | Phase 4 | Pending |
-| SHAPE-03 | Phase 4 | Pending |
-| SHAPE-04 | Phase 4 | Pending |
-| SHAPE-05 | Phase 4 | Pending |
-| SHAPE-06 | Phase 4 | Pending |
+| SHAPE-01 | Phase 4 | Complete |
+| SHAPE-02 | Phase 4 | Complete |
+| SHAPE-03 | Phase 4 | Complete |
+| SHAPE-04 | Phase 4 | Complete |
+| SHAPE-05 | Phase 4 | Complete |
+| SHAPE-06 | Phase 4 | Complete |
 | EXPO-01 | Phase 5 | Pending |
 | EXPO-02 | Phase 5 | Pending |
 | EXPO-03 | Phase 5 | Pending |

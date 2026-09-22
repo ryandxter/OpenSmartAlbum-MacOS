@@ -9,7 +9,7 @@ OpenSmartAlbum-MacOS overhaul executes across five focused phases: establishing 
 - [x] **Phase 1: macOS Foundation & Pure Rust Pipeline** - Purge Win32 dependencies, establish pure Rust image processing, and configure Tauri 2 for Universal macOS.
 - [x] **Phase 2: Lucide Iconography & macOS Pro Studio UI** - Full migration to `lucide-react`, Figma/Lightroom dark theme, integrated macOS titlebar, modular inspectors, and Apple desktop ergonomics.
 - [x] **Phase 3: Instagram & Social Media Carousel Mode** - Dual-mode canvas engine, social aspect ratios (1:1, 4:5, 9:16), seamless cross-slide panorama photo spanning, and slide reordering.
-- [ ] **Phase 4: Shape Presets, Clipping Masks & Border Styling** - Rich vector clipping masks (Circle, Hexagon, Scallop, Heart, custom SVG), advanced borders/shadows, and 2D topological resize compatibility.
+- [x] **Phase 4: Shape Presets, Clipping Masks & Border Styling** - Rich vector clipping masks (Circle, Hexagon, Scallop, Heart, custom SVG), advanced borders/shadows, and 2D topological resize compatibility.
 - [ ] **Phase 5: Advanced Layered Export Suite** - Multi-layer Adobe Photoshop (`.psd`) export, automated Instagram carousel slice generator, high-bit-depth TIFF, and print-ready PDF/X.
 
 ---
@@ -80,8 +80,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: Implement Konva clipping shape engine with vector presets (Circle, Hexagon, Scallop, Heart, etc.) and custom SVG path masks.
-- [ ] 04-02: Implement advanced border, stroke, and shadow controls, ensuring full compatibility with multi-frame topological resizing.
+- [x] 04-01: Implement Konva clipping shape engine with vector presets (Circle, Hexagon, Scallop, Heart, etc.) and custom SVG path masks.
+- [x] 04-02: Implement advanced border, stroke, and shadow controls, ensuring full compatibility with multi-frame topological resizing.
 
 ---
 
