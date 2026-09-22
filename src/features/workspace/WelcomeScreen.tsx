@@ -6,8 +6,7 @@ import { useProjectStore } from '../../stores/projectStore';
 import { useAppStore } from '../../stores/appStore';
 import { Project } from '../../domain/project';
 import { formatDimensions } from '../../domain/units';
-import welcomeHero from '../../assets/welcome-hero.jpg';
-import appLogo from '../../assets/app-logo.png';
+import appIcon from '../../assets/app-icon.png';
 import styles from './WelcomeScreen.module.css';
 
 export function WelcomeScreen() {
@@ -75,30 +74,37 @@ export function WelcomeScreen() {
   return (
     <div className={styles.welcomeContainer}>
       <div className={styles.welcomeCard}>
-        {/* Left Side: Hero Image & Branding Overlay */}
+        {/* Left Side: Pro Studio Branding Column */}
         <div className={styles.heroColumn}>
-          <img
-            src={welcomeHero}
-            alt="Album Design Experience"
-            className={styles.heroImage}
-          />
-          <div className={styles.heroOverlay}>
-            <div className={styles.brandBadge}>
-              <div className={styles.logoIcon}>
-                <img src={appLogo} alt="AFSN" className={styles.appLogoImg} />
-              </div>
-              <span className={styles.engineTag}>AFSUNMEDIA DEV TEAM</span>
+          <div className={styles.studioBranding}>
+            <div className={styles.logoIcon}>
+              <img src={appIcon} alt="OpenSmartAlbum Icon" className={styles.appLogoImg} />
             </div>
 
             <div className={styles.heroTextGroup}>
-              <h1 className={styles.heroTitle}>AFSNSmartAlbum</h1>
+              <h1 className={styles.heroTitle}>OpenSmartAlbum</h1>
               <p className={styles.heroSubtitle}>
-                Every photograph captures a moment, but a great album preserves a legacy. Unleash your creative vision and transform cherished memories into timeless works of art.
+                Professional offline desktop photo album layout and social media publishing studio.
               </p>
             </div>
 
+            <div className={styles.featureHighlights}>
+              <div className={styles.featureItem}>
+                <span className={styles.featureDot}>•</span>
+                <span>Print-ready spreads, TIFF, PDF/X & layered PSD</span>
+              </div>
+              <div className={styles.featureItem}>
+                <span className={styles.featureDot}>•</span>
+                <span>Instagram multi-slide seamless carousel slicing</span>
+              </div>
+              <div className={styles.featureItem}>
+                <span className={styles.featureDot}>•</span>
+                <span>Canva-style vector shapes & non-destructive masks</span>
+              </div>
+            </div>
+
             <div className={styles.heroFooter}>
-              <span>{appInfo.version} — Afsunmedia - Asrofims</span>
+              <span>Version {appInfo.version} · macOS Native</span>
             </div>
           </div>
         </div>

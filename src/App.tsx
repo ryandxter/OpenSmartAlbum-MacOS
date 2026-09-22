@@ -4,7 +4,6 @@ import { WorkspaceLayout } from './features/workspace/WorkspaceLayout';
 import { AboutDialog } from './features/about/AboutDialog';
 import { SettingsDialog } from './features/settings/SettingsDialog';
 import { NewProjectDialog } from './features/project/NewProjectDialog';
-import { SupportDonationModal } from './features/support/SupportDonationModal';
 import { UpdateModal } from './features/updates/UpdateModal';
 import { BackgroundUpdateIndicator } from './features/updates/BackgroundUpdateIndicator';
 import { ExitWarningModal } from './features/workspace/ExitWarningModal';
@@ -67,17 +66,6 @@ export default function App() {
     };
     window.addEventListener('contextmenu', handleContextMenu);
     return () => window.removeEventListener('contextmenu', handleContextMenu);
-  }, []);
-
-  // Trigger QRIS support popup on initial app launch session
-  useEffect(() => {
-    try {
-      localStorage.removeItem('afsn_suppress_support_popup');
-    } catch {}
-    const timer = setTimeout(() => {
-      useAppStore.getState().openSupportModal();
-    }, 900);
-    return () => clearTimeout(timer);
   }, []);
 
   // Silent non-blocking background update check (after 4s startup delay)
@@ -193,7 +181,6 @@ export default function App() {
       <AboutDialog />
       <SettingsDialog />
       <NewProjectDialog />
-      <SupportDonationModal />
       <UpdateModal />
       <BackgroundUpdateIndicator />
       <ExitWarningModal />

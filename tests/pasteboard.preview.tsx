@@ -13,7 +13,7 @@ import type { Project } from '../src/domain/project';
 import '../src/styles/tokens.css';
 
 mockIPC(() => null);
-(window as any).__TAURI_INTERNALS__.convertFileSrc = () => '/src/assets/welcome-hero.jpg';
+(window as any).__TAURI_INTERNALS__.convertFileSrc = () => '/src/assets/app-icon.png';
 const project: Project = { id: 'preview', name: 'Pasteboard regression', canvasWidth: 200, canvasHeight: 200, canvasUnit: 'mm', canvasDpi: 300,
   spacingValue: 3, spacingUnit: 'mm', borderEnabled: false, borderWidth: 0, borderUnit: 'mm', borderColor: '#fff',
   marginEnabled: true, marginValue: 0, marginUnit: 'mm', backgroundType: 'solid', backgroundColor: '#fff', createdAt: '', updatedAt: '' };
@@ -22,7 +22,7 @@ const album = createInitialAlbum(project);
 const spread = album.spreads[0]!;
 spread.elements = buildSpreadElementsFromVariation({ id: 'preview', name: 'Preview', description: '', tags: [],
   rects: [{ x: 0, y: 0, width: 200, height: 200 }, { x: -95, y: 65, width: 70, height: 70 }] },
-  [0, 1].map(i => ({ photoId: `photo-${i}`, previewPath: '/previews/welcome-hero.jpg', filePath: 'preview.jpg', photoAspect: 1.5 })));
+  [0, 1].map(i => ({ photoId: `photo-${i}`, previewPath: '/src/assets/app-icon.png', filePath: 'preview.jpg', photoAspect: 1.5 })));
 useAlbumStore.setState({ currentAlbum: album, activeSpreadId: spread.id });
 useEditorStore.setState({ selectedFrameIds: [spread.elements[0]!.id] });
 usePhotoStore.setState({ photos: [] });

@@ -1,17 +1,16 @@
 import React from 'react';
-import { RefreshCw, ExternalLink, Heart, Coffee } from 'lucide-react';
+import { RefreshCw, ExternalLink } from 'lucide-react';
 import { Dialog } from '../../components/ui/Dialog';
 import { APP_CONFIG } from '../../config/app';
 import { useAppStore } from '../../stores/appStore';
 import { formatPlatform, isTauri } from '../../utils/platform';
-import appLogo from '../../assets/app-logo.png';
+import appIcon from '../../assets/app-icon.png';
 import styles from './AboutDialog.module.css';
 
 export function AboutDialog() {
   const isAboutOpen = useAppStore((s) => s.isAboutOpen);
   const closeAbout = useAppStore((s) => s.closeAbout);
   const openUpdateModal = useAppStore((s) => s.openUpdateModal);
-  const openSupportModal = useAppStore((s) => s.openSupportModal);
   const appInfo = useAppStore((s) => s.appInfo);
 
   const handleStartUpdateCheck = () => {
@@ -32,21 +31,21 @@ export function AboutDialog() {
     <Dialog
       isOpen={isAboutOpen}
       onClose={closeAbout}
-      title="About AFSNSmartAlbum"
+      title="About OpenSmartAlbum"
       width={480}
       noPadding
     >
       <div className={styles.container}>
-        {/* 1. Hero Section with App Logo */}
+        {/* 1. Hero Section with App Icon */}
         <div className={styles.heroSection}>
           <div className={styles.logoWrapper}>
-            <img src={appLogo} alt="AFSNSmartAlbum Logo" className={styles.logoImg} />
+            <img src={appIcon} alt="OpenSmartAlbum Icon" className={styles.logoImg} />
           </div>
 
           <div className={styles.brandText}>
-            <h2 className={styles.appName}>AFSNSmartAlbum</h2>
+            <h2 className={styles.appName}>OpenSmartAlbum</h2>
             <p className={styles.tagline}>
-              Professional Offline Desktop Photo Album Layout Application
+              Professional Offline Desktop Photo Album Layout & Social Studio
             </p>
           </div>
 
@@ -64,11 +63,15 @@ export function AboutDialog() {
           </div>
         </div>
 
-        {/* 2. Specs & Official Website Card */}
+        {/* 2. Specs & Details Card */}
         <div className={styles.specCard}>
           <div className={styles.specRow}>
-            <span className={styles.specLabel}>Developer</span>
-            <span className={styles.specValue}>Asrofims · Afsunmedia</span>
+            <span className={styles.specLabel}>Architecture</span>
+            <span className={styles.specValue}>100% Pure Rust Image Engine · Tauri 2</span>
+          </div>
+          <div className={styles.specRow}>
+            <span className={styles.specLabel}>Platform</span>
+            <span className={styles.specValue}>{formatPlatform(appInfo.platform)}</span>
           </div>
           <div className={styles.specRow}>
             <span className={styles.specLabel}>Website</span>
@@ -78,45 +81,17 @@ export function AboutDialog() {
               onClick={handleLinkClick(APP_CONFIG.website || 'https://app.afsun.my.id')}
               target="_blank"
               rel="noopener noreferrer"
-              title="Visit official website (app.afsun.my.id)"
+              title="Visit official website"
             >
-              <span>app.afsun.my.id</span>
+              <span>{APP_CONFIG.website ? APP_CONFIG.website.replace('https://', '') : 'app.afsun.my.id'}</span>
               <ExternalLink size={12} strokeWidth={1.5} />
             </a>
           </div>
-          <div className={styles.specRow}>
-            <span className={styles.specLabel}>Platform</span>
-            <span className={styles.specValue}>{formatPlatform(appInfo.platform)}</span>
-          </div>
         </div>
 
-        {/* 3. Support Independent Development (QRIS) */}
-        <div className={styles.supportCard}>
-          <div className={styles.supportInfo}>
-            <div className={styles.supportTitle}>
-              <Heart size={14} strokeWidth={1.5} color="#ec4899" />
-              <span>Support Development</span>
-            </div>
-            <div className={styles.supportDesc}>
-              Fund future layout templates, algorithms & updates via QRIS
-            </div>
-          </div>
-          <button
-            type="button"
-            className={styles.donateBtn}
-            onClick={() => {
-              closeAbout();
-              openSupportModal();
-            }}
-          >
-            <Coffee size={14} strokeWidth={1.5} />
-            <span>Donate (QRIS)</span>
-          </button>
-        </div>
-
-        {/* 4. Footer */}
+        {/* 3. Footer */}
         <div className={styles.footer}>
-          <span>Copyright © 2026 Afsunmedia. All rights reserved.</span>
+          <span>OpenSmartAlbum · Professional Offline Studio. All rights reserved.</span>
         </div>
       </div>
     </Dialog>

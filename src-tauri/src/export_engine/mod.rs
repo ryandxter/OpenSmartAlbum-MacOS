@@ -2448,8 +2448,7 @@ mod tests {
         let icons_dir = std::path::Path::new("icons");
         let _ = std::fs::create_dir_all(icons_dir);
 
-        let logo_path = std::path::Path::new("../src/assets/app-logo.png");
-        let hero_path = std::path::Path::new("../src/assets/welcome-hero.jpg");
+        let logo_path = std::path::Path::new("icons/icon.png");
 
         // 1. Generate Header Image (150x57) for NSIS (BMP Format)
         // Clean dark theme background (#0d1117) with refined 38x38 logo with comfortable margins
@@ -2466,23 +2465,8 @@ mod tests {
         let _ = header.save_with_format(icons_dir.join("header.png"), image::ImageFormat::Png);
 
         // 2. Generate Sidebar Image (164x314) for NSIS (BMP Format)
-        // Full-height cover photo with natural tree proportions
-        let mut sidebar: RgbaImage = ImageBuffer::from_pixel(164, 314, Rgba([13, 17, 23, 255]));
-
-        if let Ok(hero) = image::open(hero_path) {
-            let (orig_w, orig_h) = (hero.width() as f64, hero.height() as f64);
-            let target_w = 164.0;
-            let target_h = 314.0;
-            let scale = (target_w / orig_w).max(target_h / orig_h);
-            let scaled_w = (orig_w * scale).round() as u32;
-            let scaled_h = (orig_h * scale).round() as u32;
-
-            let scaled_hero = image::imageops::resize(&hero, scaled_w, scaled_h, image::imageops::FilterType::Lanczos3);
-            let crop_x = (scaled_w.saturating_sub(164)) / 2;
-            let crop_y = (scaled_h.saturating_sub(314)) / 2;
-            let cropped = image::imageops::crop_imm(&scaled_hero, crop_x, crop_y, 164, 314).to_image();
-            image::imageops::overlay(&mut sidebar, &cropped, 0, 0);
-        }
+        // Elegant pro dark charcoal studio gradient
+        let mut sidebar: RgbaImage = ImageBuffer::from_pixel(164, 314, Rgba([18, 18, 22, 255]));
 
         // Apply subtle dark vignette at top and bottom to ground the layout without obscuring tree
         for y in 0..314 {
