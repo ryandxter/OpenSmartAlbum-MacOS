@@ -1,8 +1,8 @@
 mod asset_cache;
 mod commands;
-mod db;
+pub mod db;
 mod photo_engine;
-mod export_engine;
+pub mod export_engine;
 
 use tauri::{Emitter, Manager};
 use db::Database;
