@@ -17,11 +17,13 @@ export interface CarouselState {
   currentCarousel: Carousel | null;
   activeSlideIndex: number;
   showSliceGuides: boolean;
+  selectedFrameId: string | null;
 
   // Actions
   initializeCarousel: (projectId: string, ratio?: CarouselRatio, initialSlidesCount?: number) => void;
   setRatio: (ratio: CarouselRatio) => void;
   setActiveSlide: (index: number) => void;
+  setSelectedFrameId: (id: string | null) => void;
   addSlide: (backgroundColor?: string) => void;
   duplicateSlide: (index: number) => void;
   deleteSlide: (index: number) => void;
@@ -40,12 +42,14 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
   currentCarousel: null,
   activeSlideIndex: 0,
   showSliceGuides: true,
+  selectedFrameId: null,
 
   initializeCarousel: (projectId, ratio = '1:1', initialSlidesCount = 3) => {
     const carousel = createInitialCarousel(projectId, ratio, initialSlidesCount);
     set({
       currentCarousel: carousel,
       activeSlideIndex: 0,
+      selectedFrameId: null,
     });
   },
 
@@ -74,6 +78,10 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     if (!currentCarousel) return;
     const clamped = Math.max(0, Math.min(currentCarousel.slides.length - 1, index));
     set({ activeSlideIndex: clamped });
+  },
+
+  setSelectedFrameId: (id) => {
+    set({ selectedFrameId: id });
   },
 
   addSlide: (backgroundColor = '#FFFFFF') => {
@@ -243,6 +251,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         ...currentCarousel,
         slides: updatedSlides,
       },
+      selectedFrameId: get().selectedFrameId === frameId ? null : get().selectedFrameId,
     });
   },
 

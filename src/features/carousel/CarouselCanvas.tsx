@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { Stage, Layer, Rect, Line, Text as KonvaText, Group, Image as KonvaImage, Transformer } from 'react-konva';
+import { Stage, Layer, Rect, Line, Text as KonvaText, Group, Image as KonvaImage, Transformer, Path as KonvaPath } from 'react-konva';
 import Konva from 'konva';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useCarouselStore } from '../../stores/carouselStore';
@@ -10,6 +10,7 @@ import {
   getSlideXOffset,
   getSlideIndexAtX,
 } from '../../domain/carousel';
+import { drawShapeToContext, getShapeSvgPath } from '../../domain/shapes';
 import styles from './CarouselCanvas.module.css';
 
 interface CarouselCanvasProps {
@@ -99,6 +100,16 @@ function CarouselFrameNode({
     };
   }, [displaySrc]);
 
+  const cornerRadiiArray: [number, number, number, number] = [
+    frame.cornerRadiusTl ?? frame.cornerRadius ?? 0,
+    frame.cornerRadiusTr ?? frame.cornerRadius ?? 0,
+    frame.cornerRadiusBr ?? frame.cornerRadius ?? 0,
+    frame.cornerRadiusBl ?? frame.cornerRadius ?? 0,
+  ];
+  const hasRounding = cornerRadiiArray.some((r) => r > 0);
+  const strokePx = Math.max(1, Math.round(frame.borderWidth || 1));
+  const strokeDash = frame.borderStyle === 'dashed' ? [strokePx * 2.5, strokePx * 1.5] : undefined;
+
   return (
     <Group
       ref={shapeRef}
@@ -118,25 +129,88 @@ function CarouselFrameNode({
         });
       }}
     >
-      {/* Background / Placeholder */}
-      <Rect
-        width={frame.width}
-        height={frame.height}
-        fill={imageObj ? '#000000' : '#27272A'}
-        stroke={isSelected ? '#E4E4E7' : undefined}
-        strokeWidth={isSelected ? 2 : 0}
-        cornerRadius={frame.cornerRadius || 0}
-      />
-
-      {/* Render Image if loaded */}
-      {imageObj && (
-        <KonvaImage
-          image={imageObj}
+      {/* Clipped Photo Viewport */}
+      <Group
+        clipFunc={(ctx) => {
+          if (frame.shapeType && frame.shapeType !== 'rectangle') {
+            drawShapeToContext(ctx, frame.shapeType, frame.width, frame.height, cornerRadiiArray, frame.customSvgPath);
+          } else if (hasRounding && typeof ctx.roundRect === 'function') {
+            ctx.beginPath();
+            ctx.roundRect(0, 0, frame.width, frame.height, cornerRadiiArray);
+          } else if (hasRounding) {
+            const [tl, tr, br, bl] = cornerRadiiArray;
+            ctx.beginPath();
+            ctx.moveTo(tl, 0);
+            ctx.lineTo(frame.width - tr, 0);
+            ctx.arcTo(frame.width, 0, frame.width, tr, tr);
+            ctx.lineTo(frame.width, frame.height - br);
+            ctx.arcTo(frame.width, frame.height, frame.width - br, frame.height, br);
+            ctx.lineTo(bl, frame.height);
+            ctx.arcTo(0, frame.height, 0, frame.height - bl, bl);
+            ctx.lineTo(0, tl);
+            ctx.arcTo(0, 0, tl, 0, tl);
+            ctx.closePath();
+          } else {
+            ctx.rect(0, 0, frame.width, frame.height);
+          }
+        }}
+      >
+        {/* Background / Placeholder */}
+        <Rect
           width={frame.width}
           height={frame.height}
-          cornerRadius={frame.cornerRadius || 0}
+          fill={imageObj ? '#000000' : '#27272A'}
+          listening={false}
         />
-      )}
+
+        {/* Render Image if loaded */}
+        {imageObj && (
+          <KonvaImage
+            image={imageObj}
+            width={frame.width}
+            height={frame.height}
+          />
+        )}
+      </Group>
+
+      {/* Frame Border (Vector Contour or Rounded/Rect stroke) */}
+      {frame.borderEnabled && (() => {
+        const isCustomShape = frame.shapeType && frame.shapeType !== 'rectangle' && frame.shapeType !== 'rounded';
+        if (isCustomShape) {
+          const pathData = getShapeSvgPath(frame.shapeType as any, frame.width, frame.height, cornerRadiiArray, frame.customSvgPath);
+          return (
+            <KonvaPath
+              data={pathData}
+              stroke={frame.borderColor || '#FFFFFF'}
+              strokeWidth={strokePx}
+              dash={strokeDash}
+              strokeScaleEnabled={false}
+              listening={false}
+            />
+          );
+        }
+
+        const borderRadii: [number, number, number, number] = [
+          Math.max(0, cornerRadiiArray[0] - strokePx / 2),
+          Math.max(0, cornerRadiiArray[1] - strokePx / 2),
+          Math.max(0, cornerRadiiArray[2] - strokePx / 2),
+          Math.max(0, cornerRadiiArray[3] - strokePx / 2),
+        ];
+        return (
+          <Rect
+            x={strokePx / 2}
+            y={strokePx / 2}
+            width={Math.max(0, frame.width - strokePx)}
+            height={Math.max(0, frame.height - strokePx)}
+            stroke={frame.borderColor || '#FFFFFF'}
+            strokeWidth={strokePx}
+            dash={strokeDash}
+            cornerRadius={hasRounding ? borderRadii : undefined}
+            strokeScaleEnabled={false}
+            listening={false}
+          />
+        );
+      })()}
 
       {/* Frame boundary indication if selected */}
       {isSelected && (
@@ -169,7 +243,8 @@ export function CarouselCanvas({
   const showSliceGuides = useCarouselStore((s) => s.showSliceGuides);
   const updatePhotoFrame = useCarouselStore((s) => s.updatePhotoFrame);
 
-  const [selectedFrameId, setSelectedFrameId] = useState<string | null>(null);
+  const selectedFrameId = useCarouselStore((s) => s.selectedFrameId);
+  const setSelectedFrameId = useCarouselStore((s) => s.setSelectedFrameId);
   const [hoveredDropSlideIndex, setHoveredDropSlideIndex] = useState<number | null>(null);
   const [stagePos, setStagePos] = useState({ x: 40, y: 40 });
   const [isSpacePanning, setIsSpacePanning] = useState(false);

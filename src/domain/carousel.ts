@@ -5,6 +5,8 @@
  * Instagram & Social Media carousels (Square 1:1, Portrait 4:5, Story/Reel 9:16).
  */
 
+import type { ShapeType } from './shapes';
+
 export type CarouselRatio = '1:1' | '4:5' | '9:16';
 
 export interface CarouselRatioPreset {
@@ -63,7 +65,16 @@ export interface CarouselPhotoFrame {
   rotation?: number;
   locked?: boolean;
   cornerRadius?: number;
-  shapeType?: string;
+  shapeType?: ShapeType;
+  customSvgPath?: string;
+  borderEnabled?: boolean;
+  borderWidth?: number;
+  borderColor?: string;
+  borderStyle?: 'solid' | 'dashed' | 'double';
+  cornerRadiusTl?: number;
+  cornerRadiusTr?: number;
+  cornerRadiusBr?: number;
+  cornerRadiusBl?: number;
 }
 
 export type CarouselElement = CarouselPhotoFrame;

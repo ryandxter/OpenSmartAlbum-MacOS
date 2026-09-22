@@ -320,7 +320,7 @@ function PhotoFrameNode({
       const absCenter = shapeRef.current.getAbsoluteTransform().point({ x: photoCenterX, y: photoCenterY });
       const currentDist = Math.hypot(ptr.x - absCenter.x, ptr.y - absCenter.y);
       const ratio = currentDist / zoomDragStartRef.current.initialDist;
-      const targetScale = clamp(roundToHundredth(zoomDragStartRef.current.initialScale * ratio), 1.0, 3.5);
+      const targetScale = clamp(roundToHundredth(zoomDragStartRef.current.initialScale * ratio), 1.0, 5.0);
       currentDragScaleRef.current = targetScale;
       setLiveScale(targetScale);
     }
@@ -664,7 +664,7 @@ function PhotoFrameNode({
                 e.evt.preventDefault();
                 e.cancelBubble = true;
                 const scaleDelta = e.evt.deltaY < 0 ? 0.02 : -0.02;
-                const newScale = clamp(Math.round(((frame.cropScale || 1.0) + scaleDelta) * 100) / 100, 1.0, 3.5);
+                const newScale = clamp(Math.round(((frame.cropScale || 1.0) + scaleDelta) * 100) / 100, 1.0, 5.0);
                 onCropChange({ cropScale: newScale });
               }
             }}
@@ -1011,6 +1011,28 @@ function PhotoFrameNode({
             onDragEnd={handleZoomDragEnd}
           />
         </Group>
+      )}
+
+      {/* In-Shape Interactive Crop Silhouette Guide Overlay */}
+      {isCropMode && frame.shapeType && frame.shapeType !== 'rectangle' && frame.shapeType !== 'rounded' && (
+        <KonvaPath
+          data={getShapeSvgPath(frame.shapeType, pixelW, pixelH, cornerRadiiArray, frame.customSvgPath)}
+          stroke="#38bdf8"
+          strokeWidth={2}
+          dash={[6, 4]}
+          listening={false}
+        />
+      )}
+      {isCropMode && (frame.shapeType === 'rounded' || hasRounding) && (
+        <Rect
+          width={pixelW}
+          height={pixelH}
+          stroke="#38bdf8"
+          strokeWidth={2}
+          dash={[6, 4]}
+          cornerRadius={cornerRadiiArray}
+          listening={false}
+        />
       )}
 
       {/* Multiple Selection Visual Highlight Outline */}

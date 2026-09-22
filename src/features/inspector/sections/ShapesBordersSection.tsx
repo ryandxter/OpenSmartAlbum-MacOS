@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useEditorStore } from '../../../stores/editorStore';
 import { useAlbumStore } from '../../../stores/albumStore';
+import { useCarouselStore } from '../../../stores/carouselStore';
 import { ColorPicker } from '../../../components/ui/ColorPicker';
 import { Switch } from '../../../components/ui/Switch';
 import { NumberInput } from '../../../components/ui/NumberInput';
@@ -23,14 +24,22 @@ import styles from '../InspectorShared.module.css';
 
 interface ShapesBordersSectionProps {
   onToast?: (msg: string) => void;
+  activeMode?: 'print' | 'carousel';
 }
 
-export function ShapesBordersSection({ onToast }: ShapesBordersSectionProps) {
+export function ShapesBordersSection({ onToast, activeMode = 'print' }: ShapesBordersSectionProps) {
+  const isCarousel = activeMode === 'carousel';
+
+  // Album/Print Store state
   const currentAlbum = useAlbumStore((s) => s.currentAlbum);
   const activeSpreadId = useAlbumStore((s) => s.activeSpreadId);
   const selectedFrameIds = useEditorStore((s) => s.selectedFrameIds);
   const updateFrameGeometry = useEditorStore((s) => s.updateFrameGeometry);
   const batchUpdateFrames = useEditorStore((s) => s.batchUpdateFrames);
+
+  // Carousel Store state
+  const currentCarousel = useCarouselStore((s) => s.currentCarousel);
+  const selectedCarouselFrameId = useCarouselStore((s) => s.selectedFrameId);
 
   const [isCornersLinked, setIsCornersLinked] = useState(true);
   const svgInputRef = useRef<HTMLInputElement>(null);
@@ -41,7 +50,21 @@ export function ShapesBordersSection({ onToast }: ShapesBordersSectionProps) {
     selectedFrameIds.includes(el.id)
   );
 
-  if (selectedElements.length === 0) {
+  const carouselFrame = isCarousel
+    ? currentCarousel?.slides
+        .flatMap((s) => s.elements)
+        .find((el) => el.id === selectedCarouselFrameId && el.type === 'photo')
+    : null;
+
+  if (isCarousel && !carouselFrame) {
+    return (
+      <div className={styles.emptyHint}>
+        Select a carousel photo frame to customize clipping shapes, borders, and corner radii.
+      </div>
+    );
+  }
+
+  if (!isCarousel && selectedElements.length === 0) {
     return (
       <div className={styles.emptyHint}>
         Select one or more photo frames to customize clipping shapes, borders, and drop shadows.
@@ -50,29 +73,44 @@ export function ShapesBordersSection({ onToast }: ShapesBordersSectionProps) {
   }
 
   // Representative element for initial values
-  const firstElem = selectedElements[0] as any;
-  const currentShape: ShapeType = firstElem.shapeType || (firstElem.cornerRadius ? 'rounded' : 'rectangle');
-  const [tl, tr, br, bl] = getCornerRadii(firstElem);
+  const activeTarget: any = isCarousel ? carouselFrame : selectedElements[0];
+  const currentShape: ShapeType =
+    activeTarget.shapeType || (activeTarget.cornerRadius ? 'rounded' : 'rectangle');
+
+  const [tl, tr, br, bl] = isCarousel
+    ? [
+        Number(activeTarget.cornerRadiusTl ?? activeTarget.cornerRadius ?? 0),
+        Number(activeTarget.cornerRadiusTr ?? activeTarget.cornerRadius ?? 0),
+        Number(activeTarget.cornerRadiusBr ?? activeTarget.cornerRadius ?? 0),
+        Number(activeTarget.cornerRadiusBl ?? activeTarget.cornerRadius ?? 0),
+      ]
+    : getCornerRadii(activeTarget);
   const masterRadius = Math.max(tl, tr, br, bl);
 
   // Border values
-  const borderEnabled = Boolean(firstElem.borderEnabled);
-  const borderWidth = Number(firstElem.borderWidth || 1);
-  const borderColor = String(firstElem.borderColor || '#FFFFFF');
-  const borderStyle = String(firstElem.borderStyle || 'solid');
+  const borderEnabled = Boolean(activeTarget.borderEnabled);
+  const borderWidth = Number(activeTarget.borderWidth || 1);
+  const borderColor = String(activeTarget.borderColor || '#FFFFFF');
+  const borderStyle = String(activeTarget.borderStyle || 'solid');
 
   // Shadow values
-  const shadowEnabled = Boolean(firstElem.shadowEnabled);
-  const shadowColor = String(firstElem.shadowColor || 'rgba(0, 0, 0, 0.6)');
-  const shadowBlur = Number(firstElem.shadowBlur ?? 15);
-  const shadowOffsetX = Number(firstElem.shadowOffsetX ?? 0);
-  const shadowOffsetY = Number(firstElem.shadowOffsetY ?? 6);
-  const shadowOpacity = Math.round(Number(firstElem.shadowOpacity ?? 0.6) * 100);
+  const shadowEnabled = Boolean(activeTarget.shadowEnabled);
+  const shadowColor = String(activeTarget.shadowColor || 'rgba(0, 0, 0, 0.6)');
+  const shadowBlur = Number(activeTarget.shadowBlur ?? 15);
+  const shadowOffsetX = Number(activeTarget.shadowOffsetX ?? 0);
+  const shadowOffsetY = Number(activeTarget.shadowOffsetY ?? 6);
+  const shadowOpacity = Math.round(Number(activeTarget.shadowOpacity ?? 0.6) * 100);
 
   const updateSelectedBorders = (updates: Record<string, any>) => {
-    if (!activeSpreadId || !firstElem) return;
+    if (isCarousel) {
+      if (!selectedCarouselFrameId) return;
+      useCarouselStore.getState().updatePhotoFrame(selectedCarouselFrameId, updates);
+      return;
+    }
+
+    if (!activeSpreadId || !activeTarget) return;
     if (selectedElements.length === 1) {
-      updateFrameGeometry(activeSpreadId, firstElem.id, updates as any);
+      updateFrameGeometry(activeSpreadId, activeTarget.id, updates as any);
     } else {
       batchUpdateFrames(
         activeSpreadId,
@@ -395,76 +433,80 @@ export function ShapesBordersSection({ onToast }: ShapesBordersSectionProps) {
         )}
       </div>
 
-      <div className={styles.divider} />
+      {!isCarousel && (
+        <>
+          <div className={styles.divider} />
 
-      {/* 4. Contour Drop Shadow */}
-      <div className={styles.propGroup}>
-        <div className={styles.groupHeader}>
-          <span className={styles.label}>Drop Shadow</span>
-          <Switch
-            checked={shadowEnabled}
-            onChange={(checked) => updateSelectedBorders({ shadowEnabled: checked })}
-          />
-        </div>
-
-        {shadowEnabled && (
-          <>
-            <div className={styles.propRow}>
-              <span className={styles.subLabel}>Shadow Color</span>
-              <ColorPicker
-                value={shadowColor}
-                onChange={(c) => updateSelectedBorders({ shadowColor: c })}
+          {/* 4. Contour Drop Shadow */}
+          <div className={styles.propGroup}>
+            <div className={styles.groupHeader}>
+              <span className={styles.label}>Drop Shadow</span>
+              <Switch
+                checked={shadowEnabled}
+                onChange={(checked) => updateSelectedBorders({ shadowEnabled: checked })}
               />
             </div>
 
-            <div className={styles.propRow}>
-              <span className={styles.subLabel}>Blur Radius</span>
-              <div style={{ width: '100px' }}>
-                <NumberInput
-                  value={shadowBlur}
-                  min={0}
-                  max={60}
-                  suffix="px"
-                  onChange={(b) => updateSelectedBorders({ shadowBlur: b })}
-                />
-              </div>
-            </div>
+            {shadowEnabled && (
+              <>
+                <div className={styles.propRow}>
+                  <span className={styles.subLabel}>Shadow Color</span>
+                  <ColorPicker
+                    value={shadowColor}
+                    onChange={(c) => updateSelectedBorders({ shadowColor: c })}
+                  />
+                </div>
 
-            <div className={styles.propGrid2} style={{ marginTop: '8px' }}>
-              <NumberInput
-                label="Offset X"
-                value={shadowOffsetX}
-                min={-50}
-                max={50}
-                suffix="px"
-                onChange={(ox) => updateSelectedBorders({ shadowOffsetX: ox })}
-              />
-              <NumberInput
-                label="Offset Y"
-                value={shadowOffsetY}
-                min={-50}
-                max={50}
-                suffix="px"
-                onChange={(oy) => updateSelectedBorders({ shadowOffsetY: oy })}
-              />
-            </div>
+                <div className={styles.propRow}>
+                  <span className={styles.subLabel}>Blur Radius</span>
+                  <div style={{ width: '100px' }}>
+                    <NumberInput
+                      value={shadowBlur}
+                      min={0}
+                      max={60}
+                      suffix="px"
+                      onChange={(b) => updateSelectedBorders({ shadowBlur: b })}
+                    />
+                  </div>
+                </div>
 
-            <div className={styles.propGroup} style={{ marginTop: '8px' }}>
-              <span className={styles.subLabel}>Opacity ({shadowOpacity}%)</span>
-              <div className={styles.sliderContainer} style={{ marginTop: '4px' }}>
-                <input
-                  type="range"
-                  className={styles.slider}
-                  min={0}
-                  max={100}
-                  value={shadowOpacity}
-                  onChange={(e) => updateSelectedBorders({ shadowOpacity: Number(e.target.value) / 100 })}
-                />
-              </div>
-            </div>
-          </>
-        )}
-      </div>
+                <div className={styles.propGrid2} style={{ marginTop: '8px' }}>
+                  <NumberInput
+                    label="Offset X"
+                    value={shadowOffsetX}
+                    min={-50}
+                    max={50}
+                    suffix="px"
+                    onChange={(ox) => updateSelectedBorders({ shadowOffsetX: ox })}
+                  />
+                  <NumberInput
+                    label="Offset Y"
+                    value={shadowOffsetY}
+                    min={-50}
+                    max={50}
+                    suffix="px"
+                    onChange={(oy) => updateSelectedBorders({ shadowOffsetY: oy })}
+                  />
+                </div>
+
+                <div className={styles.propGroup} style={{ marginTop: '8px' }}>
+                  <span className={styles.subLabel}>Opacity ({shadowOpacity}%)</span>
+                  <div className={styles.sliderContainer} style={{ marginTop: '4px' }}>
+                    <input
+                      type="range"
+                      className={styles.slider}
+                      min={0}
+                      max={100}
+                      value={shadowOpacity}
+                      onChange={(e) => updateSelectedBorders({ shadowOpacity: Number(e.target.value) / 100 })}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
