@@ -40,7 +40,7 @@ import {
 import { getSlideXOffset } from '../../domain/carousel';
 import { findPhotoSwapTarget } from '../editor/photoSwapDrag';
 import { StatusBar } from './StatusBar';
-import { isMac } from '../../utils/platform';
+import { isMac, isTauri } from '../../utils/platform';
 import styles from './WorkspaceLayout.module.css';
 
 const SUPPORTED_EXTENSIONS = new Set([
@@ -201,6 +201,7 @@ export function WorkspaceLayout() {
 
   // Listen for real-time Export Project Package (.zip) progress
   useEffect(() => {
+    if (!isTauri()) return;
     let isMounted = true;
     const unlistenPromise = listen<ExportZipProgressPayload>('export-zip-progress', (event) => {
       if (!isMounted) return;
@@ -534,45 +535,80 @@ export function WorkspaceLayout() {
     }
   }, [currentProject, handleCanvasFinderDrop, showToast]);
 
-  // Register Tauri 2 window drag-and-drop event listener
+  // Register window drag-and-drop event listener (Tauri native + browser dev fallback)
   useEffect(() => {
     let unlisten: (() => void) | undefined;
     let isCancelled = false;
 
-    getCurrentWebview().onDragDropEvent((event) => {
-      if (isCancelled) return;
-      const payload = event.payload;
+    if (isTauri()) {
+      try {
+        getCurrentWebview()
+          .onDragDropEvent((event) => {
+            if (isCancelled) return;
+            const payload = event.payload;
 
-      if (payload.type === 'enter') {
-        const paths = payload.paths || [];
-        setIsFinderDragging(true);
-        setDraggedFileCount(paths.length);
-        const clientX = payload.position.x / window.devicePixelRatio;
-        const clientY = payload.position.y / window.devicePixelRatio;
-        setFinderDropZone(resolveDropTargetZone(clientX, clientY));
-      } else if (payload.type === 'over') {
-        const clientX = payload.position.x / window.devicePixelRatio;
-        const clientY = payload.position.y / window.devicePixelRatio;
-        setFinderDropZone(resolveDropTargetZone(clientX, clientY));
-      } else if (payload.type === 'leave') {
-        setIsFinderDragging(false);
-        setFinderDropZone('none');
-        setDraggedFileCount(0);
-      } else if (payload.type === 'drop') {
-        const clientX = payload.position.x / window.devicePixelRatio;
-        const clientY = payload.position.y / window.devicePixelRatio;
-        const targetZone = resolveDropTargetZone(clientX, clientY);
-        setIsFinderDragging(false);
-        setFinderDropZone('none');
-        setDraggedFileCount(0);
-        void handleFinderDrop(payload.paths, targetZone, clientX, clientY);
+            if (payload.type === 'enter') {
+              const paths = payload.paths || [];
+              setIsFinderDragging(true);
+              setDraggedFileCount(paths.length);
+              const clientX = payload.position.x / window.devicePixelRatio;
+              const clientY = payload.position.y / window.devicePixelRatio;
+              setFinderDropZone(resolveDropTargetZone(clientX, clientY));
+            } else if (payload.type === 'over') {
+              const clientX = payload.position.x / window.devicePixelRatio;
+              const clientY = payload.position.y / window.devicePixelRatio;
+              setFinderDropZone(resolveDropTargetZone(clientX, clientY));
+            } else if (payload.type === 'leave') {
+              setIsFinderDragging(false);
+              setFinderDropZone('none');
+              setDraggedFileCount(0);
+            } else if (payload.type === 'drop') {
+              const clientX = payload.position.x / window.devicePixelRatio;
+              const clientY = payload.position.y / window.devicePixelRatio;
+              const targetZone = resolveDropTargetZone(clientX, clientY);
+              setIsFinderDragging(false);
+              setFinderDropZone('none');
+              setDraggedFileCount(0);
+              void handleFinderDrop(payload.paths, targetZone, clientX, clientY);
+            }
+          })
+          .then((fn) => {
+            if (isCancelled) fn();
+            else unlisten = fn;
+          })
+          .catch((err) => {
+            console.warn('[AFSN] Error attaching onDragDropEvent listener:', err);
+          });
+      } catch (err) {
+        console.warn('[AFSN] Error initializing getCurrentWebview:', err);
       }
-    }).then((fn) => {
-      if (isCancelled) fn();
-      else unlisten = fn;
-    }).catch((err) => {
-      console.warn('[AFSN] Error attaching onDragDropEvent listener:', err);
-    });
+    } else {
+      // Browser fallback (Vite dev mode in standard browser)
+      const handleWindowDragOver = (e: DragEvent) => {
+        if (!e.dataTransfer?.types?.includes('Files')) return;
+        e.preventDefault();
+        setIsFinderDragging(true);
+        setFinderDropZone(resolveDropTargetZone(e.clientX, e.clientY));
+      };
+      const handleWindowDragLeave = (e: DragEvent) => {
+        if (!e.relatedTarget) {
+          setIsFinderDragging(false);
+          setFinderDropZone('none');
+        }
+      };
+      const handleWindowDrop = () => {
+        setIsFinderDragging(false);
+        setFinderDropZone('none');
+      };
+      window.addEventListener('dragover', handleWindowDragOver);
+      window.addEventListener('dragleave', handleWindowDragLeave);
+      window.addEventListener('drop', handleWindowDrop);
+      unlisten = () => {
+        window.removeEventListener('dragover', handleWindowDragOver);
+        window.removeEventListener('dragleave', handleWindowDragLeave);
+        window.removeEventListener('drop', handleWindowDrop);
+      };
+    }
 
     return () => {
       isCancelled = true;
