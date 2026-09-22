@@ -28,10 +28,10 @@
 
 ### 4. Instagram & Social Media Carousel Mode (CARO)
 
-- [ ] **CARO-01**: Dual-Mode Canvas Switcher allowing instant toggling between "Print Album" (physical mm/inch/spine/bleed) and "Instagram Carousel" (pixel-based).
-- [ ] **CARO-02**: Standard social aspect ratio presets: 1:1 Square (1080x1080), 4:5 Portrait (1080x1350), and 9:16 Reel/Story (1080x1920).
-- [ ] **CARO-03**: Multi-slide seamless panorama support with visible canvas slice guides, enabling photos to span seamlessly across adjacent slides without seam distortion.
-- [ ] **CARO-04**: Interactive slide management: reorder slides via drag-and-drop, duplicate slides, and add slides up to the 10-slide Instagram limit.
+- [x] **CARO-01**: Dual-Mode Canvas Switcher allowing instant toggling between "Print Album" (physical mm/inch/spine/bleed) and "Instagram Carousel" (pixel-based).
+- [x] **CARO-02**: Standard social aspect ratio presets: 1:1 Square (1080x1080), 4:5 Portrait (1080x1350), and 9:16 Reel/Story (1080x1920).
+- [x] **CARO-03**: Multi-slide seamless panorama support with visible canvas slice guides, enabling photos to span seamlessly across adjacent slides without seam distortion.
+- [x] **CARO-04**: Interactive slide management: reorder slides via drag-and-drop, duplicate slides, and add slides up to the 10-slide Instagram limit.
 
 ### 5. Canva/Photoshop Shape Presets & Clipping Masks (SHAPE)
 
@@ -81,10 +81,10 @@
 | UIUX-04 | Phase 2 | Complete |
 | UIUX-05 | Phase 2 | Complete |
 | UIUX-06 | Phase 2 | Complete |
-| CARO-01 | Phase 3 | Pending |
-| CARO-02 | Phase 3 | Pending |
-| CARO-03 | Phase 3 | Pending |
-| CARO-04 | Phase 3 | Pending |
+| CARO-01 | Phase 3 | Complete |
+| CARO-02 | Phase 3 | Complete |
+| CARO-03 | Phase 3 | Complete |
+| CARO-04 | Phase 3 | Complete |
 | SHAPE-01 | Phase 4 | Pending |
 | SHAPE-02 | Phase 4 | Pending |
 | SHAPE-03 | Phase 4 | Pending |
