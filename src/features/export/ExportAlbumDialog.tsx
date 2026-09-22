@@ -483,7 +483,7 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport, activeMode =
                       </span>
                     ))}
                     {exportPanorama && (
-                      <span className={styles.slicePill} style={{ borderColor: 'var(--color-primary)', color: '#38bdf8' }}>
+                      <span className={styles.slicePill} style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}>
                         full_panorama.jpg
                       </span>
                     )}
@@ -492,7 +492,7 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport, activeMode =
 
                 {carouselSuccessMsg && (
                   <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.35)', color: '#4ade80', fontSize: 12 }}>
-                    <Check size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+                    <Check size={14} strokeWidth={1.5} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
                     {carouselSuccessMsg}
                   </div>
                 )}
@@ -719,12 +719,22 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport, activeMode =
             {/* 1. Format Selection: 5 Formats */}
             <div className={styles.section}>
               <label className={styles.sectionTitle}>Export Format</label>
-              <div className={styles.formatGrid}>
+              <div className={styles.formatGrid} role="radiogroup" aria-label="Export Format">
                 <div
                   className={`${styles.formatCard} ${format === 'jpeg' ? styles.formatCardActive : ''}`}
+                  role="radio"
+                  aria-checked={format === 'jpeg'}
+                  tabIndex={0}
                   onClick={() => {
                     setFormat('jpeg');
                     setPreflightReport(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setFormat('jpeg');
+                      setPreflightReport(null);
+                    }
                   }}
                   title="Standard print lab JPEG with JFIF resolution tags"
                 >
@@ -734,9 +744,19 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport, activeMode =
                 </div>
                 <div
                   className={`${styles.formatCard} ${format === 'png' ? styles.formatCardActive : ''}`}
+                  role="radio"
+                  aria-checked={format === 'png'}
+                  tabIndex={0}
                   onClick={() => {
                     setFormat('png');
                     setPreflightReport(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setFormat('png');
+                      setPreflightReport(null);
+                    }
                   }}
                   title="Lossless PNG with pHYs resolution chunks"
                 >
@@ -746,9 +766,19 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport, activeMode =
                 </div>
                 <div
                   className={`${styles.formatCard} ${format === 'tiff' ? styles.formatCardActive : ''}`}
+                  role="radio"
+                  aria-checked={format === 'tiff'}
+                  tabIndex={0}
                   onClick={() => {
                     setFormat('tiff');
                     setPreflightReport(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setFormat('tiff');
+                      setPreflightReport(null);
+                    }
                   }}
                   title="Archival Prepress TIFF with 8/16-bit color and LZW compression"
                 >
@@ -758,9 +788,19 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport, activeMode =
                 </div>
                 <div
                   className={`${styles.formatCard} ${format === 'pdf' ? styles.formatCardActive : ''}`}
+                  role="radio"
+                  aria-checked={format === 'pdf'}
+                  tabIndex={0}
                   onClick={() => {
                     setFormat('pdf');
                     setPreflightReport(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setFormat('pdf');
+                      setPreflightReport(null);
+                    }
                   }}
                   title="Multi-page PDF or Print-Ready PDF/X with vector marks"
                 >
@@ -770,9 +810,19 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport, activeMode =
                 </div>
                 <div
                   className={`${styles.formatCard} ${format === 'psd' ? styles.formatCardActive : ''}`}
+                  role="radio"
+                  aria-checked={format === 'psd'}
+                  tabIndex={0}
                   onClick={() => {
                     setFormat('psd');
                     setPreflightReport(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setFormat('psd');
+                      setPreflightReport(null);
+                    }
                   }}
                   title="Adobe Photoshop PSD with discrete layers and non-destructive masks"
                 >
@@ -1279,6 +1329,7 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport, activeMode =
                       setPreflightReport(null);
                     }}
                     title="Clear prefix"
+                    aria-label="Clear prefix"
                   >
                     <X size={13} strokeWidth={1.5} />
                   </button>
