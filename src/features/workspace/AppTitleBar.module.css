@@ -14,6 +14,9 @@
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
+  /* Required for Tauri 2 macOS Overlay titlebar: HTML attr alone is not sufficient */
+  -webkit-app-region: drag;
+  app-region: drag;
 }
 
 /* Left Section: File & Help Menus, Undo/Redo */
@@ -38,6 +41,8 @@
   overflow: hidden;
   padding: 0 8px;
   cursor: default;
+  -webkit-app-region: drag;
+  app-region: drag;
 }
 
 /* Right Section: Mode Switcher & Actions */
