@@ -26,9 +26,36 @@ import { ExportAlbumDialog, ExportOptions } from '../export/ExportAlbumDialog';
 import { ExportProgressModal } from '../export/ExportProgressModal';
 import { AppTitleBar } from './AppTitleBar';
 import { InspectorContainer } from '../inspector/InspectorContainer';
+import { getCurrentWebview } from '@tauri-apps/api/webview';
+import Konva from 'konva';
+import { DropZoneHUD } from './DropZoneHUD';
+import { useHistoryStore } from '../../stores/historyStore';
+import { getProjectDimensionsInCanvasUnit } from '../../domain/templates';
+import {
+  generateAdaptiveLayoutVariations,
+  buildSpreadElementsFromVariation,
+  partitionPageBoxIntoKRects,
+  type AdaptivePhoto,
+} from '../../domain/adaptiveLayout';
+import { getSlideXOffset } from '../../domain/carousel';
+import { findPhotoSwapTarget } from '../editor/photoSwapDrag';
 import { StatusBar } from './StatusBar';
 import { isMac } from '../../utils/platform';
 import styles from './WorkspaceLayout.module.css';
+
+const SUPPORTED_EXTENSIONS = new Set([
+  'jpg', 'jpeg', 'png', 'tiff', 'tif', 'webp', 'heic', 'heif',
+  'raw', 'cr2', 'nef', 'arw', 'dng', 'raf', 'orf', 'rw2', 'pef'
+]);
+
+function isSupportedFileOrDir(filePath: string): boolean {
+  const parts = filePath.split(/[\\/]/);
+  const fileName = parts[parts.length - 1] || '';
+  const dotIndex = fileName.lastIndexOf('.');
+  if (dotIndex === -1) return true; // Likely a directory
+  const ext = fileName.slice(dotIndex + 1).toLowerCase();
+  return SUPPORTED_EXTENSIONS.has(ext);
+}
 
 export interface ExportZipProgressPayload {
   current: number;
@@ -73,6 +100,11 @@ export function WorkspaceLayout() {
   const [isFilmstripOpen, setIsFilmstripOpen] = useState(true);
   const [activeMode, setActiveMode] = useState<'print' | 'carousel'>('print');
   const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
+
+  // External Finder Drag-and-Drop Ingestion state
+  const [isFinderDragging, setIsFinderDragging] = useState(false);
+  const [finderDropZone, setFinderDropZone] = useState<'canvas' | 'filmstrip' | 'none'>('none');
+  const [draggedFileCount, setDraggedFileCount] = useState(0);
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
@@ -200,6 +232,353 @@ export function WorkspaceLayout() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [saveStatus]);
+
+  // Resolve whether cursor client coordinates fall inside Filmstrip Tray or Canvas area
+  const resolveDropTargetZone = useCallback((clientX: number, clientY: number): 'canvas' | 'filmstrip' | 'none' => {
+    const filmstripEl = document.querySelector('[class*="filmstrip"]');
+    if (filmstripEl && isFilmstripOpen) {
+      const rect = filmstripEl.getBoundingClientRect();
+      if (clientY >= rect.top && clientY <= window.innerHeight && clientX >= 0 && clientX <= window.innerWidth) {
+        return 'filmstrip';
+      }
+    }
+
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      const rect = mainEl.getBoundingClientRect();
+      if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
+        return 'canvas';
+      }
+    }
+
+    if (clientY >= 40 && clientY <= window.innerHeight && clientX >= 0 && clientX <= window.innerWidth) {
+      return 'canvas';
+    }
+
+    return 'none';
+  }, [isFilmstripOpen]);
+
+  // Handle drops onto the Canvas (D-02, D-03)
+  const handleCanvasFinderDrop = useCallback(async (
+    validPaths: string[],
+    clientX: number,
+    clientY: number
+  ) => {
+    if (!currentProject) return;
+
+    showToast(`Ingesting ${validPaths.length} photo${validPaths.length > 1 ? 's' : ''}...`);
+    const newPhotos = await usePhotoStore.getState().importPathsAndGetPhotos(currentProject.id, validPaths);
+
+    if (!newPhotos || newPhotos.length === 0) {
+      showToast('Unable to load dropped photos into library');
+      return;
+    }
+
+    // Mark photos as used in photoStore
+    const newPhotoIdSet = new Set(newPhotos.map((p) => p.id));
+    usePhotoStore.setState((s) => ({
+      photos: s.photos.map((p) =>
+        newPhotoIdSet.has(p.id) ? { ...p, usedCount: (p.usedCount || 0) + 1 } : p
+      ),
+    }));
+
+    if (activeMode === 'print') {
+      const { currentAlbum, activeSpreadId } = useAlbumStore.getState();
+      if (!currentAlbum) return;
+
+      const isCover = currentAlbum.coverSpread.id === activeSpreadId;
+      const targetSpread = isCover
+        ? currentAlbum.coverSpread
+        : currentAlbum.spreads.find((s) => s.id === activeSpreadId) || currentAlbum.spreads[0];
+
+      if (!targetSpread) return;
+
+      // Convert clientX, clientY to physical spread coordinates
+      let physicalPt: { x: number; y: number } | null = null;
+      const stage = Konva.stages[0];
+      if (stage) {
+        const stageBox = stage.container().getBoundingClientRect();
+        const dropX = clientX - stageBox.left;
+        const dropY = clientY - stageBox.top;
+        const dims = getProjectDimensionsInCanvasUnit(currentProject, targetSpread);
+        const spreadWidth = isCover
+          ? (targetSpread.leftPage ? targetSpread.leftPage.width : dims.pageWidth) +
+            (targetSpread.rightPage ? targetSpread.rightPage.width : 0) +
+            dims.gutterWidth
+          : dims.pageWidth * 2 + dims.gutterWidth;
+
+        const bgSheet = stage.findOne('.background-sheet');
+        const screenSpreadW = bgSheet ? bgSheet.width() : spreadWidth;
+        const scaleFactor = screenSpreadW / spreadWidth;
+
+        physicalPt = {
+          x: (dropX - stage.x()) / scaleFactor,
+          y: (dropY - stage.y()) / scaleFactor,
+        };
+      }
+
+      // 1. Single photo drop over an existing unlocked frame -> Swap/Replace (D-02)
+      if (newPhotos.length === 1 && physicalPt) {
+        const targetFrame = findPhotoSwapTarget(
+          targetSpread.elements || [],
+          physicalPt,
+          ''
+        );
+
+        if (targetFrame) {
+          useEditorStore.getState().replacePhotoInFrame(targetSpread.id, targetFrame.id, newPhotos[0]!);
+          useEditorStore.getState().clearSelection();
+          showToast('Replaced photo in frame');
+          return;
+        }
+      }
+
+      // 2. Multi-photo drop (2-6 photos) on empty spread -> Smart Auto-Partitioning (D-03)
+      const existingPhotoCount = (targetSpread.elements || []).filter((e) => e.type === 'photo').length;
+      if (existingPhotoCount === 0 && newPhotos.length >= 2 && newPhotos.length <= 6) {
+        const dims = getProjectDimensionsInCanvasUnit(currentProject, targetSpread);
+        const isSpread = !isCover;
+        const spreadWidth = isCover
+          ? (targetSpread.leftPage ? targetSpread.leftPage.width : dims.pageWidth) +
+            (targetSpread.rightPage ? targetSpread.rightPage.width : 0) +
+            dims.gutterWidth
+          : dims.pageWidth * 2 + dims.gutterWidth;
+        const spreadHeight = dims.pageHeight;
+
+        const adaptivePhotos: AdaptivePhoto[] = newPhotos.map((p, idx) => ({
+          id: `photo-${Date.now()}-${idx + 1}`,
+          photoId: p.id,
+          filePath: p.filePath,
+          fileName: p.fileName,
+          previewPath: p.previewPath ?? undefined,
+          thumbnailPath: p.thumbnailPath ?? undefined,
+          photoAspect: p.width > 0 && p.height > 0 ? p.width / p.height : 1.5,
+          isFavorite: p.isFavorite,
+        }));
+
+        const variations = generateAdaptiveLayoutVariations(
+          {
+            spreadWidth,
+            spreadHeight,
+            isSpread,
+            safeMargin: dims.safeMargin,
+            safeMarginTop: dims.safeMarginTop,
+            safeMarginBottom: dims.safeMarginBottom,
+            safeMarginOutside: dims.safeMarginOutside,
+            safeMarginSpine: dims.safeMarginSpine,
+            gutterWidth: dims.gutterWidth,
+            spacing: dims.spacing,
+            lockedElements: [],
+          },
+          adaptivePhotos
+        );
+
+        if (variations.length > 0) {
+          const bestVariation = variations[0]!;
+          const newElements = buildSpreadElementsFromVariation(
+            bestVariation,
+            adaptivePhotos,
+            currentProject.borderEnabled,
+            currentProject.borderWidth,
+            currentProject.borderColor
+          );
+
+          useHistoryStore.getState().pushState(currentAlbum);
+
+          const textElements = (targetSpread.elements || []).filter((e) => e.type === 'text');
+          const allElements = [...newElements, ...textElements];
+
+          if (isCover) {
+            useAlbumStore.setState({
+              currentAlbum: {
+                ...currentAlbum,
+                coverSpread: { ...currentAlbum.coverSpread, elements: allElements },
+              },
+              saveStatus: 'unsaved',
+            });
+          } else {
+            const updatedSpreads = currentAlbum.spreads.map((s) =>
+              s.id === targetSpread.id ? { ...s, elements: allElements } : s
+            );
+            useAlbumStore.setState({
+              currentAlbum: {
+                ...currentAlbum,
+                spreads: updatedSpreads,
+              },
+              saveStatus: 'unsaved',
+            });
+          }
+
+          useEditorStore.setState({
+            selectedFrameIds: newElements.map((el) => el.id),
+            selectionGroupRotation: null,
+          });
+
+          showToast(`Placed ${newPhotos.length} photos with Smart Auto-Partitioning`);
+          return;
+        }
+      }
+
+      // 3. Otherwise: Add photos to spread (single photo, >6 photos, or spread already has elements)
+      useEditorStore.getState().addPhotosToSpread(
+        targetSpread.id,
+        newPhotos,
+        physicalPt ?? undefined
+      );
+      showToast(`Added ${newPhotos.length} photo${newPhotos.length > 1 ? 's' : ''} to spread`);
+      return;
+    }
+
+    if (activeMode === 'carousel') {
+      const { currentCarousel, activeSlideIndex, addPhotoFrame } = useCarouselStore.getState();
+      if (!currentCarousel) return;
+
+      const targetSlide = currentCarousel.slides[activeSlideIndex] || currentCarousel.slides[0];
+      if (!targetSlide) return;
+
+      const slideWidth = currentCarousel.slideWidthPx;
+      const slideHeight = currentCarousel.slideHeightPx;
+      const slideX = getSlideXOffset(currentCarousel, activeSlideIndex);
+
+      if (targetSlide.elements.length === 0 && newPhotos.length >= 2) {
+        const margin = 40;
+        const spacing = 16;
+        const slideBox = {
+          x: slideX + margin,
+          y: margin,
+          width: slideWidth - margin * 2,
+          height: slideHeight - margin * 2,
+        };
+        const rects = partitionPageBoxIntoKRects(slideBox, newPhotos.length, spacing, 0);
+
+        rects.forEach((rect, idx) => {
+          const photo = newPhotos[idx]!;
+          addPhotoFrame(activeSlideIndex, {
+            type: 'photo',
+            photoId: photo.id,
+            filePath: photo.filePath,
+            fileName: photo.fileName,
+            previewPath: photo.previewPath ?? undefined,
+            thumbnailPath: photo.thumbnailPath ?? undefined,
+            photoAspect: photo.width > 0 && photo.height > 0 ? photo.width / photo.height : rect.width / rect.height,
+            x: Math.round(rect.x),
+            y: Math.round(rect.y),
+            width: Math.round(rect.width),
+            height: Math.round(rect.height),
+            rotation: 0,
+          });
+        });
+
+        showToast(`Placed ${newPhotos.length} photos onto slide`);
+        return;
+      }
+
+      newPhotos.forEach((photo, idx) => {
+        const aspect = photo.width > 0 && photo.height > 0 ? photo.width / photo.height : 1.0;
+        const pad = 60;
+        const maxW = slideWidth - pad * 2;
+        const maxH = slideHeight - pad * 2;
+        let frameW = maxW;
+        let frameH = frameW / aspect;
+        if (frameH > maxH) {
+          frameH = maxH;
+          frameW = frameH * aspect;
+        }
+        const offset = idx * 24;
+        const frameX = slideX + (slideWidth - frameW) / 2 + offset;
+        const frameY = (slideHeight - frameH) / 2 + offset;
+
+        addPhotoFrame(activeSlideIndex, {
+          type: 'photo',
+          photoId: photo.id,
+          filePath: photo.filePath,
+          fileName: photo.fileName,
+          previewPath: photo.previewPath ?? undefined,
+          thumbnailPath: photo.thumbnailPath ?? undefined,
+          photoAspect: aspect,
+          x: Math.round(frameX),
+          y: Math.round(frameY),
+          width: Math.round(frameW),
+          height: Math.round(frameH),
+          rotation: 0,
+        });
+      });
+
+      showToast(`Added ${newPhotos.length} photo${newPhotos.length > 1 ? 's' : ''} to slide`);
+    }
+  }, [currentProject, activeMode, showToast]);
+
+  // Handle external drops routed by zone (D-01 vs D-02)
+  const handleFinderDrop = useCallback(async (
+    paths: string[],
+    targetZone: 'canvas' | 'filmstrip' | 'none',
+    clientX: number,
+    clientY: number
+  ) => {
+    if (!currentProject) {
+      showToast('Open or create a project before dropping photos');
+      return;
+    }
+
+    const validPaths = (paths || []).filter(isSupportedFileOrDir);
+    if (validPaths.length === 0) {
+      showToast('No supported image files or folders detected in drop');
+      return;
+    }
+
+    if (targetZone === 'filmstrip') {
+      showToast(`Importing ${validPaths.length} item${validPaths.length > 1 ? 's' : ''} into library...`);
+      await usePhotoStore.getState().importPaths(currentProject.id, validPaths);
+    } else {
+      await handleCanvasFinderDrop(validPaths, clientX, clientY);
+    }
+  }, [currentProject, handleCanvasFinderDrop, showToast]);
+
+  // Register Tauri 2 window drag-and-drop event listener
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let isCancelled = false;
+
+    getCurrentWebview().onDragDropEvent((event) => {
+      if (isCancelled) return;
+      const payload = event.payload;
+
+      if (payload.type === 'enter') {
+        const paths = payload.paths || [];
+        setIsFinderDragging(true);
+        setDraggedFileCount(paths.length);
+        const clientX = payload.position.x / window.devicePixelRatio;
+        const clientY = payload.position.y / window.devicePixelRatio;
+        setFinderDropZone(resolveDropTargetZone(clientX, clientY));
+      } else if (payload.type === 'over') {
+        const clientX = payload.position.x / window.devicePixelRatio;
+        const clientY = payload.position.y / window.devicePixelRatio;
+        setFinderDropZone(resolveDropTargetZone(clientX, clientY));
+      } else if (payload.type === 'leave') {
+        setIsFinderDragging(false);
+        setFinderDropZone('none');
+        setDraggedFileCount(0);
+      } else if (payload.type === 'drop') {
+        const clientX = payload.position.x / window.devicePixelRatio;
+        const clientY = payload.position.y / window.devicePixelRatio;
+        const targetZone = resolveDropTargetZone(clientX, clientY);
+        setIsFinderDragging(false);
+        setFinderDropZone('none');
+        setDraggedFileCount(0);
+        void handleFinderDrop(payload.paths, targetZone, clientX, clientY);
+      }
+    }).then((fn) => {
+      if (isCancelled) fn();
+      else unlisten = fn;
+    }).catch((err) => {
+      console.warn('[AFSN] Error attaching onDragDropEvent listener:', err);
+    });
+
+    return () => {
+      isCancelled = true;
+      if (unlisten) unlisten();
+    };
+  }, [resolveDropTargetZone, handleFinderDrop]);
 
   // Automatically open Properties Panel when entering or creating a project, close when exiting to Welcome Screen
   const prevProjectIdRef = useRef<string | null>(null);
@@ -684,6 +1063,14 @@ export function WorkspaceLayout() {
       <PhoneSwipeSimulator
         isOpen={isSimulatorOpen}
         onClose={() => setIsSimulatorOpen(false)}
+      />
+
+      {/* External Finder Drag-and-Drop Ingestion HUD */}
+      <DropZoneHUD
+        isVisible={isFinderDragging}
+        targetZone={finderDropZone}
+        activeMode={activeMode}
+        itemCount={draggedFileCount}
       />
     </div>
   );

@@ -186,6 +186,7 @@ interface PhotoState {
   importFiles: (projectId: string) => Promise<void>;
   importFolder: (projectId: string) => Promise<void>;
   importPaths: (projectId: string, paths: string[]) => Promise<void>;
+  importPathsAndGetPhotos: (projectId: string, paths: string[], folderId?: string | null) => Promise<Photo[]>;
   cancelImport: () => Promise<void>;
   cancelAllImports: () => Promise<void>;
   dismissImportNotice: () => void;
@@ -644,6 +645,47 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
     );
   },
 
+  importPathsAndGetPhotos: async (projectId: string, paths: string[], folderId?: string | null): Promise<Photo[]> => {
+    if (!paths || paths.length === 0) return [];
+    set({ error: null });
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const { useProjectStore } = await import('./projectStore');
+      const targetFolderId = folderId !== undefined ? folderId : (get().activeFolderId || null);
+      const updatedPhotos = await invoke<Photo[]>('import_file_paths', {
+        projectId,
+        paths,
+        folderId: targetFolderId,
+      });
+
+      const currentProj = useProjectStore.getState().currentProject;
+      if (currentProj && currentProj.id === projectId && Array.isArray(updatedPhotos)) {
+        const liveIds = new Set(updatedPhotos.map((p) => p.id));
+        await reconcileRemovedPhotos(projectId, get().photos.filter((p) => p.projectId === projectId && !liveIds.has(p.id)).map((p) => p.id));
+        set({ photos: updatedPhotos });
+        await markLibraryChanged(projectId);
+        await syncAlbumFramePhotoAssets(updatedPhotos);
+        await get().loadFolders(projectId);
+      }
+
+      // Match returned photos against the dropped paths (file or directory match)
+      const normalizedTargets = paths.map((p) => p.replace(/\\/g, '/').toLowerCase());
+      const matched = (updatedPhotos || []).filter((p) => {
+        const norm = p.filePath.replace(/\\/g, '/').toLowerCase();
+        return normalizedTargets.some((t) => norm === t || norm.startsWith(t.endsWith('/') ? t : t + '/'));
+      });
+
+      if (matched.length > 0) {
+        return matched;
+      }
+      return updatedPhotos || [];
+    } catch (err) {
+      console.error('[AFSN] importPathsAndGetPhotos error:', err);
+      set({ error: String(err) });
+      return [];
+    }
+  },
+
   cancelImport: async () => {
     set({ isCancelling: true });
     try {
@@ -994,3 +1036,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
   openRenameFolderDialog: (folder: PhotoFolder) => set({ isFolderDialogOpen: true, folderDialogMode: 'rename', folderDialogTarget: folder }),
   closeFolderDialog: () => set({ isFolderDialogOpen: false, folderDialogTarget: null }),
 }));
+
+export async function importPathsAndGetPhotos(projectId: string, paths: string[], folderId?: string | null): Promise<Photo[]> {
+  return usePhotoStore.getState().importPathsAndGetPhotos(projectId, paths, folderId);
+}
