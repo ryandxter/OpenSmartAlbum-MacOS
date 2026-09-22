@@ -1,6 +1,6 @@
 ====================================================================
-           AFSNSmartAlbum (v1.0.77)
-   Professional Photo Album Layout Desktop Software
+           AFSNSmartAlbum (v1.0.80)
+    Professional Photo Album Layout Desktop Software
 ====================================================================
 
 End User License Agreement (EULA) & Terms of Use

@@ -1,6 +1,6 @@
 # OpenSmartAlbum — macOS
 
-[![Release](https://img.shields.io/badge/Release-v1.0.77-blue.svg?style=flat-square)](https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases)
+[![Release](https://img.shields.io/badge/Release-v1.0.80-blue.svg?style=flat-square)](https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases)
 [![Platform](https://img.shields.io/badge/Platform-macOS%2013%2B%20(Apple%20Silicon)-000000.svg?style=flat-square&logo=apple)](https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131.svg?style=flat-square&logo=tauri)](https://tauri.app/)
 [![Rust](https://img.shields.io/badge/Rust-Pure%20Engine-DEA584.svg?style=flat-square&logo=rust)](https://www.rust-lang.org/)
@@ -145,7 +145,7 @@ npm run tauri dev
 Original author: **[Asrofims](https://github.com/asrofims)** / Afsunmedia  
 The core application — album domain model, layout engine, Rust image pipeline, export system — is his work. This macOS port exists because the original is genuinely good enough to be worth the effort.
 
-macOS port and feature additions: **[chiio](https://github.com/ryandxter)**  
+macOS port and feature additions: **[@ryandxter](https://github.com/ryandxter)**  
 — Win32 removal and macOS platform wiring  
 — Overlay titlebar + macOS native shortcut layer  
 — Instagram Carousel mode (domain model, Zustand store, export pipeline)  
@@ -165,4 +165,4 @@ macOS port and feature additions: **[chiio](https://github.com/ryandxter)**
 
 ---
 
-Copyright © 2026 Afsunmedia / Asrofims (original) · macOS port by chiio
+Copyright © 2026 Afsunmedia / Asrofims (original) · macOS port by @ryandxter
