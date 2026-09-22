@@ -1,146 +1,168 @@
-# 📸 AFSNSmartAlbum
+# OpenSmartAlbum — macOS
 
-[![Release](https://img.shields.io/badge/Release-v1.0.77-blue.svg?style=flat-square)](https://github.com/asrofims/AFSNSmartAlbum/releases)
-[![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20(64--bit)-0078D6.svg?style=flat-square&logo=windows)](https://github.com/asrofims/AFSNSmartAlbum/releases)
+[![Release](https://img.shields.io/badge/Release-v1.0.77-blue.svg?style=flat-square)](https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases)
+[![Platform](https://img.shields.io/badge/Platform-macOS%2013%2B%20(Apple%20Silicon)-000000.svg?style=flat-square&logo=apple)](https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131.svg?style=flat-square&logo=tauri)](https://tauri.app/)
-[![Rust](https://img.shields.io/badge/Rust-High%20Performance-DEA584.svg?style=flat-square&logo=rust)](https://www.rust-lang.org/)
+[![Rust](https://img.shields.io/badge/Rust-Pure%20Engine-DEA584.svg?style=flat-square&logo=rust)](https://www.rust-lang.org/)
 [![React](https://img.shields.io/badge/React-18-61DAFB.svg?style=flat-square&logo=react)](https://reactjs.org/)
-[![License](https://img.shields.io/badge/License-Proprietary-gray.svg?style=flat-square)](https://github.com/asrofims/AFSNSmartAlbum)
+[![License](https://img.shields.io/badge/License-Proprietary-gray.svg?style=flat-square)](https://github.com/ryandxter/OpenSmartAlbum-MacOS)
 
-> **Professional Offline Desktop Photo Album Layout Software**  
-> Engineered specifically for wedding photographers, commercial studios, and professional print labs.
-
----
-
-## 🌟 Overview
-
-**AFSNSmartAlbum** is a blazing-fast, offline-first desktop application designed to streamline the creation of high-end wedding and portrait photo books. Built with a native **Rust core (Tauri 2)** and a hardware-accelerated **React / Konva** design canvas, AFSNSmartAlbum delivers sub-millimeter precision, smart magnetic snapping, and instantaneous layout generation with zero cloud latency.
+> **Professional offline photo album layout software — now native on macOS.**  
+> Originally built for wedding photographers and print studios. This fork brings the full experience to Apple Silicon and Intel Macs.
 
 ---
 
-## ✨ Key Features
+## Background
 
-### 📐 2D Topological Spatial Neighbor Graph Multi-Resize
-When resizing multiple selected photo frames simultaneously, the layout engine calculates inter-frame spatial adjacency vectors to preserve exact physical gap spacing across complex rows, columns, and asymmetrical collages without distortion.
+AFSNSmartAlbum was created by [Asrofims / Afsunmedia](https://github.com/asrofims) as a Windows-native professional album design tool. The original codebase is a genuinely solid piece of work — tight Rust image engine, real magnetic snapping math, proper spread geometry. I picked it up because my studio runs on Macs and I got tired of running it through a VM.
 
-### 🧲 Smart Magnetic Snapping Engine
-Millimeter-accurate magnetic snapping with real-time HUD visual dimension guides:
-- **Left / Right Page Safe Margin Boxes** (Blue dashed print-safe boundary)
-- **Center Spine Crease Line** (Book spine fold alignment)
-- **Outer Bleed Boundaries** (Full-bleed trimming safety)
-- **Equal Inter-Frame Spacing Guides**
-
-### 🧩 Dynamic Adaptive Multi-Photo Partitioning Engine
-Instantly organize **1 to 12+ photos** onto spreads with a single click. Browse dozens of mathematically calculated layout variations that automatically adapt to native photo aspect ratios (3:2, 4:3, 1:1, 16:9).
-
-### ↺ Dual Entity Reset Architecture
-- **↺ Reset Ratio**: Restores frame geometry to the photo's native aspect ratio without altering custom pan/zoom crop coordinates.
-- **↺ Reset Crop**: Re-centers the image inside the frame and resets zoom to `1.0x`.
-
-### 🚀 Ultra-Fast Parallel Print Sharpening Engine
-Export album spreads at true **300 DPI** print resolution:
-- **Multi-Threaded Parallel Unsharp Masking**: Fast SIMD/Rayon Laplacian filter enhancement (~30ms per spread).
-- **Multi-Stage Realtime Progress Tracking**: Live status updates across decoding, layout composition, print sharpening, and disk encoding.
-- **Multi-Format Output**: Maximum Quality JPEG, Uncompressed PNG, or Print-Ready Multi-Page PDF.
-- **Full Spread & Split Page Modes**: Export as panoramic 2-page spreads or individual Left/Right print files.
-
-### 💾 Dual-Format Project Persistence
-- **Compressed Single-File Archive (`.afsn`)**: Ultra-compact project package with embedded previews and SQLite database.
-- **Self-Contained Project Folder**: Complete project bundle with copied original photos for 100% offline archival and multi-workstation sharing.
+This repo is the macOS port. The core architecture is unchanged — same Tauri 2 + Rust image engine, same Konva canvas, same SQLite project format. What changed is everything platform-specific: Win32 FFI removed, macOS entitlements wired up properly, overlay titlebar, native ⌘ shortcuts, proper DMG packaging. Also added the Instagram Carousel export mode since that came up constantly in our own workflow.
 
 ---
 
-## 💻 System Requirements
+## What's different from the original
 
-| Specification | Minimum Requirement | Recommended Specification |
+- **No Windows dependencies** — Win32 `EmptyWorkingSet`, GDI color sampling, and Registry font enumeration are all gone. Pure Rust everywhere.
+- **macOS overlay titlebar** — traffic light buttons sit properly in the chrome, window is draggable by the title area
+- **Native shortcuts** — `⌘C / ⌘V / ⌘Z` instead of Ctrl
+- **Instagram Carousel mode** — create multi-slide social media layouts (1:1, 4:5, 9:16) from the New Project dialog, export as individual slices
+- **DMG installer** — standard macOS `.dmg` distribution, no NSIS Windows installer cruft
+- **Layered PSD export** — export spreads as proper multi-layer Photoshop files with per-photo channel masks
+
+---
+
+## Features
+
+### Smart Layout Engine
+Drop 1–12 photos onto a spread and the engine generates mathematically valid layout variations that respect each photo's native aspect ratio. It's not template matching — it's actual 2D bin packing with aspect-ratio scoring. Layouts rank themselves by how little they crop each photo.
+
+### Magnetic Snapping
+Sub-millimeter snapping to spread spine, safe margin boundaries, bleed edges, and inter-frame equal-spacing guides. The HUD indicators update live as you drag.
+
+### Multi-Frame Resize Without Gap Distortion
+Resize a selection of frames and the spacing between them stays exact. Uses a 2D spatial neighbor graph to figure out which frames share edges and adjusts them proportionally. Most software just scales positions and gaps blow out.
+
+### Dual Reset Controls
+- **↺ Reset Ratio** — snaps the frame back to the photo's native aspect ratio (3:2, 4:3, etc.) without touching your crop pan or zoom
+- **↺ Reset Crop** — re-centers the photo inside the frame and resets to 1.0× zoom, keeps the frame geometry
+
+### Export Suite
+- High-res JPEG / lossless PNG / lossless TIFF at project DPI (up to 1200 DPI)
+- Print-ready PDF/X with trim marks, bleed box, and slug
+- Layered PSD with discrete photo layers and vector channel masks for all 8 shape presets
+- Instagram Carousel — numbered slides + full panorama JPEG
+
+---
+
+## System Requirements
+
+| | Minimum | Recommended |
 | :--- | :--- | :--- |
-| **Operating System** | Windows 10 (64-bit) | Windows 11 (64-bit) |
-| **Processor** | Dual-Core 2.0 GHz Intel / AMD | Quad-Core 3.0 GHz Intel Core i5 / AMD Ryzen 5 or higher |
-| **RAM** | 4 GB | 8 GB – 16 GB (for large RAW/high-res libraries) |
-| **Display Resolution** | 1280 × 800 | 1920 × 1080 (Full HD) or 4K UHD |
-| **Disk Space** | 200 MB for installation | SSD storage recommended for project caching |
+| **macOS** | 13.0 Ventura | 14.0 Sonoma or 15.0 Sequoia |
+| **Chip** | Apple M1 | M2 / M3 or Intel Core i7 (2020+) |
+| **RAM** | 8 GB | 16 GB for large RAW libraries |
+| **Storage** | 300 MB free | SSD, 1 GB+ for project caching |
+| **Display** | 1440 × 900 | Retina / HiDPI (2560 × 1664 or higher) |
 
 ---
 
-## ⌨️ Keyboard Shortcuts Reference
+## Keyboard Shortcuts (macOS)
 
-### Canvas Navigation
+### Canvas
+
 | Shortcut | Action |
 | :--- | :--- |
-| <kbd>Spacebar</kbd> + Drag | Pan / Move Canvas |
-| <kbd>Ctrl</kbd> + Scroll Wheel | Zoom In / Zoom Out |
-| <kbd>Ctrl</kbd> + <kbd>0</kbd> | Fit Spread to Screen (100% View) |
-| <kbd>←</kbd> / <kbd>→</kbd> | Previous / Next Spread |
+| `Space` + Drag | Pan canvas |
+| `⌘` + Scroll | Zoom in / out |
+| `⌘ 0` | Fit spread to window |
+| `←` / `→` | Previous / next spread |
+| Pinch gesture | Continuous zoom (trackpad) |
 
-### Panel & Inspector Navigation
+### Frames
+
 | Shortcut | Action |
 | :--- | :--- |
-| <kbd>P</kbd> | Open Properties Panel (Frame, Spread, Margins & Background) |
-| <kbd>L</kbd> | Open Lock Panel (Locked Photos & Elements) |
-| <kbd>G</kbd> | Open Smart Layout Panel (Adaptive Templates & Variations) |
+| `Click` | Select frame |
+| `⇧ Click` | Add to selection |
+| `⌘ A` | Select all |
+| `⇧` + Drag | Constrain drag to axis |
+| Arrow keys | Nudge 1 mm |
+| `⇧` + Arrow | Nudge 10 mm |
+| `⌘ C` / `⌘ V` | Copy / paste |
+| `⌘ ⇧ V` | Paste in place |
+| `⌘ ⌥ V` | Paste to all spreads |
+| `⌘ D` | Duplicate |
+| `⌫` | Delete |
+| `⌘ L` | Lock |
+| `⌥ L` | Unlock |
+| `⌘ G` / `⌘ ⇧ G` | Group / ungroup |
+| `R` / `⇧ R` | Rotate 90° CW / CCW |
+| `S` | Swap two selected photos |
+| `T` | Add text box |
 
-### Frame Selection & Manipulation
-| Shortcut | Action |
-| :--- | :--- |
-| <kbd>Click</kbd> | Select Frame |
-| <kbd>Shift</kbd> + <kbd>Click</kbd> | Multi-Select Additional Frames |
-| <kbd>Ctrl</kbd> + <kbd>A</kbd> | Select All Frames on Spread |
-| <kbd>Shift</kbd> + Drag Frame | Orthogonal Axis-Lock Drag (Straight Horizontal / Vertical) |
-| Arrow Keys (<kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd>) | Nudge Selected Frame(s) by 1 mm |
-| <kbd>Shift</kbd> + Arrow Keys | Nudge Selected Frame(s) by 10 mm |
-| <kbd>Ctrl</kbd> + <kbd>C</kbd> / <kbd>Ctrl</kbd> + <kbd>V</kbd> | Copy & Paste Selected Frame(s) |
-| <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>V</kbd> | Paste in Place |
-| <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>V</kbd> | Paste to All Spreads |
-| <kbd>Ctrl</kbd> + <kbd>D</kbd> | Duplicate Selected Frame(s) |
-| <kbd>Delete</kbd> / <kbd>Backspace</kbd> | Delete Selected Frame(s) |
-| <kbd>Ctrl</kbd> + <kbd>L</kbd> | Lock Selected Frame(s) |
-| <kbd>Alt</kbd> + <kbd>L</kbd> | Unlock Selected Frame(s) |
-| <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>L</kbd> | Unlock All Items on Spread |
-| <kbd>Ctrl</kbd> + <kbd>G</kbd> | Group Selected Frames |
-| <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>G</kbd> | Ungroup Selected Frames |
-| <kbd>S</kbd> | Swap 2 Selected Photos |
-| <kbd>R</kbd> / <kbd>Shift</kbd> + <kbd>R</kbd> | Rotate Selected Frame(s) 90° CW / CCW |
-| <kbd>T</kbd> | Add Text Box |
+### Crop Mode (double-click a frame to enter)
 
-### Photo Placement & Crop
 | Action | Description |
 | :--- | :--- |
-| Drag photo to empty canvas | Create a new photo frame |
-| Drag photo onto existing frame | Overlay / Stack photo freely |
-| <kbd>Alt</kbd> + Drag onto frame | 🔄 Replace existing photo with new photo |
-| Double-Click Frame | Enter In-Frame Interactive Pan & Zoom Crop Mode |
-| <kbd>Enter</kbd> / <kbd>Esc</kbd> | Exit Crop Mode |
+| Drag | Pan photo inside frame |
+| Scroll | Zoom crop |
+| `↺ Reset Ratio` | Restore frame to photo's native aspect ratio |
+| `↺ Reset Crop` | Re-center and reset zoom to 1× |
+| `Enter` / `Esc` | Exit crop mode |
 
 ---
 
-## 🛠️ Technology Stack
+## Tech Stack
 
-- **Desktop Framework**: Tauri 2 (Rust)
-- **Frontend Architecture**: React 18, TypeScript, Vite
-- **Canvas Rendering**: Konva.js, React-Konva
-- **Database & Storage**: SQLite, Rusqlite
-- **State Management**: Zustand
-- **Image Processing**: Rust `image` & `rayon` parallel engine
-
----
-
-## 🔄 Software Updates & Support
-
-### In-App Update Checker
-To check for the latest releases, open **AFSNSmartAlbum**, navigate to **About AFSNSmartAlbum**, and click **🔄 Check Updates**.
-
-### Support Independent Development
-AFSNSmartAlbum is actively developed as an independent professional tool. If this software empowers your photography business, voluntary contributions can be made via **QRIS** directly inside the application.
+- **Tauri 2** — Rust-based desktop shell, no Electron
+- **React 18 + TypeScript** — frontend, Vite build
+- **Konva.js** — hardware-accelerated canvas rendering
+- **SQLite + Rusqlite** — project database, embedded in `.afsn` archive
+- **Zustand** — frontend state
+- **Rust `image` + `rayon`** — pure Rust image decode, sharpening, and export (no libvips dependency)
 
 ---
 
-## 📄 License & Acknowledgements
+## Building from Source
 
-Copyright © 2026 **Afsunmedia - Asrofims**. All rights reserved.
+```bash
+# Prerequisites: Node 20+, Rust 1.77+, Xcode CLT
+npm install
+npm run tauri build -- --target aarch64-apple-darwin
+# DMG output: src-tauri/target/release/bundle/dmg/
+```
 
-Built with gratitude upon open-source foundations:
+For development:
+
+```bash
+npm run tauri dev
+```
+
+---
+
+## Credits
+
+Original author: **[Asrofims](https://github.com/asrofims)** / Afsunmedia  
+The core application — album domain model, layout engine, Rust image pipeline, export system — is his work. This macOS port exists because the original is genuinely good enough to be worth the effort.
+
+macOS port and feature additions: **[chiio](https://github.com/ryandxter)**  
+— Win32 removal and macOS platform wiring  
+— Overlay titlebar + macOS native shortcut layer  
+— Instagram Carousel mode (domain model, Zustand store, export pipeline)  
+— Layered PSD serializer + PDF/X print marks  
+— DMG packaging and macOS bundle configuration  
+
+---
+
+## Open Source Foundations
+
 - [Tauri](https://tauri.app/) (MIT / Apache-2.0)
 - [React](https://reactjs.org/) (MIT)
 - [Konva](https://konvajs.org/) (MIT)
 - [SQLite](https://www.sqlite.org/) (Public Domain)
 - [Rayon](https://github.com/rayon-rs/rayon) (MIT / Apache-2.0)
+- [image crate](https://github.com/image-rs/image) (MIT)
+
+---
+
+Copyright © 2026 Afsunmedia / Asrofims (original) · macOS port by chiio
