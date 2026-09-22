@@ -24,9 +24,10 @@ import styles from './InspectorContainer.module.css';
 export interface InspectorContainerProps {
   onClose: () => void;
   onToast?: (msg: string) => void;
+  activeMode?: 'print' | 'carousel';
 }
 
-export function InspectorContainer({ onClose, onToast }: InspectorContainerProps) {
+export function InspectorContainer({ onClose, onToast, activeMode }: InspectorContainerProps) {
   const currentAlbum = useAlbumStore((s) => s.currentAlbum);
   const activeSpreadId = useAlbumStore((s) => s.activeSpreadId);
   const selectedFrameIds = useEditorStore((s) => s.selectedFrameIds);
@@ -115,7 +116,7 @@ export function InspectorContainer({ onClose, onToast }: InspectorContainerProps
       {/* Tab Contents */}
       <div className={styles.content} ref={contentRef}>
         {activeTab === 'smart_layout' ? (
-          <TemplatesPanel onApplyToast={(msg) => onToast?.(msg)} />
+          <TemplatesPanel onApplyToast={(msg) => onToast?.(msg)} activeMode={activeMode} />
         ) : activeTab === 'locks' ? (
           <LockedPhotosPanel onToast={(msg) => onToast?.(msg)} />
         ) : (

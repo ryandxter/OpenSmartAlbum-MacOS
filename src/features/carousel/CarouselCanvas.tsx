@@ -3,6 +3,7 @@ import { Stage, Layer, Rect, Line, Text as KonvaText, Group, Image as KonvaImage
 import Konva from 'konva';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useCarouselStore } from '../../stores/carouselStore';
+import { usePhotoStore } from '../../stores/photoStore';
 import {
   CarouselPhotoFrame,
   getCarouselTotalWidth,
@@ -156,6 +157,7 @@ export function CarouselCanvas({
   zoomLevel,
   fitTrigger,
   onZoomChange,
+  onToast,
 }: CarouselCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
@@ -168,6 +170,7 @@ export function CarouselCanvas({
   const updatePhotoFrame = useCarouselStore((s) => s.updatePhotoFrame);
 
   const [selectedFrameId, setSelectedFrameId] = useState<string | null>(null);
+  const [hoveredDropSlideIndex, setHoveredDropSlideIndex] = useState<number | null>(null);
   const [stagePos, setStagePos] = useState({ x: 40, y: 40 });
   const [isSpacePanning, setIsSpacePanning] = useState(false);
   const [isMouseDown, setIsMouseDown] = useState(false);
@@ -277,10 +280,138 @@ export function CarouselCanvas({
     trRef.current.getLayer()?.batchDraw();
   }, [selectedFrameId]);
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    if (!currentCarousel) return;
+    const box = stageRef.current?.container().getBoundingClientRect() || containerRef.current?.getBoundingClientRect();
+    if (!box) return;
+    const canvasX = (e.clientX - box.left - stagePos.x) / scale;
+    const targetIdx = getSlideIndexAtX(currentCarousel, canvasX);
+    setHoveredDropSlideIndex(targetIdx);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!containerRef.current?.contains(e.relatedTarget as Node)) {
+      setHoveredDropSlideIndex(null);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setHoveredDropSlideIndex(null);
+    if (!currentCarousel) return;
+
+    // Extract photo IDs from drag payload
+    let photoIds: string[] = [];
+    try {
+      const raw = e.dataTransfer.getData('application/x-afsn-photo-ids') || e.dataTransfer.getData('application/json');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) photoIds = parsed.filter((id): id is string => typeof id === 'string');
+        else if (typeof parsed?.id === 'string') photoIds = [parsed.id];
+      }
+    } catch {}
+    if (photoIds.length === 0) {
+      const textId = e.dataTransfer.getData('text/plain');
+      if (textId) photoIds = [textId];
+    }
+
+    const libraryPhotos = usePhotoStore.getState().photos;
+    const byId = new Map(libraryPhotos.map((p) => [p.id, p]));
+    const photosToPlace = [...new Set(photoIds)].map((id) => byId.get(id)).filter((p): p is (typeof libraryPhotos)[number] => Boolean(p));
+    if (photosToPlace.length === 0) return;
+
+    // Translate viewport coords to canvas continuous space
+    const box = stageRef.current?.container().getBoundingClientRect() || containerRef.current?.getBoundingClientRect();
+    const canvasX = (e.clientX - (box?.left ?? 0) - stagePos.x) / scale;
+    const canvasY = (e.clientY - (box?.top ?? 0) - stagePos.y) / scale;
+    const targetSlideIdx = getSlideIndexAtX(currentCarousel, canvasX);
+    const slideW = currentCarousel.slideWidthPx;
+    const slideH = currentCarousel.slideHeightPx;
+    const slideStartX = getSlideXOffset(currentCarousel, targetSlideIdx);
+
+    const { addPhotoFrame, setActiveSlide } = useCarouselStore.getState();
+
+    if (photosToPlace.length === 1) {
+      const photo = photosToPlace[0]!;
+      const aspect = photo.width && photo.height ? photo.width / photo.height : 1.0;
+      const maxW = slideW * 0.8;
+      const maxH = slideH * 0.8;
+      let frameW = maxW;
+      let frameH = maxW / aspect;
+      if (frameH > maxH) {
+        frameH = maxH;
+        frameW = maxH * aspect;
+      }
+      const dropRelX = canvasX - slideStartX;
+      const posX = slideStartX + Math.max(20, Math.min(slideW - frameW - 20, dropRelX - frameW / 2));
+      const posY = Math.max(20, Math.min(slideH - frameH - 20, canvasY - frameH / 2));
+
+      addPhotoFrame(targetSlideIdx, {
+        type: 'photo',
+        photoId: photo.id,
+        filePath: photo.filePath,
+        fileName: photo.fileName,
+        previewPath: photo.previewPath || undefined,
+        thumbnailPath: photo.thumbnailPath || undefined,
+        photoAspect: aspect,
+        x: Math.round(posX),
+        y: Math.round(posY),
+        width: Math.round(frameW),
+        height: Math.round(frameH),
+      });
+    } else {
+      // Multi-photo drop: partition onto slide with uniform spacing
+      const margin = 40;
+      const spacing = 16;
+      const usableW = slideW - margin * 2;
+      const usableH = slideH - margin * 2;
+      const count = photosToPlace.length;
+      const cols = count <= 2 ? 1 : 2;
+      const rows = Math.ceil(count / cols);
+      const cellW = (usableW - spacing * (cols - 1)) / cols;
+      const cellH = (usableH - spacing * (rows - 1)) / rows;
+
+      photosToPlace.forEach((photo, idx) => {
+        const col = idx % cols;
+        const row = Math.floor(idx / cols);
+        const posX = slideStartX + margin + col * (cellW + spacing);
+        const posY = margin + row * (cellH + spacing);
+        const aspect = photo.width && photo.height ? photo.width / photo.height : 1.0;
+        addPhotoFrame(targetSlideIdx, {
+          type: 'photo',
+          photoId: photo.id,
+          filePath: photo.filePath,
+          fileName: photo.fileName,
+          previewPath: photo.previewPath || undefined,
+          thumbnailPath: photo.thumbnailPath || undefined,
+          photoAspect: aspect,
+          x: Math.round(posX),
+          y: Math.round(posY),
+          width: Math.round(cellW),
+          height: Math.round(cellH),
+        });
+      });
+    }
+
+    setActiveSlide(targetSlideIdx);
+    // Update usedCount in photoStore
+    const placedIdSet = new Set(photosToPlace.map((p) => p.id));
+    usePhotoStore.setState((s) => ({
+      photos: s.photos.map((p) => (placedIdSet.has(p.id) ? { ...p, usedCount: (p.usedCount || 0) + 1 } : p)),
+    }));
+    onToast?.(`Added ${photosToPlace.length} photo${photosToPlace.length > 1 ? 's' : ''} to Slide ${targetSlideIdx + 1}`);
+  };
+
   return (
     <div
       ref={containerRef}
       className={`${styles.canvasContainer} ${isSpacePanning ? styles.panningMode : ''}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
       onMouseDown={(e) => {
         if (isSpacePanning || e.button === 1) {
           setIsMouseDown(true);
@@ -352,6 +483,18 @@ export function CarouselCanvas({
                     height={totalHeight}
                     stroke="#E4E4E7"
                     strokeWidth={2}
+                    listening={false}
+                  />
+                )}
+
+                {/* Drop Target Feedback Highlight */}
+                {hoveredDropSlideIndex === idx && (
+                  <Rect
+                    width={slideWidth}
+                    height={totalHeight}
+                    stroke="#3B82F6"
+                    strokeWidth={3}
+                    dash={[8, 8]}
                     listening={false}
                   />
                 )}

@@ -1,20 +1,28 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Shuffle, Star } from 'lucide-react';
 import { useAlbumStore } from '../../stores/albumStore';
 import { useProjectStore } from '../../stores/projectStore';
+import { useCarouselStore } from '../../stores/carouselStore';
 import { getProjectDimensionsInCanvasUnit } from '../../domain/templates';
 import {
   generateAdaptiveLayoutVariations,
   AdaptivePhoto,
 } from '../../domain/adaptiveLayout';
 import { PhotoFrameElement } from '../../domain/editor';
+import {
+  CAROUSEL_LAYOUT_PRESETS,
+  CarouselLayoutPreset,
+} from '../../domain/carouselLayout';
+import { CarouselPhotoFrame } from '../../domain/carousel';
 import styles from './TemplatesPanel.module.css';
 
 interface TemplatesPanelProps {
   onApplyToast?: (msg: string) => void;
+  activeMode?: 'print' | 'carousel';
 }
 
-export function TemplatesPanel({ onApplyToast }: TemplatesPanelProps) {
+export function TemplatesPanel({ onApplyToast, activeMode = 'print' }: TemplatesPanelProps) {
+  // Album / Print Mode Hooks
   const {
     currentAlbum,
     activeSpreadId,
@@ -26,6 +34,16 @@ export function TemplatesPanel({ onApplyToast }: TemplatesPanelProps) {
 
   const { currentProject } = useProjectStore();
 
+  // Carousel Mode Hooks
+  const currentCarousel = useCarouselStore((s) => s.currentCarousel);
+  const activeSlideIndex = useCarouselStore((s) => s.activeSlideIndex);
+  const applyCarouselLayout = useCarouselStore((s) => s.applyCarouselLayout);
+  const shuffleSlidePhotos = useCarouselStore((s) => s.shuffleSlidePhotos);
+
+  const [carouselCategory, setCarouselCategory] = useState<'all' | 'per_slide' | 'panorama'>('all');
+  const [selectedCarouselPresetId, setSelectedCarouselPresetId] = useState<string | null>(null);
+
+  // Active Spread (Print Mode)
   const activeSpread = useMemo(() => {
     if (!currentAlbum || !activeSpreadId) return null;
     if (currentAlbum.coverSpread && currentAlbum.coverSpread.id === activeSpreadId) {
@@ -44,7 +62,7 @@ export function TemplatesPanel({ onApplyToast }: TemplatesPanelProps) {
     return activeSpread.elements.filter((el): el is PhotoFrameElement => el.type === 'photo' && Boolean(el.locked));
   }, [activeSpread]);
 
-  const photos: AdaptivePhoto[] = useMemo(() => {
+  const printPhotos: AdaptivePhoto[] = useMemo(() => {
     return unlockedElements.map((el) => ({
       id: el.id,
       photoId: el.photoId,
@@ -56,11 +74,32 @@ export function TemplatesPanel({ onApplyToast }: TemplatesPanelProps) {
     }));
   }, [unlockedElements]);
 
-  const currentPhotoCount = photos.length;
+  // Active Slide Photos (Carousel Mode)
+  const activeSlide = useMemo(() => {
+    if (!currentCarousel) return null;
+    return currentCarousel.slides[activeSlideIndex] || currentCarousel.slides[0] || null;
+  }, [currentCarousel, activeSlideIndex]);
 
-  // Dynamic Adaptive Variations calculated specifically for the current spread's photos
+  const carouselPhotos = useMemo(() => {
+    if (!activeSlide) return [];
+    return activeSlide.elements
+      .filter((el): el is CarouselPhotoFrame => el.type === 'photo')
+      .map((el) => ({
+        id: el.id,
+        photoId: el.photoId,
+        filePath: el.filePath,
+        fileName: el.fileName,
+        previewPath: el.previewPath,
+        thumbnailPath: el.thumbnailPath,
+        photoAspect: el.photoAspect,
+      }));
+  }, [activeSlide]);
+
+  const currentPhotoCount = activeMode === 'carousel' ? carouselPhotos.length : printPhotos.length;
+
+  // Dynamic Adaptive Variations (Print Mode)
   const adaptiveVariations = useMemo(() => {
-    if (!currentProject || !activeSpread || photos.length === 0) return [];
+    if (!currentProject || !activeSpread || printPhotos.length === 0) return [];
     const isCover = currentAlbum?.coverSpread?.id === activeSpread.id;
     const isSpread = !isCover;
     const dims = getProjectDimensionsInCanvasUnit(currentProject, activeSpread);
@@ -85,9 +124,18 @@ export function TemplatesPanel({ onApplyToast }: TemplatesPanelProps) {
         spacing: dims.spacing,
         lockedElements,
       },
-      photos
+      printPhotos
     );
-  }, [currentProject, currentAlbum, activeSpread, photos, lockedElements]);
+  }, [currentProject, currentAlbum, activeSpread, printPhotos, lockedElements]);
+
+  // Carousel Presets Filtered by Category
+  const filteredCarouselPresets = useMemo(() => {
+    let presets = CAROUSEL_LAYOUT_PRESETS;
+    if (carouselCategory !== 'all') {
+      presets = presets.filter((p) => p.category === carouselCategory);
+    }
+    return presets;
+  }, [carouselCategory]);
 
   const currentActiveIndex =
     activeSpread && spreadLayoutIndices[activeSpread.id] !== undefined
@@ -102,6 +150,159 @@ export function TemplatesPanel({ onApplyToast }: TemplatesPanelProps) {
     }
   };
 
+  const handleApplyCarouselPreset = (preset: CarouselLayoutPreset) => {
+    if (!currentCarousel) return;
+    setSelectedCarouselPresetId(preset.id);
+    applyCarouselLayout(activeSlideIndex, preset.id, carouselPhotos);
+    if (onApplyToast) {
+      onApplyToast(`Switched to layout: ${preset.name}`);
+    }
+  };
+
+  const handleCycleCarousel = (direction: 'next' | 'prev') => {
+    if (!currentCarousel || filteredCarouselPresets.length === 0) return;
+    const currentIdx = filteredCarouselPresets.findIndex((p) => p.id === selectedCarouselPresetId);
+    const nextIdx =
+      direction === 'next'
+        ? (currentIdx + 1) % filteredCarouselPresets.length
+        : (currentIdx - 1 + filteredCarouselPresets.length) % filteredCarouselPresets.length;
+    const nextPreset = filteredCarouselPresets[nextIdx];
+    if (nextPreset) {
+      handleApplyCarouselPreset(nextPreset);
+    }
+  };
+
+  // Carousel Mode Rendering
+  if (activeMode === 'carousel') {
+    const totalSlides = currentCarousel?.totalSlides || 1;
+    const slideW = currentCarousel?.slideWidthPx || 1080;
+    const slideH = currentCarousel?.slideHeightPx || 1080;
+
+    return (
+      <div className={styles.container}>
+        {/* Header with Active Slide Context Badge */}
+        <div className={styles.filterHeader}>
+          <div className={styles.spreadContextBadge}>
+            <span>
+              Active: <strong>Slide {activeSlideIndex + 1} of {totalSlides}</strong> ({slideW} × {slideH} px)
+            </span>
+            <span className={styles.badgeCount}>
+              {carouselPhotos.length} {carouselPhotos.length === 1 ? 'Photo' : 'Photos'}
+            </span>
+          </div>
+
+          {/* Navigation & Shuffle Bar */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px' }}>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button
+                type="button"
+                className={styles.actionBtn}
+                onClick={() => handleCycleCarousel('prev')}
+                title="Previous Layout (Shift + Space)"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              >
+                <ChevronLeft size={12} strokeWidth={1.75} />
+                <span>Prev Layout</span>
+              </button>
+              <button
+                type="button"
+                className={styles.actionBtn}
+                onClick={() => handleCycleCarousel('next')}
+                title="Next Layout (Space)"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              >
+                <span>Next Layout</span>
+                <ChevronRight size={12} strokeWidth={1.75} />
+              </button>
+            </div>
+
+            <button
+              type="button"
+              className={styles.shuffleBtn}
+              onClick={() => {
+                shuffleSlidePhotos(activeSlideIndex);
+                onApplyToast?.('Shuffled photos on slide');
+              }}
+              title="Shuffle Photos (S)"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
+              <Shuffle size={12} strokeWidth={1.75} />
+              <span>Shuffle</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Carousel Category Filter Tabs */}
+        <div className={styles.modeToggleRow}>
+          <button
+            type="button"
+            className={`${styles.modeBtn} ${carouselCategory === 'all' ? styles.modeBtnActive : ''}`}
+            onClick={() => setCarouselCategory('all')}
+          >
+            All ({CAROUSEL_LAYOUT_PRESETS.length})
+          </button>
+          <button
+            type="button"
+            className={`${styles.modeBtn} ${carouselCategory === 'per_slide' ? styles.modeBtnActive : ''}`}
+            onClick={() => setCarouselCategory('per_slide')}
+          >
+            Per-Slide
+          </button>
+          <button
+            type="button"
+            className={`${styles.modeBtn} ${carouselCategory === 'panorama' ? styles.modeBtnActive : ''}`}
+            onClick={() => setCarouselCategory('panorama')}
+          >
+            Seamless Panorama
+          </button>
+        </div>
+
+        {/* Carousel Presets Grid */}
+        <div className={styles.gridList}>
+          {filteredCarouselPresets.map((preset) => {
+            const isSelected = selectedCarouselPresetId === preset.id;
+            const svg = preset.previewSvg(currentCarousel?.ratio || '1:1');
+
+            return (
+              <div
+                key={preset.id}
+                className={`${styles.templateCard} ${isSelected ? styles.activeCard : ''}`}
+                onClick={() => handleApplyCarouselPreset(preset)}
+              >
+                <div
+                  className={styles.svgWrapper}
+                  dangerouslySetInnerHTML={{ __html: svg }}
+                />
+                <div className={styles.cardMeta}>
+                  <span className={styles.templateTitle}>{preset.name}</span>
+                  <span className={styles.templateDesc}>{preset.description}</span>
+                  <div className={styles.tagRow}>
+                    <span className={styles.tagPill}>
+                      {preset.category === 'panorama' ? `Panorama (${preset.spanSlides} slides)` : 'Single Slide'}
+                    </span>
+                    <span
+                      className={styles.tagPill}
+                      style={{
+                        background: 'rgba(59, 130, 246, 0.15)',
+                        color: '#60a5fa',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {preset.minPhotos === preset.maxPhotos
+                        ? `${preset.minPhotos} ${preset.minPhotos === 1 ? 'photo' : 'photos'}`
+                        : `${preset.minPhotos}–${preset.maxPhotos} photos`}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // Print Mode Rendering (Original with CR-06 High Contrast Fix)
   return (
     <div className={styles.container}>
       {/* Header with Active Spread & Photos Count */}
@@ -167,10 +368,11 @@ export function TemplatesPanel({ onApplyToast }: TemplatesPanelProps) {
           const scaleX = 140 / totalW;
           const scaleY = 70 / totalH;
 
+          // CR-06 High Contrast Fix for both active and inactive variation cards
           const svgRects = variation.rects
             .map(
               (r) =>
-                `<rect x="${(r.x * scaleX).toFixed(1)}" y="${(r.y * scaleY).toFixed(1)}" width="${(r.width * scaleX).toFixed(1)}" height="${(r.height * scaleY).toFixed(1)}" rx="2" fill="${isCurrent ? 'rgba(59,130,246,0.4)' : 'var(--color-surface, #27272a)'}" stroke="${isCurrent ? 'var(--color-accent, #3b82f6)' : 'var(--color-border, #3f3f46)'}" stroke-width="${isCurrent ? '1.5' : '1'}"/>`
+                `<rect x="${(r.x * scaleX).toFixed(1)}" y="${(r.y * scaleY).toFixed(1)}" width="${(r.width * scaleX).toFixed(1)}" height="${(r.height * scaleY).toFixed(1)}" rx="2" fill="${isCurrent ? 'rgba(59, 130, 246, 0.35)' : 'rgba(255, 255, 255, 0.08)'}" stroke="${isCurrent ? 'var(--color-accent, #3b82f6)' : 'rgba(255, 255, 255, 0.22)'}" stroke-width="${isCurrent ? '1.5' : '1'}"/>`
             )
             .join('');
 

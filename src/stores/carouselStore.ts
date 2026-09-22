@@ -6,10 +6,12 @@ import {
   CarouselPhotoFrame,
   createInitialCarousel,
   createCarouselSlide,
+  scaleFramesForRatioSwitch,
   CAROUSEL_RATIO_PRESETS,
   MAX_CAROUSEL_SLIDES,
   MIN_CAROUSEL_SLIDES,
 } from '../domain/carousel';
+import { CAROUSEL_LAYOUT_PRESETS, CarouselLayoutPhotoInput } from '../domain/carouselLayout';
 
 export interface CarouselState {
   currentCarousel: Carousel | null;
@@ -28,6 +30,8 @@ export interface CarouselState {
   addPhotoFrame: (slideIndex: number, frame: Omit<CarouselPhotoFrame, 'id'>) => void;
   updatePhotoFrame: (frameId: string, updates: Partial<CarouselPhotoFrame>) => void;
   removePhotoFrame: (frameId: string) => void;
+  applyCarouselLayout: (slideIndex: number, presetId: string, photos?: CarouselLayoutPhotoInput[]) => void;
+  shuffleSlidePhotos: (slideIndex: number) => void;
   toggleSliceGuides: () => void;
   setShowSliceGuides: (show: boolean) => void;
 }
@@ -48,21 +52,18 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
   setRatio: (ratio) => {
     const { currentCarousel } = get();
     if (!currentCarousel) return;
-    const preset = CAROUSEL_RATIO_PRESETS[ratio];
-    if (!preset) return;
+    const oldPreset = CAROUSEL_RATIO_PRESETS[currentCarousel.ratio];
+    const newPreset = CAROUSEL_RATIO_PRESETS[ratio];
+    if (!newPreset || !oldPreset) return;
 
-    const updatedSlides: CarouselSlide[] = currentCarousel.slides.map((s) => ({
-      ...s,
-      widthPx: preset.width,
-      heightPx: preset.height,
-    }));
+    const updatedSlides = scaleFramesForRatioSwitch(currentCarousel.slides, oldPreset, newPreset);
 
     set({
       currentCarousel: {
         ...currentCarousel,
         ratio,
-        slideWidthPx: preset.width,
-        slideHeightPx: preset.height,
+        slideWidthPx: newPreset.width,
+        slideHeightPx: newPreset.height,
         slides: updatedSlides,
       },
     });
@@ -236,6 +237,138 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
       ...s,
       elements: s.elements.filter((el) => el.id !== frameId),
     }));
+
+    set({
+      currentCarousel: {
+        ...currentCarousel,
+        slides: updatedSlides,
+      },
+    });
+  },
+
+  applyCarouselLayout: (slideIndex, presetId, inputPhotos) => {
+    const { currentCarousel } = get();
+    if (!currentCarousel) return;
+
+    const preset = CAROUSEL_LAYOUT_PRESETS.find((p) => p.id === presetId);
+    if (!preset) return;
+
+    const targetSlide = currentCarousel.slides[slideIndex];
+    if (!targetSlide) return;
+
+    // Gather photos: if inputPhotos provided, use them; otherwise extract from target slide (and spanned slides if multi-slide)
+    let photosToUse: CarouselLayoutPhotoInput[] = inputPhotos && inputPhotos.length > 0 ? inputPhotos : [];
+    if (photosToUse.length === 0) {
+      const collected: CarouselLayoutPhotoInput[] = [];
+      const maxSlide = Math.min(currentCarousel.slides.length - 1, slideIndex + preset.spanSlides - 1);
+      for (let idx = slideIndex; idx <= maxSlide; idx++) {
+        const s = currentCarousel.slides[idx];
+        if (s) {
+          s.elements.forEach((el) => {
+            if (el.type === 'photo') {
+              collected.push({
+                id: el.id,
+                photoId: el.photoId,
+                filePath: el.filePath,
+                fileName: el.fileName,
+                previewPath: el.previewPath,
+                thumbnailPath: el.thumbnailPath,
+                photoAspect: el.photoAspect,
+              });
+            }
+          });
+        }
+      }
+      photosToUse = collected;
+    }
+
+    const generatedFrames = preset.generate({
+      slideWidth: currentCarousel.slideWidthPx,
+      slideHeight: currentCarousel.slideHeightPx,
+      slideIndex,
+      totalSlides: currentCarousel.totalSlides,
+      photos: photosToUse,
+      spacing: 16,
+      margin: 40,
+    });
+
+    const framesWithIds: CarouselPhotoFrame[] = generatedFrames.map((f, i) => ({
+      ...f,
+      id: `frame-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 7)}`,
+    }));
+
+    // Update slides: targetSlide gets the new frames
+    // Spanned subsequent slides (from slideIndex + 1 to slideIndex + preset.spanSlides - 1) have their photo frames cleared
+    const spannedIndices = new Set<number>();
+    for (let idx = slideIndex + 1; idx < slideIndex + preset.spanSlides; idx++) {
+      spannedIndices.add(idx);
+    }
+
+    const updatedSlides = currentCarousel.slides.map((s, idx) => {
+      if (idx === slideIndex) {
+        return {
+          ...s,
+          elements: framesWithIds,
+        };
+      }
+      if (spannedIndices.has(idx)) {
+        return {
+          ...s,
+          elements: s.elements.filter((el) => el.type !== 'photo'),
+        };
+      }
+      return s;
+    });
+
+    set({
+      currentCarousel: {
+        ...currentCarousel,
+        slides: updatedSlides,
+      },
+      activeSlideIndex: slideIndex,
+    });
+  },
+
+  shuffleSlidePhotos: (slideIndex) => {
+    const { currentCarousel } = get();
+    if (!currentCarousel) return;
+    const slide = currentCarousel.slides[slideIndex];
+    if (!slide) return;
+
+    const photoFrames = slide.elements.filter((el): el is CarouselPhotoFrame => el.type === 'photo');
+    if (photoFrames.length <= 1) return;
+
+    // Extract photo payloads
+    const payloads = photoFrames.map((f) => ({
+      photoId: f.photoId,
+      filePath: f.filePath,
+      fileName: f.fileName,
+      previewPath: f.previewPath,
+      thumbnailPath: f.thumbnailPath,
+      photoAspect: f.photoAspect,
+    }));
+
+    // Fisher-Yates shuffle
+    for (let i = payloads.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tempI = payloads[i];
+      const tempJ = payloads[j];
+      if (tempI && tempJ) {
+        payloads[i] = tempJ;
+        payloads[j] = tempI;
+      }
+    }
+
+    let pIdx = 0;
+    const updatedElements = slide.elements.map((el) => {
+      if (el.type !== 'photo') return el;
+      const p = payloads[pIdx++];
+      return p ? { ...el, ...p } : el;
+    });
+
+    const updatedSlides = currentCarousel.slides.map((s, idx) =>
+      idx === slideIndex ? { ...s, elements: updatedElements } : s
+    );
 
     set({
       currentCarousel: {

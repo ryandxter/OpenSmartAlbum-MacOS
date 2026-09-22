@@ -17,7 +17,9 @@ import { usePhotoStore } from '../../stores/photoStore';
 import { useProjectStore } from '../../stores/projectStore';
 import { useAlbumStore } from '../../stores/albumStore';
 import { useEditorStore } from '../../stores/editorStore';
+import { useCarouselStore } from '../../stores/carouselStore';
 import { getAllAlbumSpreads } from '../../domain/album';
+import { getSlideXOffset } from '../../domain/carousel';
 import { filterPhotos, sortPhotos, formatFileSize, PhotoSortBy, Photo } from '../../domain/photo';
 import { FolderTabs } from './FolderTabs';
 import { BatchActionBar } from './BatchActionBar';
@@ -25,12 +27,13 @@ import { FolderDialog } from './FolderDialog';
 import { PhotoContextMenu } from './PhotoContextMenu';
 import styles from './FilmstripTray.module.css';
 
-interface FilmstripTrayProps {
+export interface FilmstripTrayProps {
   isOpen: boolean;
   onToggle: () => void;
+  activeMode?: 'print' | 'carousel';
 }
 
-export function FilmstripTray({ isOpen, onToggle }: FilmstripTrayProps) {
+export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayProps) {
   const currentProject = useProjectStore((s) => s.currentProject);
   const {
     photos,
@@ -196,12 +199,23 @@ export function FilmstripTray({ isOpen, onToggle }: FilmstripTrayProps) {
   }, [currentProject?.id, loadPhotos]);
 
   const currentAlbum = useAlbumStore((s) => s.currentAlbum);
+  const currentCarousel = useCarouselStore((s) => s.currentCarousel);
 
-  // Real-time calculation of used photo IDs from all elements across all spreads in current album
+  // Real-time calculation of used photo IDs from all elements across all spreads or slides
   const usedPhotoIdSet = React.useMemo(() => {
     const set = new Set<string>();
-    if (!currentAlbum) return set;
+    if (activeMode === 'carousel') {
+      if (!currentCarousel) return set;
+      currentCarousel.slides.forEach((slide) => {
+        (slide.elements || []).forEach((el) => {
+          if (el.type === 'photo' && el.photoId) set.add(el.photoId);
+        });
+      });
+      return set;
+    }
 
+    // Print album mode
+    if (!currentAlbum) return set;
     (currentAlbum.spreads || []).forEach((spread) => {
       (spread.elements || []).forEach((el) => {
         if (el.type === 'photo' && el.photoId) set.add(el.photoId);
@@ -209,7 +223,7 @@ export function FilmstripTray({ isOpen, onToggle }: FilmstripTrayProps) {
     });
 
     return set;
-  }, [currentAlbum]);
+  }, [activeMode, currentAlbum, currentCarousel]);
 
   // Determine current photo pool based on active folder
   const currentPhotoPool = React.useMemo(() => {
@@ -616,6 +630,48 @@ export function FilmstripTray({ isOpen, onToggle }: FilmstripTrayProps) {
                     onClick={(e) => handleCardClick(e, photo)}
                     onDoubleClick={() => {
                       if (isUsed) return;
+                      if (activeMode === 'carousel') {
+                        const { currentCarousel, activeSlideIndex, addPhotoFrame } = useCarouselStore.getState();
+                        if (!currentCarousel) return;
+                        const targetSlide = currentCarousel.slides[activeSlideIndex] || currentCarousel.slides[0];
+                        if (!targetSlide) return;
+                        const slideIdx = targetSlide.slideIndex;
+                        const slideW = currentCarousel.slideWidthPx;
+                        const slideH = currentCarousel.slideHeightPx;
+                        const slideStartX = getSlideXOffset(currentCarousel, slideIdx);
+
+                        const aspect = photo.width && photo.height ? photo.width / photo.height : 1.0;
+                        const maxW = slideW * 0.8;
+                        const maxH = slideH * 0.8;
+                        let frameW = maxW;
+                        let frameH = maxW / aspect;
+                        if (frameH > maxH) {
+                          frameH = maxH;
+                          frameW = maxH * aspect;
+                        }
+                        const posX = slideStartX + (slideW - frameW) / 2;
+                        const posY = (slideH - frameH) / 2;
+
+                        addPhotoFrame(slideIdx, {
+                          type: 'photo',
+                          photoId: photo.id,
+                          filePath: photo.filePath,
+                          fileName: photo.fileName,
+                          previewPath: photo.previewPath || undefined,
+                          thumbnailPath: photo.thumbnailPath || undefined,
+                          photoAspect: aspect,
+                          x: Math.round(posX),
+                          y: Math.round(posY),
+                          width: Math.round(frameW),
+                          height: Math.round(frameH),
+                        });
+
+                        usePhotoStore.setState((s) => ({
+                          photos: s.photos.map((p) => (p.id === photo.id ? { ...p, usedCount: (p.usedCount || 0) + 1 } : p)),
+                        }));
+                        return;
+                      }
+
                       const { currentAlbum, activeSpreadId } = useAlbumStore.getState();
                       if (currentAlbum) {
                         const allSpreads = getAllAlbumSpreads(currentAlbum);
@@ -632,7 +688,7 @@ export function FilmstripTray({ isOpen, onToggle }: FilmstripTrayProps) {
                     }}
                     title={
                       isUsed
-                        ? `${photo.fileName}\n(Placed in album spread — Drag onto a canvas frame to replace or swap)`
+                        ? `${photo.fileName}\n(Placed in ${activeMode === 'carousel' ? 'carousel slide' : 'album spread'} — Drag onto a canvas frame to replace or swap)`
                         : `${photo.fileName}\n${photo.width} × ${photo.height} px • ${formatFileSize(photo.fileSize)}\nDouble-click to add or drag onto canvas to place/replace\nRight-click for options`
                     }
                   >

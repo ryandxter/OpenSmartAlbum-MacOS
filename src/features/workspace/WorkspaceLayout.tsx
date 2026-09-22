@@ -890,6 +890,7 @@ export function WorkspaceLayout() {
         <InspectorContainer
           onClose={() => setIsPropertiesOpen(false)}
           onToast={showToast}
+          activeMode={activeMode}
         />
       )}
 
@@ -898,6 +899,7 @@ export function WorkspaceLayout() {
         <FilmstripTray
           isOpen={isFilmstripOpen}
           onToggle={() => setIsFilmstripOpen((v) => !v)}
+          activeMode={activeMode}
         />
       )}
 
