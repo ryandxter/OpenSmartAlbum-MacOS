@@ -1,0 +1,533 @@
+.titleBar {
+  grid-area: toolbar;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--toolbar-height, 44px);
+  padding-left: var(--mac-traffic-light-inset, 80px);
+  padding-right: var(--space-3, 12px);
+  background-color: var(--color-bg-secondary, #1e1e22);
+  border-bottom: 1px solid var(--color-border, #2e2e33);
+  user-select: none;
+  z-index: 2000;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Left Section: File & Help Menus, Undo/Redo */
+.leftSection {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+  min-width: 0;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+/* Center Section: Project Title, Unsaved Status, Drag Region */
+.centerSection {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0 8px;
+  cursor: default;
+}
+
+/* Right Section: Mode Switcher & Actions */
+.rightSection {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 0;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+/* Menu Containers & Dropdowns */
+.menuContainer {
+  position: relative;
+  display: inline-block;
+  z-index: 2200;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.menuBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 8px;
+  font-size: var(--font-size-xs, 12px);
+  font-weight: var(--font-weight-medium, 500);
+  color: var(--color-text-secondary, #a1a1aa);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md, 6px);
+  cursor: pointer;
+  transition: background-color var(--transition-fast, 0.15s ease), color var(--transition-fast, 0.15s ease);
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.menuBtn:hover,
+.menuBtnOpen {
+  background-color: var(--color-surface-hover, rgba(255, 255, 255, 0.06));
+  color: var(--color-text-primary, #f4f4f5);
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 220px;
+  background: var(--color-bg-secondary, #1e1e22);
+  border: 1px solid var(--color-border, #2e2e33);
+  border-radius: var(--radius-md, 6px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+  padding: 4px 0;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 7px 12px;
+  font-size: var(--font-size-xs, 12px);
+  color: var(--color-text-primary, #f4f4f5);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition-fast, 0.15s ease);
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.menuItemLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.menuItem:hover {
+  background: var(--color-surface-hover, rgba(255, 255, 255, 0.08));
+  color: var(--color-accent, #e4e4e7);
+}
+
+.shortcutText {
+  font-size: 10px;
+  color: var(--color-text-muted, #71717a);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", monospace;
+  letter-spacing: 0.5px;
+}
+
+.menuDivider {
+  height: 1px;
+  background: var(--color-border, #2e2e33);
+  margin: 4px 0;
+}
+
+/* History Group (Undo / Redo / Save) */
+.historyGroup {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.historyBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md, 6px);
+  color: var(--color-text-secondary, #a1a1aa);
+  cursor: pointer;
+  transition: all var(--transition-fast, 0.15s ease);
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.historyBtn:hover:not(:disabled) {
+  background-color: var(--color-surface-hover, rgba(255, 255, 255, 0.08));
+  color: var(--color-text-primary, #f4f4f5);
+  border-color: var(--color-border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.historyBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.historyBtnUnsaved {
+  color: #f59e0b !important;
+}
+
+.historyBtnSaving {
+  color: #3b82f6 !important;
+  animation: pulseSaving 1s infinite alternate;
+}
+
+@keyframes pulseSaving {
+  0% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+.separator {
+  width: 1px;
+  height: 18px;
+  background-color: var(--color-border, #2e2e33);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+/* Centered Project Title Badge */
+.projectTitleBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-xs, 12px);
+  color: var(--color-text-primary, #f4f4f5);
+  background: var(--color-surface, #27272a);
+  border: 1px solid var(--color-border, #2e2e33);
+  padding: 3px 8px;
+  border-radius: var(--radius-md, 6px);
+  max-width: clamp(140px, 22vw, 280px);
+  min-width: 0;
+  flex-shrink: 1;
+  overflow: hidden;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background-color: #10b981; /* Green saved */
+}
+
+.statusDotUnsaved {
+  background-color: #f59e0b; /* Amber unsaved */
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+}
+
+.projectNameText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 1px 4px;
+  border-radius: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+  transition: background-color 0.15s ease;
+}
+
+.projectNameText:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.projectNameInput {
+  background: var(--color-bg-primary, #18181b);
+  border: 1px solid var(--color-accent, #e4e4e7);
+  border-radius: 4px;
+  color: var(--color-text-primary, #f4f4f5);
+  font-size: var(--font-size-xs, 12px);
+  font-weight: 500;
+  padding: 1px 6px;
+  outline: none;
+  width: 140px;
+  max-width: 100%;
+}
+
+.closeProjectBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-tertiary, #71717a);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s ease;
+}
+
+.closeProjectBtn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+/* Mode Switcher Segmented Control */
+.modeSwitcher {
+  display: inline-flex;
+  align-items: center;
+  background: var(--color-bg-tertiary, #27272a);
+  border: 1px solid var(--color-border, #2e2e33);
+  border-radius: var(--radius-md, 6px);
+  padding: 2px;
+  gap: 2px;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.modeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-secondary, #a1a1aa);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.modeBtn:hover:not(.modeActive) {
+  color: var(--color-text-primary, #f4f4f5);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.modeActive {
+  background: var(--color-bg-secondary, #1e1e22);
+  color: var(--color-text-primary, #f4f4f5);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  font-weight: 600;
+}
+
+.modeBadge {
+  font-size: 9px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text-tertiary, #71717a);
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: 2px;
+}
+
+/* Action Buttons in Right Section */
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  font-size: var(--font-size-xs, 12px);
+  font-weight: 500;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md, 6px);
+  color: var(--color-text-secondary, #a1a1aa);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.actionBtn:hover {
+  background-color: var(--color-surface-hover, rgba(255, 255, 255, 0.06));
+  color: var(--color-text-primary, #f4f4f5);
+}
+
+.actionBtnActive {
+  background-color: var(--color-surface-active, rgba(255, 255, 255, 0.1)) !important;
+  color: var(--color-accent, #e4e4e7) !important;
+  border-color: var(--color-border, #2e2e33) !important;
+}
+
+.actionBtnPrimary {
+  background-color: var(--color-surface, #27272a);
+  border-color: var(--color-border, #2e2e33);
+  color: var(--color-text-primary, #f4f4f5);
+}
+
+.actionBtnPrimary:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--color-accent, #e4e4e7);
+  color: var(--color-text-primary, #f4f4f5);
+}
+
+/* Add Text Button */
+.addTextBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 8px;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--color-text-primary, #f4f4f5);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--color-border, #2e2e33);
+  border-radius: var(--radius-md, 6px);
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.addTextBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--color-accent, #e4e4e7);
+}
+
+/* Zoom Controls in TitleBar */
+.zoomControls {
+  display: inline-flex;
+  align-items: center;
+  background: var(--color-bg-tertiary, #27272a);
+  border: 1px solid var(--color-border, #2e2e33);
+  border-radius: var(--radius-md, 6px);
+  padding: 1px;
+  gap: 1px;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.zoomBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  min-width: 22px;
+  padding: 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary, #a1a1aa);
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.zoomBtn:hover {
+  background-color: var(--color-surface-hover, rgba(255, 255, 255, 0.08));
+  color: var(--color-text-primary, #f4f4f5);
+}
+
+.zoomLevelText {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--color-text-secondary, #a1a1aa);
+  min-width: 36px;
+  text-align: center;
+  user-select: none;
+}
+
+.zoomFitBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary, #a1a1aa);
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.zoomFitBtn:hover {
+  background-color: var(--color-surface-hover, rgba(255, 255, 255, 0.08));
+  color: var(--color-text-primary, #f4f4f5);
+}
+
+/* App Updater Buttons */
+.updateBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: var(--radius-md, 6px);
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.updateBtnDownloading {
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #60a5fa;
+}
+
+.updateBtnReady {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+
+.spinnerMini {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 1200px) {
+  .modeBadge {
+    display: none;
+  }
+}
+
+@media (max-width: 1080px) {
+  .zoomControls {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .modeSwitcher {
+    display: none;
+  }
+}

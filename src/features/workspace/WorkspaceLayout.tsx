@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Button } from '../../components/ui/Button';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { NumberInput } from '../../components/ui/NumberInput';
 import { Switch } from '../../components/ui/Switch';
@@ -9,7 +8,6 @@ import { useProjectStore } from '../../stores/projectStore';
 import { useAlbumStore } from '../../stores/albumStore';
 import { useEditorStore } from '../../stores/editorStore';
 import { usePhotoStore } from '../../stores/photoStore';
-import { useHistoryStore } from '../../stores/historyStore';
 import { useAutoSave } from '../persistence/useAutoSave';
 import { useTauriInfo } from '../../hooks/useTauriInfo';
 import { WelcomeScreen } from './WelcomeScreen';
@@ -31,6 +29,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { ExportAlbumDialog, ExportOptions } from '../export/ExportAlbumDialog';
 import { ExportProgressModal } from '../export/ExportProgressModal';
+import { AppTitleBar } from './AppTitleBar';
 import styles from './WorkspaceLayout.module.css';
 
 export interface ExportZipProgressPayload {
@@ -46,23 +45,16 @@ export interface ExportZipProgressPayload {
 export function WorkspaceLayout() {
   useAutoSave();
 
-  const openAbout = useAppStore((s) => s.openAbout);
   const openSettings = useAppStore((s) => s.openSettings);
-  const openUpdateModal = useAppStore((s) => s.openUpdateModal);
-  const updateAvailableVersion = useAppStore((s) => s.updateAvailableVersion);
-  const updateStatus = useAppStore((s) => s.updateStatus);
-  const updateProgress = useAppStore((s) => s.updateProgress);
 
   const currentProject = useProjectStore((s) => s.currentProject);
   const openNewProject = useProjectStore((s) => s.openNewProject);
-  const closeProject = useProjectStore((s) => s.closeProject);
   const updateProjectName = useProjectStore((s) => s.updateProjectName);
   const updateProjectSpacing = useProjectStore((s) => s.updateProjectSpacing);
   const updateProjectMargin = useProjectStore((s) => s.updateProjectMargin);
   const updateProjectBackgroundColor = useProjectStore((s) => s.updateProjectBackgroundColor);
   const saveProject = useProjectStore((s) => s.saveProject);
   const exportProjectAsAfsn = useProjectStore((s) => s.exportProjectAsAfsn);
-  const exportCompleteProjectPackageWithPhotos = useProjectStore((s) => s.exportCompleteProjectPackageWithPhotos);
   const importProjectFromAfsn = useProjectStore((s) => s.importProjectFromAfsn);
 
   const currentAlbum = useAlbumStore((s) => s.currentAlbum);
@@ -79,13 +71,9 @@ export function WorkspaceLayout() {
   const updateSpreadBackgroundColor = useAlbumStore((s) => s.updateSpreadBackgroundColor);
   const applyBackgroundColorToAllSpreads = useAlbumStore((s) => s.applyBackgroundColorToAllSpreads);
   const saveStatus = useAlbumStore((s) => s.saveStatus);
-  const lastSavedAt = useAlbumStore((s) => s.lastSavedAt);
   const saveAlbumToDb = useAlbumStore((s) => s.saveAlbumToDb);
   const undo = useAlbumStore((s) => s.undo);
   const redo = useAlbumStore((s) => s.redo);
-
-  const canUndo = useHistoryStore((s) => s.canUndo);
-  const canRedo = useHistoryStore((s) => s.canRedo);
 
   const selectedFrameIds = useEditorStore((s) => s.selectedFrameIds);
   const updateFrameGeometry = useEditorStore((s) => s.updateFrameGeometry);
@@ -125,10 +113,6 @@ export function WorkspaceLayout() {
   const [bgScope, setBgScope] = useState<'spread' | 'left' | 'right'>('spread');
   const [isMarginExpanded, setIsMarginExpanded] = useState<boolean>(false);
 
-  const [isFileMenuOpen, setIsFileMenuOpen] = useState(false);
-  const fileMenuRef = useRef<HTMLDivElement>(null);
-  const [isHelpMenuOpen, setIsHelpMenuOpen] = useState(false);
-  const helpMenuRef = useRef<HTMLDivElement>(null);
   const propertyListRef = useRef<HTMLDivElement>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const toastTimeoutRef = useRef<number | null>(null);
@@ -148,24 +132,9 @@ export function WorkspaceLayout() {
     }
   }, [selectedFrameIds, inspectorTab]);
 
-  // Inline Project Rename State (Top Bar & Inspector)
-  const [isEditingProjectName, setIsEditingProjectName] = useState(false);
-  const [editingProjectName, setEditingProjectName] = useState('');
+  // Inline Project Rename State (Inspector)
   const [isEditingInspectorName, setIsEditingInspectorName] = useState(false);
   const [editingInspectorName, setEditingInspectorName] = useState('');
-
-  const handleCommitProjectName = async () => {
-    const clean = editingProjectName.trim();
-    if (clean && currentProject && clean !== currentProject.name) {
-      try {
-        await updateProjectName(clean);
-        showToast(`Renamed project to: ${clean}`);
-      } catch (err: any) {
-        showToast(`⚠️ ${err?.message || err || 'Failed to rename project'}`);
-      }
-    }
-    setIsEditingProjectName(false);
-  };
 
   const handleCommitInspectorName = async () => {
     const clean = editingInspectorName.trim();
@@ -289,22 +258,6 @@ export function WorkspaceLayout() {
       if (exportZipTimeoutRef.current) clearTimeout(exportZipTimeoutRef.current);
     };
   }, []);
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    const onMouseDown = (e: MouseEvent) => {
-      if (fileMenuRef.current && !fileMenuRef.current.contains(e.target as Node)) {
-        setIsFileMenuOpen(false);
-      }
-      if (helpMenuRef.current && !helpMenuRef.current.contains(e.target as Node)) {
-        setIsHelpMenuOpen(false);
-      }
-    };
-    if (isFileMenuOpen || isHelpMenuOpen) {
-      window.addEventListener('mousedown', onMouseDown);
-    }
-    return () => window.removeEventListener('mousedown', onMouseDown);
-  }, [isFileMenuOpen, isHelpMenuOpen]);
 
   // Window BeforeUnload Warning when modifications are unsaved
   useEffect(() => {
@@ -564,460 +517,17 @@ export function WorkspaceLayout() {
 
   return (
     <div className={styles.workspace}>
-      {/* Top Main Toolbar */}
-      <header className={styles.toolbar} data-tauri-drag-region>
-        
-        {/* Left Section: File & Help Menus */}
-        <div className={styles.toolbarLeftSection}>
-          {/* Professional File Menu Dropdown */}
-          <div className={styles.menuContainer} ref={fileMenuRef}>
-            <Button
-              variant={isFileMenuOpen ? 'secondary' : 'ghost'}
-              size="sm"
-              onClick={() => setIsFileMenuOpen(!isFileMenuOpen)}
-              title="File Menu"
-            >
-              <span>File ▾</span>
-            </Button>
-
-            {isFileMenuOpen && (
-              <div className={styles.dropdownMenu}>
-                <button
-                  type="button"
-                  className={styles.menuItem}
-                  onClick={() => {
-                    setIsFileMenuOpen(false);
-                    confirmSafeAction(() => openNewProject());
-                  }}
-                >
-                  <span>+ New Project...</span>
-                  <span className={styles.shortcutText}>Ctrl+N</span>
-                </button>
-
-                <button
-                  type="button"
-                  className={styles.menuItem}
-                  onClick={() => {
-                    setIsFileMenuOpen(false);
-                    confirmSafeAction(async () => {
-                      const ok = await importProjectFromAfsn();
-                      if (ok) showToast('✓ Project opened successfully');
-                    });
-                  }}
-                >
-                  <span>📂 Open Project</span>
-                  <span className={styles.shortcutText}>Ctrl+O</span>
-                </button>
-
-                {currentProject && (
-                  <>
-                    <div className={styles.menuDivider} />
-
-                    <button
-                      type="button"
-                      className={styles.menuItem}
-                      onClick={() => {
-                        setIsFileMenuOpen(false);
-                        usePhotoStore.getState().importFiles(currentProject.id);
-                      }}
-                    >
-                      <span>🖼️ Import Photos...</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className={styles.menuItem}
-                      onClick={() => {
-                        setIsFileMenuOpen(false);
-                        usePhotoStore.getState().importFolder(currentProject.id);
-                      }}
-                    >
-                      <span>📁 Import Entire Folder...</span>
-                    </button>
-
-                    <div className={styles.menuDivider} />
-
-                    <button
-                      type="button"
-                      className={styles.menuItem}
-                      onClick={async () => {
-                        setIsFileMenuOpen(false);
-                        const res = await saveProject();
-                        if (res.success) {
-                          const fileName = res.filePath ? (res.filePath.split(/[\\/]/).pop() || res.filePath) : '';
-                          if (res.filePath) {
-                            showToast(`✓ Project saved to: ${fileName}`);
-                          } else {
-                            showToast('✓ Project saved to database');
-                          }
-                        }
-                      }}
-                    >
-                      <span>💾 Save</span>
-                      <span className={styles.shortcutText}>Ctrl+S</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className={styles.menuItem}
-                      onClick={async () => {
-                        setIsFileMenuOpen(false);
-                        const path = await exportProjectAsAfsn();
-                        if (path) showToast(`✓ Project saved as: ${path.split(/[\\/]/).pop() || path}`);
-                      }}
-                    >
-                      <span>📑 Save As (.afsn)...</span>
-                      <span className={styles.shortcutText}>Ctrl+Shift+S</span>
-                    </button>
-
-                    <div className={styles.menuDivider} />
-
-                    <button
-                      type="button"
-                      className={styles.menuItem}
-                      onClick={() => {
-                        setIsFileMenuOpen(false);
-                        setIsExportDialogOpen(true);
-                      }}
-                    >
-                      <span>📤 Export Album...</span>
-                      <span className={styles.shortcutText}>Ctrl+E</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className={styles.menuItem}
-                      onClick={async () => {
-                        setIsFileMenuOpen(false);
-                        await exportCompleteProjectPackageWithPhotos();
-                      }}
-                    >
-                      <span>📦 Export Project Package (.zip)...</span>
-                    </button>
-
-                    <div className={styles.menuDivider} />
-
-                    <button
-                      type="button"
-                      className={styles.menuItem}
-                      onClick={() => {
-                        setIsFileMenuOpen(false);
-                        openSettings('shortcuts');
-                      }}
-                    >
-                      <span>⌨️ Keyboard Shortcuts...</span>
-                      <span className={styles.shortcutText}>F1</span>
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-          
-          {/* Help / App Menu Dropdown */}
-          <div className={styles.menuContainer} ref={helpMenuRef}>
-            <Button
-              variant={isHelpMenuOpen ? 'secondary' : 'ghost'}
-              size="sm"
-              onClick={() => setIsHelpMenuOpen(!isHelpMenuOpen)}
-              title="Help & Settings"
-            >
-              <span>Help ▾</span>
-            </Button>
-
-            {isHelpMenuOpen && (
-              <div className={styles.dropdownMenu}>
-                <button
-                  type="button"
-                  className={styles.menuItem}
-                  onClick={() => {
-                    setIsHelpMenuOpen(false);
-                    openSettings('general');
-                  }}
-                >
-                  <span>⚙️ Settings...</span>
-                </button>
-                
-                <div className={styles.menuDivider} />
-                
-                <button
-                  type="button"
-                  className={styles.menuItem}
-                  onClick={() => {
-                    setIsHelpMenuOpen(false);
-                    openAbout();
-                  }}
-                >
-                  <span>ℹ️ About AFSNSmartAlbum</span>
-                </button>
-              </div>
-            )}
-          </div>
-
-        </div>
-
-        {/* Center Section: Project Name, Actions, Zoom */}
-        <div className={styles.toolbarCenterSection}>
-          {currentProject && (
-            <div className={styles.activeProjectBadge}>
-              {isEditingProjectName ? (
-                <input
-                  type="text"
-                  className={styles.projectNameInput}
-                  value={editingProjectName}
-                  autoFocus
-                  onChange={(e) => setEditingProjectName(e.target.value)}
-                  onBlur={handleCommitProjectName}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleCommitProjectName();
-                    if (e.key === 'Escape') setIsEditingProjectName(false);
-                  }}
-                />
-              ) : (
-                <span
-                  className={styles.projectNameText}
-                  onClick={() => {
-                    setEditingProjectName(currentProject.name);
-                    setIsEditingProjectName(true);
-                  }}
-                  title="Click to rename project"
-                >
-                  {currentProject.name} <span style={{ fontSize: '10px', opacity: 0.6 }}>✏️</span>
-                </span>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => confirmSafeAction(() => closeProject())}
-                title="Close active project"
-                style={{ padding: '0 4px', height: '20px' }}
-              >
-                ✕
-              </Button>
-            </div>
-          )}
-
-          {currentProject && (
-            <>
-              <div className={styles.toolbarSeparator} />
-
-              {/* Undo / Redo & Save Action Stack */}
-              <div className={styles.historyGroup}>
-                <button
-                  type="button"
-                  className={styles.historyBtn}
-                  onClick={undo}
-                  disabled={!canUndo}
-                  title="Undo (Ctrl+Z)"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 7v6h6" />
-                    <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  className={styles.historyBtn}
-                  onClick={redo}
-                  disabled={!canRedo}
-                  title="Redo (Ctrl+Y)"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 7v6h-6" />
-                    <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.historyBtn} ${
-                    saveStatus === 'unsaved'
-                      ? styles.historyBtnUnsaved
-                      : saveStatus === 'saving'
-                      ? styles.historyBtnSaving
-                      : ''
-                  }`}
-                  onClick={async () => {
-                    const res = await saveProject();
-                    if (res.success) {
-                      if (res.filePath) {
-                        showToast(`✓ Project saved to: ${res.filePath.split(/[\\/]/).pop() || res.filePath}`);
-                      } else {
-                        showToast('✓ Project saved to database');
-                      }
-                    }
-                  }}
-                  title={
-                    saveStatus === 'unsaved'
-                      ? 'Unsaved changes (Click to Save / Ctrl+S)'
-                      : saveStatus === 'saving'
-                      ? 'Saving changes...'
-                      : `All changes saved${lastSavedAt ? ` (${lastSavedAt})` : ''} (Ctrl+S)`
-                  }
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                    <polyline points="17 21 17 13 7 13 7 21" />
-                    <polyline points="7 3 7 8 15 8" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  className={styles.historyBtn}
-                  onClick={async () => {
-                    await exportCompleteProjectPackageWithPhotos();
-                  }}
-                  title="Export Project Package (.zip). Extract the package before opening project.afsn."
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
-                  </svg>
-                </button>
-              </div>
-
-              <div className={styles.toolbarSeparator} />
-
-              {/* Add Text Tool Button */}
-              <button
-                type="button"
-                className={styles.addTextBtn}
-                onClick={() => {
-                  if (!activeSpreadId) return;
-                  const newId = addTextToSpread(activeSpreadId);
-                  if (newId) {
-                    setEditingTextElementId(newId);
-                    showToast('✓ Added Text Box. Double-click or type to edit.');
-                  }
-                }}
-                title="Add Text Box (T)"
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="4 7 4 4 20 4 20 7" />
-                  <line x1="9" y1="20" x2="15" y2="20" />
-                  <line x1="12" y1="4" x2="12" y2="20" />
-                </svg>
-                <span className={styles.toolbarBtnText}>Add Text</span>
-              </button>
-
-              <div className={styles.toolbarSeparator} />
-
-              {/* Zoom Controls */}
-              <div className={styles.zoomControls}>
-                <button
-                  type="button"
-                  className={styles.zoomBtn}
-                  onClick={() => setZoomLevel((z) => Math.max(25, z - 15))}
-                  title="Zoom Out (Ctrl+−)"
-                >
-                  -
-                </button>
-                <span className={styles.zoomLevelText}>{zoomLevel}%</span>
-                <button
-                  type="button"
-                  className={styles.zoomBtn}
-                  onClick={() => setZoomLevel((z) => Math.min(350, z + 15))}
-                  title="Zoom In (Ctrl++)"
-                >
-                  +
-                </button>
-                <button
-                  type="button"
-                  className={styles.zoomFitBtn}
-                  onClick={handleFitToScreen}
-                  title="Fit Spread to Screen & Center (Ctrl+0)"
-                >
-                  Fit
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Right Section: View Toggles & Export */}
-        <div className={styles.toolbarRightSection}>
-          {currentProject && (
-            <>
-              {/* High-Resolution Print Export Button */}
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setIsExportDialogOpen(true)}
-                title="Export Album for Print (Ctrl+E)"
-                className={styles.toolbarActionBtn}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="17 8 12 3 7 8"/>
-                  <line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
-                <span className={styles.toolbarBtnText}>Export</span>
-              </Button>
-
-              {/* Properties Panel Toggle Button */}
-              <Button
-                variant={isPropertiesOpen ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => setIsPropertiesOpen((v) => !v)}
-                title={isPropertiesOpen ? 'Hide Properties Panel' : 'Show Properties Panel'}
-                className={styles.toolbarActionBtn}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect width="18" height="18" x="3" y="3" rx="2"/>
-                  <path d="M15 3v18"/>
-                </svg>
-                <span className={styles.toolbarBtnText}>Properties</span>
-              </Button>
-            </>
-          )}
-
-          {updateStatus === 'downloading' ? (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={openUpdateModal}
-              title="Update is downloading in background. Click to view progress."
-              className={`${styles.updateBtn} ${styles.updateBtnDownloading}`}
-            >
-              <svg className={styles.spinnerMini} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-              </svg>
-              <span className={styles.toolbarBtnText}>
-                {updateProgress.percent > 0 ? `Downloading ${updateProgress.percent}%` : 'Downloading...'}
-              </span>
-            </Button>
-          ) : updateStatus === 'ready' ? (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={openUpdateModal}
-              title="Update is ready to install. Click to restart."
-              className={`${styles.updateBtn} ${styles.updateBtnReady}`}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
-              </svg>
-              <span className={styles.toolbarBtnText}>Restart to Update</span>
-            </Button>
-          ) : updateAvailableVersion ? (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={openUpdateModal}
-              title={`Update to ${updateAvailableVersion} is available. Click to install.`}
-              className={styles.updateBtn}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none" style={{ flexShrink: 0 }}>
-                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-              </svg>
-              <span className={styles.toolbarBtnText}>Update</span>
-              <span className={styles.updateVersionBadge}>
-                {updateAvailableVersion.startsWith('v') ? updateAvailableVersion : `v${updateAvailableVersion}`}
-              </span>
-            </Button>
-          ) : null}
-        </div>
-      </header>
+      {/* macOS Integrated Titlebar with 80px Traffic Light Inset & Mode Switcher Shell */}
+      <AppTitleBar
+        onOpenExportDialog={() => setIsExportDialogOpen(true)}
+        onToggleProperties={() => setIsPropertiesOpen((v) => !v)}
+        isPropertiesOpen={isPropertiesOpen}
+        showToast={showToast}
+        confirmSafeAction={confirmSafeAction}
+        zoomLevel={zoomLevel}
+        onZoomChange={setZoomLevel}
+        onFitToScreen={handleFitToScreen}
+      />
 
       {/* Center Editor Area (contains Canvas + Bottom Full-Width PageNavigator) */}
       <div className={styles.centerArea}>
