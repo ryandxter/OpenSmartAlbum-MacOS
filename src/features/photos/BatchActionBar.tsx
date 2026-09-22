@@ -1,4 +1,15 @@
 import { useState } from 'react';
+import {
+  Star,
+  Copy,
+  Check,
+  FolderPlus,
+  Folder,
+  Trash2,
+  ChevronDown,
+  X,
+} from 'lucide-react';
+import { isMac } from '../../utils/platform';
 import { usePhotoStore } from '../../stores/photoStore';
 import { useProjectStore } from '../../stores/projectStore';
 import styles from './BatchActionBar.module.css';
@@ -60,9 +71,10 @@ export function BatchActionBar({ onRequestDelete }: { onRequestDelete: (ids: str
             type="button"
             className={styles.deselectBtn}
             onClick={clearSelection}
-            title="Clear selection (Esc or Ctrl+D)"
+            title="Clear photo selection (Esc)"
           >
-            ✕ Deselect
+            <X size={12} strokeWidth={1.5} />
+            <span>Deselect</span>
           </button>
         </div>
 
@@ -74,7 +86,8 @@ export function BatchActionBar({ onRequestDelete }: { onRequestDelete: (ids: str
             onClick={handleToggleFav}
             title={allFav ? 'Remove all from favorites' : 'Mark all selected as favorites'}
           >
-            ★ {allFav ? 'Favorited' : 'Favorite'}
+            <Star size={13} strokeWidth={1.5} fill={allFav ? 'currentColor' : 'none'} />
+            <span>{allFav ? 'Favorited' : 'Favorite'}</span>
           </button>
 
           {/* Copy to Clipboard */}
@@ -82,10 +95,20 @@ export function BatchActionBar({ onRequestDelete }: { onRequestDelete: (ids: str
             type="button"
             className={`${styles.actionBtn} ${isCopied ? styles.copiedBtn : ''}`}
             onClick={() => { void copySelectedPhotos(); }}
-            title={isCopied ? `${count} photos copied. Paste onto a spread.` : 'Copy selected photos (Ctrl+C)'}
+            title={isCopied ? `${count} photos copied. Paste onto a spread.` : `Copy selected photos (${isMac() ? '⌘C' : 'Ctrl+C'})`}
             aria-live="polite"
           >
-            {isCopied ? '✓ Copied' : '📋 Copy'}
+            {isCopied ? (
+              <>
+                <Check size={13} strokeWidth={1.5} />
+                <span>Copied</span>
+              </>
+            ) : (
+              <>
+                <Copy size={13} strokeWidth={1.5} />
+                <span>Copy</span>
+              </>
+            )}
           </button>
 
           {/* Add / Move to Folder Dropdown */}
@@ -97,7 +120,9 @@ export function BatchActionBar({ onRequestDelete }: { onRequestDelete: (ids: str
                 onClick={() => setIsFolderMenuOpen(!isFolderMenuOpen)}
                 title="Organize selected photos into a folder"
               >
-                📂 To Folder ▾
+                <FolderPlus size={13} strokeWidth={1.5} />
+                <span>To Folder</span>
+                <ChevronDown size={11} strokeWidth={1.5} />
               </button>
 
               {isFolderMenuOpen && (
@@ -130,7 +155,8 @@ export function BatchActionBar({ onRequestDelete }: { onRequestDelete: (ids: str
                       className={styles.menuItem}
                       onClick={() => handleFolderTargetSelect(f.id)}
                     >
-                      📂 {f.name}
+                      <Folder size={13} strokeWidth={1.5} />
+                      <span>{f.name}</span>
                     </button>
                   ))}
 
@@ -156,9 +182,10 @@ export function BatchActionBar({ onRequestDelete }: { onRequestDelete: (ids: str
             type="button"
             className={`${styles.actionBtn} ${styles.deleteBtn}`}
             onClick={() => onRequestDelete([...selectedPhotoIds], `${count} photos`)}
-            title="Remove selected photos from the library (Del)"
+            title={`Remove selected photos from the library (${isMac() ? '⌫' : 'Del'})`}
           >
-            🗑 Remove ({count})
+            <Trash2 size={13} strokeWidth={1.5} />
+            <span>Remove ({count})</span>
           </button>
         </div>
       </div>

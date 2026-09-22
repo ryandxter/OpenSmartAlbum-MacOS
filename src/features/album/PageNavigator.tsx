@@ -22,6 +22,7 @@ import { calculatePreviewProjection, alignPreviewElementBounds } from '../../dom
 import { Project } from '../../domain/project';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { ContextMenu, ContextMenuItem } from '../../components/ui';
+import { isMac } from '../../utils/platform';
 import styles from './PageNavigator.module.css';
 
 function safeConvertFileSrc(filePath: string, version = ''): string {
@@ -437,8 +438,8 @@ export function PageNavigator() {
         {
           id: 'delete-selected',
           label: `Delete Selected Spreads (${selectedSpreadIds.length})`,
-          icon: '🗑️',
-          shortcut: 'Delete',
+          icon: <Trash2 size={13} strokeWidth={1.5} />,
+          shortcut: isMac() ? '⌫' : 'Delete',
           danger: true,
           onClick: () => {
             useEditorStore.getState().clearSelection();
@@ -448,7 +449,7 @@ export function PageNavigator() {
         {
           id: 'duplicate-selected',
           label: `Duplicate Selected Spreads (${selectedSpreadIds.length})`,
-          icon: '📋',
+          icon: <Copy size={13} strokeWidth={1.5} />,
           onClick: () => {
             selectedSpreads.forEach((s) => duplicateSpread(s.id, currentProject));
           },
@@ -457,7 +458,7 @@ export function PageNavigator() {
         {
           id: 'select-all',
           label: 'Select All Spreads',
-          shortcut: 'Ctrl+A',
+          shortcut: isMac() ? '⌘A' : 'Ctrl+A',
           onClick: selectAllSpreads,
         },
         {
@@ -487,20 +488,20 @@ export function PageNavigator() {
       {
         id: 'duplicate-single',
         label: 'Duplicate Spread',
-        icon: '📋',
+        icon: <Copy size={13} strokeWidth={1.5} />,
         onClick: () => duplicateSpread(spread.id, currentProject),
       },
       {
         id: 'move-left',
         label: 'Move Left (Earlier)',
-        icon: '◀',
+        icon: <ChevronLeft size={13} strokeWidth={1.5} />,
         disabled: isFirst,
         onClick: () => moveSpread(spread.id, 'left'),
       },
       {
         id: 'move-right',
         label: 'Move Right (Later)',
-        icon: '▶',
+        icon: <ChevronRight size={13} strokeWidth={1.5} />,
         disabled: isLast,
         onClick: () => moveSpread(spread.id, 'right'),
       },
@@ -508,14 +509,14 @@ export function PageNavigator() {
       {
         id: 'select-all',
         label: 'Select All Spreads',
-        shortcut: 'Ctrl+A',
+        shortcut: isMac() ? '⌘A' : 'Ctrl+A',
         onClick: selectAllSpreads,
       },
       { divider: true, id: 'div-2', label: '' },
       {
         id: 'delete-single',
         label: allSpreads.length <= 1 ? 'Delete & Reset Spread' : 'Delete Spread',
-        icon: '🗑️',
+        icon: <Trash2 size={13} strokeWidth={1.5} />,
         danger: true,
         onClick: () => {
           useEditorStore.getState().clearSelection();

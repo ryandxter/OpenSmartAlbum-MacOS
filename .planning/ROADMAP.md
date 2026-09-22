@@ -7,7 +7,7 @@ OpenSmartAlbum-MacOS overhaul executes across five focused phases: establishing 
 ## Phases
 
 - [x] **Phase 1: macOS Foundation & Pure Rust Pipeline** - Purge Win32 dependencies, establish pure Rust image processing, and configure Tauri 2 for Universal macOS.
-- [ ] **Phase 2: Lucide Iconography & macOS Pro Studio UI** - Full migration to `lucide-react`, Figma/Lightroom dark theme, integrated macOS titlebar, modular inspectors, and Apple desktop ergonomics.
+- [x] **Phase 2: Lucide Iconography & macOS Pro Studio UI** - Full migration to `lucide-react`, Figma/Lightroom dark theme, integrated macOS titlebar, modular inspectors, and Apple desktop ergonomics.
 - [ ] **Phase 3: Instagram & Social Media Carousel Mode** - Dual-mode canvas engine, social aspect ratios (1:1, 4:5, 9:16), seamless cross-slide panorama photo spanning, and slide reordering.
 - [ ] **Phase 4: Shape Presets, Clipping Masks & Border Styling** - Rich vector clipping masks (Circle, Hexagon, Scallop, Heart, custom SVG), advanced borders/shadows, and 2D topological resize compatibility.
 - [ ] **Phase 5: Advanced Layered Export Suite** - Multi-layer Adobe Photoshop (`.psd`) export, automated Instagram carousel slice generator, high-bit-depth TIFF, and print-ready PDF/X.
@@ -42,12 +42,13 @@ Plans:
   3. The right properties panel functions as a clean modular inspector with collapsible sections for Layout, Shapes, Typography, and Effects.
   4. The left sidebar cleanly switches between the Photo Pool and Slide Navigator, and the bottom status bar displays live zoom, canvas dimensions, and snapping toggles.
   5. Keyboard navigation adheres to macOS conventions (using `⌘` Cmd shortcuts and trackpad gestures).
-**Plans**: 3 plans
+**Plans**: 4 plans
 
 Plans:
-- [ ] 02-01: Implement design tokens, CSS variables, and full `lucide-react` icon migration across all UI components.
-- [ ] 02-02: Rebuild titlebar, left sidebar (Photo Tray / Slide Navigator), and bottom status bar for native macOS ergonomics.
-- [ ] 02-03: Restructure right Inspector into modular accordion tabs (Layout, Shapes, Typography, Effects) and verify with `/gsd-ui-review`.
+- [x] 02-01: Pro Studio design tokens, CSS variables, and complete `lucide-react` icon migration across all UI components.
+- [x] 02-02: macOS native integrated titlebar (`titleBarStyle: "Overlay"`), drag regions, and Mode Switcher button shell.
+- [x] 02-03: Modular 4-section multi-expandable inspector panel and bottom status bar.
+- [x] 02-04: macOS keyboard shortcuts (`⌘`), canvas trackpad gestures, and UI polish with full test verification.
 
 ---
 
@@ -109,7 +110,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. macOS Foundation & Pure Rust Pipeline | 2/2 | Complete | 2026-09-22 |
-| 2. Lucide Iconography & macOS Pro Studio UI | 0/3 | Not started | - |
+| 2. Lucide Iconography & macOS Pro Studio UI | 0/4 | Not started | - |
 | 3. Instagram & Social Media Carousel Mode | 0/2 | Not started | - |
 | 4. Shape Presets, Clipping Masks & Border Styling | 0/2 | Not started | - |
 | 5. Advanced Layered Export Suite | 0/2 | Not started | - |

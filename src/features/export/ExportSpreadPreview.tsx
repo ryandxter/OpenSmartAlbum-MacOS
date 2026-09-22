@@ -1,5 +1,6 @@
 import { TextPreviewCanvas } from '../editor/TextPreviewCanvas';
 import React, { useMemo } from 'react';
+import { Image as ImageIcon } from 'lucide-react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { Spread, mergeFramePhotoAsset } from '../../domain/album';
 import { Project } from '../../domain/project';
@@ -445,11 +446,7 @@ export const ExportSpreadPreview: React.FC<ExportSpreadPreviewProps> = ({
                   />
                 ) : (
                   <div className={styles.emptySlot}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                      <circle cx="8.5" cy="8.5" r="1.5" />
-                      <polyline points="21 15 16 10 5 21" />
-                    </svg>
+                    <ImageIcon size={18} strokeWidth={1.5} />
                   </div>
                 )}
                 {photoEl.borderEnabled && photoEl.borderWidth > 0 && (

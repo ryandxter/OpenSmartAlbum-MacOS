@@ -1,6 +1,21 @@
 import { useRef, useState, useEffect, useMemo, useLayoutEffect, useCallback } from 'react';
 import { Stage, Layer, Rect, Line, Circle, Path as KonvaPath, Text as KonvaText, Group, Image as KonvaImage, Transformer, Label, Tag } from 'react-konva';
 import Konva from 'konva';
+import {
+  Lock,
+  Unlock,
+  Copy,
+  Clipboard,
+  Trash2,
+  Edit3,
+  Plus,
+  Layers,
+  MapPin,
+  CopyPlus,
+  ArrowLeftRight,
+  Group as GroupIcon,
+  Ungroup as UngroupIcon,
+} from 'lucide-react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useAlbumStore } from '../../stores/albumStore';
 import { useEditorStore } from '../../stores/editorStore';
@@ -2349,7 +2364,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
         {
           id: 'paste-in-place',
           label: 'Paste in Place',
-          icon: '📍',
+          icon: <MapPin size={13} strokeWidth={1.5} />,
           shortcut: mac ? '⌘⇧V' : 'Ctrl+Shift+V',
           disabled: !hasClipboard,
           onClick: () => {
@@ -2360,7 +2375,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
         {
           id: 'paste-to-all-spreads',
           label: `Paste to All Spreads (${currentAlbum?.spreads.length || 0})`,
-          icon: '📑',
+          icon: <Layers size={13} strokeWidth={1.5} />,
           shortcut: mac ? '⌘⌥V' : 'Ctrl+Alt+V',
           disabled: !hasClipboard,
           onClick: () => {
@@ -2374,7 +2389,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
         {
           id: 'duplicate-spread',
           label: 'Duplicate Spread',
-          icon: '📋',
+          icon: <Copy size={13} strokeWidth={1.5} />,
           onClick: () => {
             if (currentProject) {
               duplicateSpread(activeSpread.id, currentProject);
@@ -2384,7 +2399,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
         {
           id: 'add-spread',
           label: 'Add New Spread',
-          icon: '➕',
+          icon: <Plus size={13} strokeWidth={1.5} />,
           onClick: () => {
             if (currentProject) {
               addSpread(currentProject);
@@ -2415,7 +2430,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
         {
           id: 'edit-text',
           label: 'Edit Text',
-          icon: '✏️',
+          icon: <Edit3 size={13} strokeWidth={1.5} />,
           shortcut: 'Double-Click',
           onClick: () => setEditingTextElementId(textEl.id),
         },
@@ -2427,7 +2442,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
       {
         id: 'delete',
         label: count > 1 ? `Delete ${count} Selected ${itemNounPlural}` : `Delete ${itemNounSingular}`,
-        icon: '🗑️',
+        icon: <Trash2 size={13} strokeWidth={1.5} />,
         shortcut: mac ? '⌫' : 'Del',
         danger: true,
         onClick: () => deleteSelectedFrames(activeSpread.id),
@@ -2435,7 +2450,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
       {
         id: 'copy',
         label: count > 1 ? `Copy ${count} ${itemNounPlural}` : `Copy ${itemNounSingular}`,
-        icon: '📋',
+        icon: <Copy size={13} strokeWidth={1.5} />,
         shortcut: mac ? '⌘C' : 'Ctrl+C',
         onClick: () => {
           copySelectedFrames(activeSpread.id);
@@ -2445,7 +2460,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
       {
         id: 'paste',
         label: dynamicPasteLabel,
-        icon: '📥',
+        icon: <Clipboard size={13} strokeWidth={1.5} />,
         shortcut: mac ? '⌘V' : 'Ctrl+V',
         disabled: !hasClipboard,
         onClick: handleExecutePaste,
@@ -2453,7 +2468,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
       {
         id: 'paste-in-place',
         label: 'Paste in Place',
-        icon: '📍',
+        icon: <MapPin size={13} strokeWidth={1.5} />,
         shortcut: mac ? '⌘⇧V' : 'Ctrl+Shift+V',
         disabled: !hasClipboard,
         onClick: () => {
@@ -2464,7 +2479,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
       {
         id: 'paste-to-all-spreads',
         label: `Paste to All Spreads (${currentAlbum?.spreads.length || 0})`,
-        icon: '📑',
+        icon: <Layers size={13} strokeWidth={1.5} />,
         shortcut: mac ? '⌘⌥V' : 'Ctrl+Alt+V',
         disabled: !hasClipboard,
         onClick: () => {
@@ -2477,7 +2492,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
       {
         id: 'duplicate',
         label: count > 1 ? `Duplicate ${count} ${itemNounPlural}` : `Duplicate ${itemNounSingular}`,
-        icon: '⧉',
+        icon: <CopyPlus size={13} strokeWidth={1.5} />,
         shortcut: mac ? '⌘D' : 'Ctrl+D',
         onClick: () => duplicateSelectedFrames(activeSpread.id),
       }
@@ -2492,7 +2507,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
       items.push({
         id: 'group-elements',
         label: `Group ${count} ${itemNounPlural}`,
-        icon: '👥',
+        icon: <GroupIcon size={13} strokeWidth={1.5} />,
         shortcut: mac ? '⌘G' : 'Ctrl+G',
         onClick: () => {
           groupSelectedFrames(activeSpread.id);
@@ -2505,7 +2520,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
       items.push({
         id: 'ungroup-elements',
         label: `Ungroup ${itemNounPlural}`,
-        icon: '⊘',
+        icon: <UngroupIcon size={13} strokeWidth={1.5} />,
         shortcut: mac ? '⌘⇧G' : 'Ctrl+Shift+G',
         onClick: () => {
           ungroupSelectedFrames(activeSpread.id);
@@ -2521,12 +2536,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
       items.push({
         id: 'lock-elements',
         label: count > 1 ? `Lock ${count} ${itemNounPlural}` : `Lock ${itemNounSingular}`,
-        icon: (
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-          </svg>
-        ),
+        icon: <Lock size={13} strokeWidth={1.5} />,
         shortcut: mac ? '⌘L' : 'Ctrl+L',
         onClick: () => {
           useEditorStore.getState().toggleLockSelectedFrames(activeSpread.id, true);
@@ -2539,12 +2549,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
       items.push({
         id: 'unlock-elements',
         label: count > 1 ? `Unlock ${count} ${itemNounPlural}` : `Unlock ${itemNounSingular}`,
-        icon: (
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-            <path d="M7 11V7a5 5 0 0 1 9.9-1" />
-          </svg>
-        ),
+        icon: <Unlock size={13} strokeWidth={1.5} />,
         shortcut: mac ? '⌥L' : 'Alt+L',
         onClick: () => {
           useEditorStore.getState().toggleLockSelectedFrames(activeSpread.id, false);
@@ -2557,7 +2562,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
       items.push({
         id: 'swap-photos',
         label: 'Swap 2 Photos',
-        icon: '⇄',
+        icon: <ArrowLeftRight size={13} strokeWidth={1.5} />,
         shortcut: 'S',
         onClick: () => {
           if (selectedFrameIds[0] && selectedFrameIds[1]) {

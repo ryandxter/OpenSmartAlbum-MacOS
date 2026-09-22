@@ -1,5 +1,19 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import {
+  Image,
+  Copy,
+  RefreshCw,
+  Star,
+  FolderPlus,
+  Folder,
+  FolderOutput,
+  FolderMinus,
+  CheckSquare,
+  Trash2,
+  ChevronRight,
+} from 'lucide-react';
+import { isMac } from '../../utils/platform';
 import { Photo, PhotoFolder, formatFileSize } from '../../domain/photo';
 import { useAlbumStore } from '../../stores/albumStore';
 import { useEditorStore } from '../../stores/editorStore';
@@ -121,7 +135,7 @@ export const PhotoContextMenu: React.FC<PhotoContextMenuProps> = ({
           }
         }}
       >
-        <span className={styles.menuIcon}>🖼️</span>
+        <span className={styles.menuIcon}><Image size={14} strokeWidth={1.5} /></span>
         <span>{isMulti ? `Place ${count} Photos on Spread` : 'Place on Spread Canvas'}</span>
       </button>
 
@@ -130,14 +144,14 @@ export const PhotoContextMenu: React.FC<PhotoContextMenuProps> = ({
         className={styles.menuItem}
         onClick={() => { onClose(); onCopyPhotos(photoIds); }}
       >
-        <span className={styles.menuIcon}>📋</span>
+        <span className={styles.menuIcon}><Copy size={14} strokeWidth={1.5} /></span>
         <span>{isMulti ? `Copy ${count} Photos` : 'Copy Photo'}</span>
       </button>
 
       <div className={styles.divider} />
 
       <button type="button" className={styles.menuItem} onClick={() => { onClose(); onRelinkPhoto(targetPhoto.id); }}>
-        <span className={styles.menuIcon}>↻</span>
+        <span className={styles.menuIcon}><RefreshCw size={14} strokeWidth={1.5} /></span>
         <span>Relink Photo...</span>
       </button>
 
@@ -156,7 +170,9 @@ export const PhotoContextMenu: React.FC<PhotoContextMenuProps> = ({
           }
         }}
       >
-        <span className={styles.menuIcon}>{allFav ? '★' : '☆'}</span>
+        <span className={styles.menuIcon}>
+          <Star size={14} strokeWidth={1.5} fill={allFav ? 'currentColor' : 'none'} />
+        </span>
         <span>{allFav ? 'Remove from Favorites' : 'Mark as Favorite'}</span>
       </button>
 
@@ -168,9 +184,9 @@ export const PhotoContextMenu: React.FC<PhotoContextMenuProps> = ({
           onMouseLeave={() => setFolderSubmenuMode(null)}
         >
           <button type="button" className={styles.menuItem}>
-            <span className={styles.menuIcon}>📂</span>
+            <span className={styles.menuIcon}><FolderPlus size={14} strokeWidth={1.5} /></span>
             <span>Add to Folder</span>
-            <span className={styles.submenuArrow}>▸</span>
+            <span className={styles.submenuArrow}><ChevronRight size={12} strokeWidth={1.5} /></span>
           </button>
 
           {folderSubmenuMode === 'copy' && (
@@ -185,7 +201,7 @@ export const PhotoContextMenu: React.FC<PhotoContextMenuProps> = ({
                     onAddToFolder(f.id, photoIds);
                   }}
                 >
-                  <span className={styles.menuIcon}>📁</span>
+                  <span className={styles.menuIcon}><Folder size={14} strokeWidth={1.5} /></span>
                   <span>{f.name}</span>
                 </button>
               ))}
@@ -202,9 +218,9 @@ export const PhotoContextMenu: React.FC<PhotoContextMenuProps> = ({
           onMouseLeave={() => setFolderSubmenuMode(null)}
         >
           <button type="button" className={styles.menuItem}>
-            <span className={styles.menuIcon}>↗</span>
+            <span className={styles.menuIcon}><FolderOutput size={14} strokeWidth={1.5} /></span>
             <span>Move to Folder</span>
-            <span className={styles.submenuArrow}>▸</span>
+            <span className={styles.submenuArrow}><ChevronRight size={12} strokeWidth={1.5} /></span>
           </button>
 
           {folderSubmenuMode === 'move' && (
@@ -219,7 +235,7 @@ export const PhotoContextMenu: React.FC<PhotoContextMenuProps> = ({
                     onMoveToFolder(activeFolderId, f.id, photoIds);
                   }}
                 >
-                  <span className={styles.menuIcon}>📁</span>
+                  <span className={styles.menuIcon}><Folder size={14} strokeWidth={1.5} /></span>
                   <span>{f.name}</span>
                 </button>
               ))}
@@ -238,7 +254,7 @@ export const PhotoContextMenu: React.FC<PhotoContextMenuProps> = ({
             onRemoveFromFolder(activeFolderId, photoIds);
           }}
         >
-          <span className={styles.menuIcon}>✕</span>
+          <span className={styles.menuIcon}><FolderMinus size={14} strokeWidth={1.5} /></span>
           <span>Remove from this folder</span>
         </button>
       )}
@@ -254,8 +270,8 @@ export const PhotoContextMenu: React.FC<PhotoContextMenuProps> = ({
           onSelectAll();
         }}
       >
-        <span className={styles.menuIcon}>✓</span>
-        <span>Select All (Ctrl+A)</span>
+        <span className={styles.menuIcon}><CheckSquare size={14} strokeWidth={1.5} /></span>
+        <span>Select All ({isMac() ? '⌘A' : 'Ctrl+A'})</span>
       </button>
 
       <div className={styles.divider} />
@@ -270,7 +286,7 @@ export const PhotoContextMenu: React.FC<PhotoContextMenuProps> = ({
           onRequestDelete(photoIds, names);
         }}
       >
-        <span className={styles.menuIcon}>🗑</span>
+        <span className={styles.menuIcon}><Trash2 size={14} strokeWidth={1.5} /></span>
         <span>{isMulti ? `Remove ${count} Photos from Library` : 'Remove from Library'}</span>
       </button>
     </div>,

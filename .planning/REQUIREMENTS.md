@@ -7,18 +7,18 @@
 
 ### 1. Iconography & Visual Assets (ICON)
 
-- [ ] **ICON-01**: Replace all legacy inline/hardcoded SVG markup across the entire workspace with dynamic `lucide-react` components.
-- [ ] **ICON-02**: Establish standardized icon design tokens (14px micro, 16px compact, 20px standard, 24px featured) with 1.5px and 2.0px stroke widths.
-- [ ] **ICON-03**: Support dynamic semantic coloring (`currentColor`, primary, muted, destructive, warning) adapting to active UI theme.
+- [x] **ICON-01**: Replace all legacy inline/hardcoded SVG markup across the entire workspace with dynamic `lucide-react` components.
+- [x] **ICON-02**: Establish standardized icon design tokens (14px micro, 16px compact, 20px standard, 24px featured) with 1.5px and 2.0px stroke widths.
+- [x] **ICON-03**: Support dynamic semantic coloring (`currentColor`, primary, muted, destructive, warning) adapting to active UI theme.
 
 ### 2. macOS Studio Theming & Interface (UIUX)
 
-- [ ] **UIUX-01**: Modern macOS Pro Studio dark theme inspired by Figma and Adobe Lightroom with unified CSS custom property tokens.
-- [ ] **UIUX-02**: Integrated macOS titlebar with native window drag region, centered project title, and insetting traffic lights (close/minimize/zoom).
-- [ ] **UIUX-03**: Modular right Inspector with four dedicated accordion sections: (1) Layout & Spacing, (2) Shapes & Borders, (3) Typography, (4) Effects & Shadows.
-- [ ] **UIUX-04**: Collaborative Left Sidebar with tabbed switching between Photo Tray (with metadata badges) and Carousel Slide Navigator.
-- [ ] **UIUX-05**: Bottom Workspace Status Bar with zoom slider, canvas DPI/dimension readout, snapping/grid toggles, and active slide indicator.
-- [ ] **UIUX-06**: Native macOS desktop ergonomics: SF Pro system typography, macOS keyboard shortcuts (`⌘` Cmd instead of `Ctrl`), and trackpad gesture support (pinch-to-zoom, two-finger pan).
+- [x] **UIUX-01**: Modern macOS Pro Studio dark theme inspired by Figma and Adobe Lightroom with unified CSS custom property tokens.
+- [x] **UIUX-02**: Integrated macOS titlebar with native window drag region, centered project title, and insetting traffic lights (close/minimize/zoom).
+- [x] **UIUX-03**: Modular right Inspector with four dedicated accordion sections: (1) Layout & Spacing, (2) Shapes & Borders, (3) Typography, (4) Effects & Shadows.
+- [x] **UIUX-04**: Collaborative Left Sidebar with tabbed switching between Photo Tray (with metadata badges) and Carousel Slide Navigator.
+- [x] **UIUX-05**: Bottom Workspace Status Bar with zoom slider, canvas DPI/dimension readout, snapping/grid toggles, and active slide indicator.
+- [x] **UIUX-06**: Native macOS desktop ergonomics: SF Pro system typography, macOS keyboard shortcuts (`⌘` Cmd instead of `Ctrl`), and trackpad gesture support (pinch-to-zoom, two-finger pan).
 
 ### 3. Platform Compatibility & Pure Rust Backend (PLAT)
 
@@ -72,15 +72,15 @@
 | PLAT-01 | Phase 1 | Complete |
 | PLAT-02 | Phase 1 | Complete |
 | PLAT-03 | Phase 1 | Complete |
-| ICON-01 | Phase 2 | Pending |
-| ICON-02 | Phase 2 | Pending |
-| ICON-03 | Phase 2 | Pending |
-| UIUX-01 | Phase 2 | Pending |
-| UIUX-02 | Phase 2 | Pending |
-| UIUX-03 | Phase 2 | Pending |
-| UIUX-04 | Phase 2 | Pending |
-| UIUX-05 | Phase 2 | Pending |
-| UIUX-06 | Phase 2 | Pending |
+| ICON-01 | Phase 2 | Complete |
+| ICON-02 | Phase 2 | Complete |
+| ICON-03 | Phase 2 | Complete |
+| UIUX-01 | Phase 2 | Complete |
+| UIUX-02 | Phase 2 | Complete |
+| UIUX-03 | Phase 2 | Complete |
+| UIUX-04 | Phase 2 | Complete |
+| UIUX-05 | Phase 2 | Complete |
+| UIUX-06 | Phase 2 | Complete |
 | CARO-01 | Phase 3 | Pending |
 | CARO-02 | Phase 3 | Pending |
 | CARO-03 | Phase 3 | Pending |
