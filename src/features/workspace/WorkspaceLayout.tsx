@@ -844,14 +844,29 @@ export function WorkspaceLayout() {
 
       if (e.key === 'z' || e.key === 'Z') {
         e.preventDefault();
-        if (e.shiftKey) {
-          redo();
+        if (activeMode === 'carousel') {
+          if (e.shiftKey) {
+            useCarouselStore.getState().redo();
+            showToast('↷ Redo');
+          } else {
+            useCarouselStore.getState().undo();
+            showToast('↶ Undo');
+          }
         } else {
-          undo();
+          if (e.shiftKey) {
+            redo();
+          } else {
+            undo();
+          }
         }
       } else if (e.key === 'y' || e.key === 'Y') {
         e.preventDefault();
-        redo();
+        if (activeMode === 'carousel') {
+          useCarouselStore.getState().redo();
+          showToast('↷ Redo');
+        } else {
+          redo();
+        }
       } else if (e.key === 's' || e.key === 'S') {
         e.preventDefault();
         if (e.shiftKey) {
@@ -883,7 +898,15 @@ export function WorkspaceLayout() {
         const isHoveredOnFilmstrip = Boolean(document.querySelector('[aria-label="Photo Library Filmstrip"]:hover'));
         if (isHoveredOnFilmstrip) {
           usePhotoStore.getState().selectAll();
-          useEditorStore.getState().clearSelection();
+          if (activeMode === 'carousel') {
+            useCarouselStore.getState().setSelectedFrameIds([]);
+          } else {
+            useEditorStore.getState().clearSelection();
+          }
+        } else if (activeMode === 'carousel') {
+          useCarouselStore.getState().selectAllFramesOnSlide();
+          usePhotoStore.getState().clearSelection();
+          showToast('✓ Selected all elements on slide');
         } else {
           // Select all frames on active spread
           const album = useAlbumStore.getState().currentAlbum;

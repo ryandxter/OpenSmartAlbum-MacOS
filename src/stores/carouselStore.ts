@@ -22,13 +22,28 @@ export interface CarouselState {
   activeSlideIndex: number;
   showSliceGuides: boolean;
   selectedFrameId: string | null;
+  selectedFrameIds: string[];
   slideLayoutIndices: Record<number, number>;
+
+  // History & Undo/Redo
+  past: Carousel[];
+  future: Carousel[];
+  canUndo: boolean;
+  canRedo: boolean;
+  pushHistory: () => void;
+  undo: () => void;
+  redo: () => void;
+  clearHistory: () => void;
 
   // Actions
   initializeCarousel: (projectId: string, ratio?: CarouselRatio, initialSlidesCount?: number) => void;
   setRatio: (ratio: CarouselRatio) => void;
   setActiveSlide: (index: number) => void;
   setSelectedFrameId: (id: string | null) => void;
+  setSelectedFrameIds: (ids: string[]) => void;
+  toggleFrameSelection: (id: string, isShift: boolean) => void;
+  selectAllFramesOnSlide: (slideIndex?: number) => void;
+  deleteSelectedFrames: () => void;
   addSlide: (backgroundColor?: string) => void;
   duplicateSlide: (index: number) => void;
   deleteSlide: (index: number) => void;
@@ -56,7 +71,66 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
   activeSlideIndex: 0,
   showSliceGuides: true,
   selectedFrameId: null,
+  selectedFrameIds: [],
   slideLayoutIndices: {},
+  past: [],
+  future: [],
+  canUndo: false,
+  canRedo: false,
+
+  pushHistory: () => {
+    const { currentCarousel, past } = get();
+    if (!currentCarousel) return;
+    const snapshot: Carousel = JSON.parse(JSON.stringify(currentCarousel));
+    const last = past[past.length - 1];
+    if (last && JSON.stringify(last) === JSON.stringify(snapshot)) return;
+    const newPast = [...past, snapshot];
+    if (newPast.length > 50) newPast.shift();
+    set({
+      past: newPast,
+      future: [],
+      canUndo: true,
+      canRedo: false,
+    });
+  },
+
+  undo: () => {
+    const { past, future, currentCarousel } = get();
+    if (!currentCarousel || past.length === 0) return;
+    const previous = past[past.length - 1];
+    const newPast = past.slice(0, -1);
+    const newFuture = [JSON.parse(JSON.stringify(currentCarousel)), ...future];
+    set({
+      currentCarousel: previous,
+      past: newPast,
+      future: newFuture,
+      canUndo: newPast.length > 0,
+      canRedo: true,
+      selectedFrameIds: [],
+      selectedFrameId: null,
+    });
+  },
+
+  redo: () => {
+    const { past, future, currentCarousel } = get();
+    if (!currentCarousel || future.length === 0) return;
+    const next = future[0];
+    const newFuture = future.slice(1);
+    const newPast = [...past, JSON.parse(JSON.stringify(currentCarousel))];
+    set({
+      currentCarousel: next,
+      past: newPast,
+      future: newFuture,
+      canUndo: true,
+      canRedo: newFuture.length > 0,
+      selectedFrameIds: [],
+      selectedFrameId: null,
+    });
+  },
+
+  clearHistory: () => {
+    set({ past: [], future: [], canUndo: false, canRedo: false });
+  },
 
   initializeCarousel: (projectId, ratio = '1:1', initialSlidesCount = 3) => {
     const carousel = createInitialCarousel(projectId, ratio, initialSlidesCount);
@@ -64,17 +138,23 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
       currentCarousel: carousel,
       activeSlideIndex: 0,
       selectedFrameId: null,
+      selectedFrameIds: [],
       slideLayoutIndices: {},
+      past: [],
+      future: [],
+      canUndo: false,
+      canRedo: false,
     });
   },
 
   setRatio: (ratio) => {
-    const { currentCarousel } = get();
+    const { currentCarousel, pushHistory } = get();
     if (!currentCarousel) return;
     const oldPreset = CAROUSEL_RATIO_PRESETS[currentCarousel.ratio];
     const newPreset = CAROUSEL_RATIO_PRESETS[ratio];
     if (!newPreset || !oldPreset) return;
 
+    pushHistory();
     const updatedSlides = scaleFramesForRatioSwitch(currentCarousel.slides, oldPreset, newPreset);
 
     set({
@@ -96,13 +176,78 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
   },
 
   setSelectedFrameId: (id) => {
-    set({ selectedFrameId: id });
+    set({
+      selectedFrameId: id,
+      selectedFrameIds: id ? [id] : [],
+    });
+  },
+
+  setSelectedFrameIds: (ids) => {
+    set({
+      selectedFrameIds: ids,
+      selectedFrameId: ids.length > 0 ? ids[0] : null,
+    });
+  },
+
+  toggleFrameSelection: (id, isShift) => {
+    const { selectedFrameIds } = get();
+    if (!isShift) {
+      set({
+        selectedFrameIds: [id],
+        selectedFrameId: id,
+      });
+      return;
+    }
+    const exists = selectedFrameIds.includes(id);
+    let nextIds: string[];
+    if (exists) {
+      nextIds = selectedFrameIds.filter((item) => item !== id);
+    } else {
+      nextIds = [...selectedFrameIds, id];
+    }
+    set({
+      selectedFrameIds: nextIds,
+      selectedFrameId: nextIds.length > 0 ? nextIds[0] : null,
+    });
+  },
+
+  selectAllFramesOnSlide: (slideIndex) => {
+    const { currentCarousel, activeSlideIndex } = get();
+    if (!currentCarousel) return;
+    const idx = slideIndex !== undefined ? slideIndex : activeSlideIndex;
+    const slide = currentCarousel.slides[idx];
+    if (!slide) return;
+    const photoIds = slide.elements.filter((el) => el.type === 'photo').map((el) => el.id);
+    set({
+      selectedFrameIds: photoIds,
+      selectedFrameId: photoIds.length > 0 ? photoIds[0] : null,
+    });
+  },
+
+  deleteSelectedFrames: () => {
+    const { currentCarousel, selectedFrameIds, pushHistory } = get();
+    if (!currentCarousel || selectedFrameIds.length === 0) return;
+    pushHistory();
+    const idSet = new Set(selectedFrameIds);
+    const updatedSlides = currentCarousel.slides.map((slide) => ({
+      ...slide,
+      elements: slide.elements.filter((el) => !idSet.has(el.id)),
+    }));
+    set({
+      currentCarousel: {
+        ...currentCarousel,
+        slides: updatedSlides,
+      },
+      selectedFrameIds: [],
+      selectedFrameId: null,
+    });
   },
 
   addSlide: (backgroundColor = '#FFFFFF') => {
-    const { currentCarousel } = get();
+    const { currentCarousel, pushHistory } = get();
     if (!currentCarousel || currentCarousel.slides.length >= MAX_CAROUSEL_SLIDES) return;
 
+    pushHistory();
     const newSlide = createCarouselSlide(currentCarousel, backgroundColor);
     const updatedSlides = [...currentCarousel.slides, newSlide].map((s, idx) => ({
       ...s,
@@ -120,11 +265,12 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
   },
 
   duplicateSlide: (index) => {
-    const { currentCarousel } = get();
+    const { currentCarousel, pushHistory } = get();
     if (!currentCarousel || currentCarousel.slides.length >= MAX_CAROUSEL_SLIDES) return;
     const target = currentCarousel.slides[index];
     if (!target) return;
 
+    pushHistory();
     const duplicated: CarouselSlide = {
       ...target,
       id: `slide-${currentCarousel.projectId}-${Date.now()}-dup`,
@@ -154,9 +300,10 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
   },
 
   deleteSlide: (index) => {
-    const { currentCarousel } = get();
+    const { currentCarousel, pushHistory } = get();
     if (!currentCarousel || currentCarousel.slides.length <= MIN_CAROUSEL_SLIDES) return;
 
+    pushHistory();
     const newSlides = currentCarousel.slides
       .filter((_, idx) => idx !== index)
       .map((s, idx) => ({
@@ -175,10 +322,11 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
   },
 
   reorderSlide: (fromIndex, toIndex) => {
-    const { currentCarousel } = get();
+    const { currentCarousel, pushHistory } = get();
     if (!currentCarousel) return;
     if (fromIndex === toIndex) return;
 
+    pushHistory();
     const slides = [...currentCarousel.slides];
     const [moved] = slides.splice(fromIndex, 1);
     if (!moved) return;
@@ -199,9 +347,10 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
   },
 
   updateSlideBackground: (slideIndex, color) => {
-    const { currentCarousel } = get();
+    const { currentCarousel, pushHistory } = get();
     if (!currentCarousel) return;
 
+    pushHistory();
     const updatedSlides = currentCarousel.slides.map((s, idx) =>
       idx === slideIndex ? { ...s, backgroundColor: color } : s
     );
@@ -215,9 +364,10 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
   },
 
   addPhotoFrame: (slideIndex, frame) => {
-    const { currentCarousel } = get();
+    const { currentCarousel, pushHistory } = get();
     if (!currentCarousel) return;
 
+    pushHistory();
     const newFrame: CarouselPhotoFrame = {
       ...frame,
       id: `frame-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
@@ -236,9 +386,10 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
   },
 
   updatePhotoFrame: (frameId, updates) => {
-    const { currentCarousel } = get();
+    const { currentCarousel, pushHistory } = get();
     if (!currentCarousel) return;
 
+    pushHistory();
     const updatedSlides = currentCarousel.slides.map((s) => ({
       ...s,
       elements: s.elements.map((el) => (el.id === frameId ? { ...el, ...updates } : el)),
@@ -253,9 +404,10 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
   },
 
   removePhotoFrame: (frameId) => {
-    const { currentCarousel } = get();
+    const { currentCarousel, pushHistory } = get();
     if (!currentCarousel) return;
 
+    pushHistory();
     const updatedSlides = currentCarousel.slides.map((s) => ({
       ...s,
       elements: s.elements.filter((el) => el.id !== frameId),
@@ -267,11 +419,12 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         slides: updatedSlides,
       },
       selectedFrameId: get().selectedFrameId === frameId ? null : get().selectedFrameId,
+      selectedFrameIds: get().selectedFrameIds.filter((id) => id !== frameId),
     });
   },
 
   cycleSlideLayout: (direction: 'next' | 'prev') => {
-    const { currentCarousel, activeSlideIndex, slideLayoutIndices } = get();
+    const { currentCarousel, activeSlideIndex, slideLayoutIndices, pushHistory } = get();
     if (!currentCarousel) return;
     const targetSlide = currentCarousel.slides[activeSlideIndex];
     if (!targetSlide) return;
@@ -280,6 +433,8 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
       (el): el is CarouselPhotoFrame => el.type === 'photo' && Boolean(el.filePath)
     );
     if (activeFrames.length === 0) return;
+
+    pushHistory();
 
     const photos: AdaptivePhoto[] = activeFrames.map((f) => ({
       id: f.id,
@@ -361,10 +516,12 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
   },
 
   applyDynamicSlideLayoutByIndex: (slideIndex: number, variationIndex: number) => {
-    const { currentCarousel, slideLayoutIndices } = get();
+    const { currentCarousel, slideLayoutIndices, pushHistory } = get();
     if (!currentCarousel) return;
     const targetSlide = currentCarousel.slides[slideIndex];
     if (!targetSlide) return;
+
+    pushHistory();
 
     const activeFrames = targetSlide.elements.filter(
       (el): el is CarouselPhotoFrame => el.type === 'photo' && Boolean(el.filePath)
@@ -446,7 +603,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
   },
 
   applyCarouselLayout: (slideIndex, presetId, inputPhotos) => {
-    const { currentCarousel } = get();
+    const { currentCarousel, pushHistory } = get();
     if (!currentCarousel) return;
 
     const preset = CAROUSEL_LAYOUT_PRESETS.find((p) => p.id === presetId);
@@ -454,6 +611,8 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
 
     const targetSlide = currentCarousel.slides[slideIndex];
     if (!targetSlide) return;
+
+    pushHistory();
 
     // Gather photos: if inputPhotos provided, use them; otherwise extract from target slide (and spanned slides if multi-slide)
     let photosToUse: CarouselLayoutPhotoInput[] = inputPhotos && inputPhotos.length > 0 ? inputPhotos : [];
@@ -542,13 +701,15 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
   },
 
   shuffleSlidePhotos: (slideIndex) => {
-    const { currentCarousel } = get();
+    const { currentCarousel, pushHistory } = get();
     if (!currentCarousel) return;
     const slide = currentCarousel.slides[slideIndex];
     if (!slide) return;
 
     const photoFrames = slide.elements.filter((el): el is CarouselPhotoFrame => el.type === 'photo');
     if (photoFrames.length <= 1) return;
+
+    pushHistory();
 
     // Extract photo payloads
     const payloads = photoFrames.map((f) => ({
@@ -710,8 +871,10 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
   },
 
   setPanoramaSpan: (arg1: any, arg2: any, arg3?: any) => {
-    const { currentCarousel } = get();
+    const { currentCarousel, pushHistory } = get();
     if (!currentCarousel) return;
+
+    pushHistory();
 
     let slideIndex: number;
     let frameId: string;
@@ -781,7 +944,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
   },
 
   setHeroPhotoOnSlide: (slideIndex: number, frameId: string) => {
-    const { currentCarousel } = get();
+    const { currentCarousel, pushHistory } = get();
     if (!currentCarousel) return;
 
     const slide = currentCarousel.slides[slideIndex];
@@ -789,6 +952,8 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
 
     const targetFrame = slide.elements.find((el) => el.id === frameId);
     if (!targetFrame) return;
+
+    pushHistory();
 
     const slideW = currentCarousel.slideWidthPx;
     const slideH = currentCarousel.slideHeightPx;
@@ -861,9 +1026,10 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
   },
 
   batchUpdateFrames: (updates: Array<{ id: string; updates: Partial<CarouselPhotoFrame> }>) => {
-    const { currentCarousel } = get();
+    const { currentCarousel, pushHistory } = get();
     if (!currentCarousel || updates.length === 0) return;
 
+    pushHistory();
     const updateMap = new Map(updates.map((u) => [u.id, u.updates]));
 
     const updatedSlides = currentCarousel.slides.map((slide) => {
@@ -883,7 +1049,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
   },
 
   swapFrames: (frameIdA: string, frameIdB: string) => {
-    const { currentCarousel } = get();
+    const { currentCarousel, pushHistory } = get();
     if (!currentCarousel || frameIdA === frameIdB) return;
 
     let frameA: CarouselPhotoFrame | null = null;
@@ -897,6 +1063,8 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     }
 
     if (!frameA || !frameB) return;
+
+    pushHistory();
 
     const payloadA = {
       photoId: frameA.photoId,

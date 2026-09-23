@@ -64,6 +64,7 @@ function CarouselFrameNode({
   onSelect,
   onChange,
   onContextMenu,
+  onDragStart,
   onDragMove,
   onDragEnd,
 }: {
@@ -72,6 +73,7 @@ function CarouselFrameNode({
   onSelect: (e: Konva.KonvaEventObject<any>) => void;
   onChange: (updates: Partial<CarouselPhotoFrame>) => void;
   onContextMenu?: (e: Konva.KonvaEventObject<PointerEvent>) => void;
+  onDragStart?: (e: Konva.KonvaEventObject<DragEvent>) => void;
   onDragMove?: (e: Konva.KonvaEventObject<DragEvent>) => void;
   onDragEnd?: (e: Konva.KonvaEventObject<DragEvent>) => void;
 }) {
@@ -159,6 +161,7 @@ function CarouselFrameNode({
         e.cancelBubble = true;
         onContextMenu?.(e);
       }}
+      onDragStart={onDragStart}
       onDragMove={onDragMove}
       onDragEnd={onDragEnd || ((e) => {
         onChange({
@@ -283,11 +286,15 @@ export function CarouselCanvas({
   const showSliceGuides = useCarouselStore((s) => s.showSliceGuides);
   const updatePhotoFrame = useCarouselStore((s) => s.updatePhotoFrame);
 
-  const selectedFrameId = useCarouselStore((s) => s.selectedFrameId);
+  const selectedFrameIds = useCarouselStore((s) => s.selectedFrameIds);
   const setSelectedFrameId = useCarouselStore((s) => s.setSelectedFrameId);
+  const setSelectedFrameIds = useCarouselStore((s) => s.setSelectedFrameIds);
+  const toggleFrameSelection = useCarouselStore((s) => s.toggleFrameSelection);
   const removePhotoFrame = useCarouselStore((s) => s.removePhotoFrame);
   const setPanoramaSpan = useCarouselStore((s) => s.setPanoramaSpan);
   const setHeroPhotoOnSlide = useCarouselStore((s) => s.setHeroPhotoOnSlide);
+
+  const dragInitialPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
 
   const [contextMenu, setContextMenu] = useState<{
     isOpen: boolean;
@@ -429,40 +436,54 @@ export function CarouselCanvas({
       const mac = navigator.platform.toUpperCase().includes('MAC');
       const cmdOrCtrl = mac ? e.metaKey : e.ctrlKey;
 
-      // Delete / Backspace → remove selected carousel frame
+      // Delete / Backspace → remove all selected carousel frames
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        const id = useCarouselStore.getState().selectedFrameId;
-        if (id) {
+        const { selectedFrameIds: ids } = useCarouselStore.getState();
+        if (ids.length > 0) {
           e.preventDefault();
-          useCarouselStore.getState().removePhotoFrame(id);
-          useCarouselStore.getState().setSelectedFrameId(null);
+          useCarouselStore.getState().deleteSelectedFrames();
+          onToast?.(`Removed ${ids.length} element${ids.length > 1 ? 's' : ''}`);
         }
         return;
       }
 
-      // Escape → deselect frame
+      // Escape → deselect all frames
       if (e.key === 'Escape') {
-        useCarouselStore.getState().setSelectedFrameId(null);
+        useCarouselStore.getState().setSelectedFrameIds([]);
         return;
       }
 
-      // Cmd+A → select first frame on active slide (highlight active slide's first frame)
+      // Cmd+A → select all frames on active slide
       if (cmdOrCtrl && (e.key === 'a' || e.key === 'A')) {
-        const { currentCarousel, activeSlideIndex } = useCarouselStore.getState();
-        if (!currentCarousel) return;
-        const slide = currentCarousel.slides[activeSlideIndex];
-        if (slide && slide.elements.length > 0) {
-          e.preventDefault();
-          const firstPhoto = slide.elements.find((el) => el.type === 'photo');
-          if (firstPhoto) useCarouselStore.getState().setSelectedFrameId(firstPhoto.id);
+        e.preventDefault();
+        useCarouselStore.getState().selectAllFramesOnSlide();
+        onToast?.('Selected all photos on slide');
+        return;
+      }
+
+      // Cmd+Z / Cmd+Shift+Z / Cmd+Y
+      if (cmdOrCtrl && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault();
+        if (e.shiftKey) {
+          useCarouselStore.getState().redo();
+          onToast?.('↷ Redo');
+        } else {
+          useCarouselStore.getState().undo();
+          onToast?.('↶ Undo');
         }
         return;
       }
+      if (cmdOrCtrl && !mac && (e.key === 'y' || e.key === 'Y')) {
+        e.preventDefault();
+        useCarouselStore.getState().redo();
+        onToast?.('↷ Redo');
+        return;
+      }
 
-      // Arrow keys → nudge selected carousel frame
+      // Arrow keys → nudge all selected carousel frames
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-        const { selectedFrameId: selId } = useCarouselStore.getState();
-        if (!selId) return;
+        const { selectedFrameIds: selIds, currentCarousel: cc } = useCarouselStore.getState();
+        if (selIds.length === 0 || !cc) return;
         e.preventDefault();
         const step = e.shiftKey ? 10 : 1;
         let dx = 0;
@@ -471,17 +492,24 @@ export function CarouselCanvas({
         if (e.key === 'ArrowRight') dx = step;
         if (e.key === 'ArrowUp') dy = -step;
         if (e.key === 'ArrowDown') dy = step;
-        const { currentCarousel: cc } = useCarouselStore.getState();
-        if (!cc) return;
+
+        const selSet = new Set(selIds);
+        const updates: Array<{ id: string; updates: Partial<CarouselPhotoFrame> }> = [];
         for (const slide of cc.slides) {
-          const frame = slide.elements.find((el) => el.type === 'photo' && el.id === selId) as CarouselPhotoFrame | undefined;
-          if (frame) {
-            useCarouselStore.getState().updatePhotoFrame(selId, {
-              x: Math.round(frame.x + dx),
-              y: Math.round(frame.y + dy),
-            });
-            break;
+          for (const el of slide.elements) {
+            if (el.type === 'photo' && selSet.has(el.id)) {
+              updates.push({
+                id: el.id,
+                updates: {
+                  x: Math.round(el.x + dx),
+                  y: Math.round(el.y + dy),
+                },
+              });
+            }
           }
+        }
+        if (updates.length > 0) {
+          useCarouselStore.getState().batchUpdateFrames(updates);
         }
         return;
       }
@@ -584,20 +612,20 @@ export function CarouselCanvas({
     return allFrames.find((f) => f.id === hoveredSwapTargetFrameId) || null;
   }, [allFrames, hoveredSwapTargetFrameId]);
 
-  // Update Transformer selection
+  // Update Transformer selection (supports multi-selection)
   useEffect(() => {
     if (!trRef.current || !stageRef.current) return;
-    if (selectedFrameId) {
-      const node = stageRef.current.findOne(`#${selectedFrameId}`);
-      if (node) {
-        trRef.current.nodes([node]);
-        trRef.current.getLayer()?.batchDraw();
-        return;
-      }
+    if (selectedFrameIds.length > 0) {
+      const nodes = selectedFrameIds
+        .map((id) => stageRef.current?.findOne(`#${id}`))
+        .filter(Boolean) as Konva.Node[];
+      trRef.current.nodes(nodes);
+      trRef.current.getLayer()?.batchDraw();
+      return;
     }
     trRef.current.nodes([]);
     trRef.current.getLayer()?.batchDraw();
-  }, [selectedFrameId]);
+  }, [selectedFrameIds]);
 
   const getCarouselContextMenuItems = (): ContextMenuItem[] => {
     if (!contextMenu.frameId) return [];
@@ -834,7 +862,7 @@ export function CarouselCanvas({
           y={stagePos.y}
           onClick={(e) => {
             if (e.target === e.target.getStage()) {
-              setSelectedFrameId(null);
+              setSelectedFrameIds([]);
             }
           }}
         >
@@ -851,6 +879,7 @@ export function CarouselCanvas({
               shadowBlur={30}
               shadowOffset={{ x: 0, y: 15 }}
               shadowOpacity={0.6}
+              onClick={() => setSelectedFrameIds([])}
             />
 
             {/* Individual Slide Backgrounds */}
@@ -859,8 +888,14 @@ export function CarouselCanvas({
                 key={slide.id}
                 x={getSlideXOffset(currentCarousel, idx)}
                 y={0}
-                onClick={() => setActiveSlide(idx)}
-                onTap={() => setActiveSlide(idx)}
+                onClick={() => {
+                  setActiveSlide(idx);
+                  setSelectedFrameIds([]);
+                }}
+                onTap={() => {
+                  setActiveSlide(idx);
+                  setSelectedFrameIds([]);
+                }}
               >
                 <Rect
                   width={slideWidth}
@@ -900,10 +935,11 @@ export function CarouselCanvas({
               <CarouselFrameNode
                 key={frame.id}
                 frame={frame}
-                isSelected={selectedFrameId === frame.id}
+                isSelected={selectedFrameIds.includes(frame.id)}
                 onSelect={(e) => {
                   e.cancelBubble = true;
-                  setSelectedFrameId(frame.id);
+                  const isShift = Boolean(e.evt?.shiftKey);
+                  toggleFrameSelection(frame.id, isShift);
                   // Auto-switch active slide to whichever slide frame's center sits on
                   if (currentCarousel) {
                     const centerX = frame.x + frame.width / 2;
@@ -915,7 +951,9 @@ export function CarouselCanvas({
                   updatePhotoFrame(frame.id, updates);
                 }}
                 onContextMenu={(e) => {
-                  setSelectedFrameId(frame.id);
+                  if (!selectedFrameIds.includes(frame.id)) {
+                    setSelectedFrameId(frame.id);
+                  }
                   if (currentCarousel) {
                     const centerX = frame.x + frame.width / 2;
                     const targetIdx = getSlideIndexAtX(currentCarousel, centerX);
@@ -928,8 +966,38 @@ export function CarouselCanvas({
                     frameId: frame.id,
                   });
                 }}
+                onDragStart={() => {
+                  if (selectedFrameIds.includes(frame.id) && selectedFrameIds.length > 1) {
+                    const initMap = new Map<string, { x: number; y: number }>();
+                    for (const id of selectedFrameIds) {
+                      const f = allFrames.find((item) => item.id === id);
+                      if (f) initMap.set(id, { x: f.x, y: f.y });
+                    }
+                    dragInitialPositionsRef.current = initMap;
+                  } else {
+                    dragInitialPositionsRef.current.clear();
+                  }
+                }}
                 onDragMove={(e) => {
                   const node = e.target;
+                  if (dragInitialPositionsRef.current.size > 1) {
+                    const initSelf = dragInitialPositionsRef.current.get(frame.id);
+                    if (initSelf) {
+                      const dx = node.x() - initSelf.x;
+                      const dy = node.y() - initSelf.y;
+                      dragInitialPositionsRef.current.forEach((initPos, otherId) => {
+                        if (otherId !== frame.id) {
+                          const otherNode = stageRef.current?.findOne(`#${otherId}`);
+                          if (otherNode) {
+                            otherNode.position({ x: initPos.x + dx, y: initPos.y + dy });
+                          }
+                        }
+                      });
+                      node.getLayer()?.batchDraw();
+                    }
+                    return;
+                  }
+
                   const cx = node.x() + node.width() / 2;
                   const cy = node.y() + node.height() / 2;
                   const target = findPhotoSwapTarget(carouselPhotoFrames, { x: cx, y: cy }, frame.id);
@@ -937,6 +1005,24 @@ export function CarouselCanvas({
                 }}
                 onDragEnd={(e) => {
                   const node = e.target;
+                  if (dragInitialPositionsRef.current.size > 1) {
+                    const initSelf = dragInitialPositionsRef.current.get(frame.id);
+                    if (initSelf) {
+                      const dx = Math.round(node.x() - initSelf.x);
+                      const dy = Math.round(node.y() - initSelf.y);
+                      const updates = Array.from(dragInitialPositionsRef.current.entries()).map(([id, pos]) => ({
+                        id,
+                        updates: {
+                          x: Math.round(pos.x + dx),
+                          y: Math.round(pos.y + dy),
+                        },
+                      }));
+                      useCarouselStore.getState().batchUpdateFrames(updates);
+                    }
+                    dragInitialPositionsRef.current.clear();
+                    return;
+                  }
+
                   const cx = node.x() + node.width() / 2;
                   const cy = node.y() + node.height() / 2;
                   const target = findPhotoSwapTarget(carouselPhotoFrames, { x: cx, y: cy }, frame.id);
@@ -973,6 +1059,30 @@ export function CarouselCanvas({
                   return oldBox;
                 }
                 return newBox;
+              }}
+              onTransformEnd={() => {
+                const nodes = trRef.current?.nodes() || [];
+                const updates: Array<{ id: string; updates: Partial<CarouselPhotoFrame> }> = [];
+                for (const node of nodes) {
+                  const id = node.id();
+                  const scaleX = node.scaleX();
+                  const scaleY = node.scaleY();
+                  node.scaleX(1);
+                  node.scaleY(1);
+                  updates.push({
+                    id,
+                    updates: {
+                      x: Math.round(node.x()),
+                      y: Math.round(node.y()),
+                      width: Math.max(20, Math.round(node.width() * scaleX)),
+                      height: Math.max(20, Math.round(node.height() * scaleY)),
+                      rotation: Math.round(node.rotation()),
+                    },
+                  });
+                }
+                if (updates.length > 0) {
+                  useCarouselStore.getState().batchUpdateFrames(updates);
+                }
               }}
             />
 
