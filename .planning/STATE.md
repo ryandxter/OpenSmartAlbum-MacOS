@@ -44,3 +44,9 @@ Last session: 2026-09-23 05:20
 Stopped at: Completed forensics investigation FOR-20260923-01 (Filmstrip Ingestion Hang & Drag-and-Drop Placement Failure).
 Resume file: .planning/forensics/report-2026-09-23-0520.md
 
+## Accumulated Context
+
+### Pending Todos
+
+- [2026-09-23] [ui] Investigate and Fix Built App GUI Discrepancy with E2E Test — [todo file](.planning/todos/pending/2026-09-23-investigate-and-fix-built-app-gui-discrepancy-with-e2e-test.md)
+
