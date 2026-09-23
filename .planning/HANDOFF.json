@@ -1,0 +1,81 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-09-23T18:48:00+07:00",
+  "phase": "milestone-complete",
+  "phase_name": "Milestone v1.2.0 & Maintenance Release v1.2.4",
+  "phase_dir": ".planning",
+  "plan": 10,
+  "task": 10,
+  "total_tasks": 10,
+  "status": "paused",
+  "completed_tasks": [
+    {
+      "id": 1,
+      "name": "Diagnose Filmstrip marquee selection & WebKit multi-photo drag failure via forensics",
+      "status": "done",
+      "commit": "8559a46"
+    },
+    {
+      "id": 2,
+      "name": "Implement native rubberband marquee drag-selection in FilmstripTray",
+      "status": "done",
+      "commit": "8559a46"
+    },
+    {
+      "id": 3,
+      "name": "Resolve WebKit macOS drag cancellation bug via DOM-attached drag badge and CSV text/plain",
+      "status": "done",
+      "commit": "8559a46"
+    },
+    {
+      "id": 4,
+      "name": "Add draggable batch handle [::: Drag All (X)] in BatchActionBar",
+      "status": "done",
+      "commit": "8559a46"
+    },
+    {
+      "id": 5,
+      "name": "Setup Playwright Headless Browser E2E suite and pass all 42 checks across sizes, slides, shapes, panoramas",
+      "status": "done",
+      "commit": "8559a46"
+    },
+    {
+      "id": 6,
+      "name": "Bump version to 1.2.4, compile macOS DMG, tag and publish release to GitHub Releases",
+      "status": "done",
+      "commit": "8559a46"
+    }
+  ],
+  "remaining_tasks": [
+    {
+      "id": 7,
+      "name": "Explore next milestone or features (/gsd-next, /gsd-new-milestone)",
+      "status": "not_started"
+    }
+  ],
+  "blockers": [],
+  "async_jobs": [],
+  "human_actions_pending": [],
+  "decisions": [
+    {
+      "decision": "Use DOM-attached fixed element for setDragImage instead of detached memory canvas",
+      "rationale": "WebKit on macOS strictly cancels drag sessions if setDragImage is called with a detached off-screen canvas",
+      "phase": "v1.2.4"
+    },
+    {
+      "decision": "Encode multi-photo IDs as CSV string in text/plain clipboard payload",
+      "rationale": "Ensures full photo array reaches drop target even when native OS pasteboard sanitizes custom MIME types",
+      "phase": "v1.2.4"
+    },
+    {
+      "decision": "Adopt Playwright Chromium headless for automated E2E browser validation",
+      "rationale": "Validates actual UI rendering, mouse drag-and-drop, and Konva stage geometry 1:1 against real web engine",
+      "phase": "v1.2.4"
+    }
+  ],
+  "uncommitted_files": [
+    " M src-tauri/Cargo.lock"
+  ],
+  "next_action": "Run /gsd-next or explore next milestone roadmap features",
+  "context_notes": "Milestone v1.2.0 and maintenance release v1.2.4 successfully shipped with all 42 Playwright E2E checks green and official DMG uploaded to GitHub Releases."
+}
