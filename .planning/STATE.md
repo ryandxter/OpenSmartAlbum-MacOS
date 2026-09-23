@@ -1,14 +1,16 @@
 ---
-gsd_state_version: '1.0'
-status: complete
-milestone: v1.1.0
-current_phase: '09'
+gsd_state_version: "1.0"
+milestone: v1.2.0
+milestone_name: Unlimited Studio Layout & Storytelling Engine
+status: planning
+last_updated: "2026-09-23T02:50:25.483Z"
+last_activity: 2026-09-23
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 4
-  completed_plans: 4
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State: OpenSmartAlbum-MacOS Milestone v1.1.0
@@ -22,12 +24,10 @@ See: `.planning/PROJECT.md` & `.planning/ROADMAP.md`
 
 ## Current Position
 
-Phase: 09 of 09 (Vector Shape Masking & In-Shape Crop Engine)
-Plan: 1 of 1 in current phase
-Status: Milestone Complete
-Last activity: 2026-09-23 — Phase 09 completed and verified (100% verification pass rate).
-
-Progress: [██████████] 100%
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-09-23 — Milestone v1.2.0 started
 
 ## Milestone v1.1.0 Phases Summary
 
@@ -54,4 +54,3 @@ Resume file: .planning/forensics/report-2026-09-23-0520.md
 
 - [2026-09-23] [ui] Investigate and Fix Built App GUI Discrepancy with E2E Test — [todo file](.planning/todos/done/2026-09-23-investigate-and-fix-built-app-gui-discrepancy-with-e2e-test.md)
 - [2026-09-23] [ui] Fix Filmstrip Photo Reuse, Layout Shuffle Failure, and Image Stretching Distortion — [todo file](.planning/todos/done/2026-09-23-fix-filmstrip-reuse-layout-shuffle-stretching.md)
-
