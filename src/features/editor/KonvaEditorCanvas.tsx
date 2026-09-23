@@ -2118,7 +2118,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
     ? convertUnit(19, 'mm', currentProject.canvasUnit || 'mm', currentProject.canvasDpi || 300) * scaleFactor
     : 19 * scaleFactor;
 
-  const hasSpineViolation = useMemo(() => {
+  const hasSpineViolation = (() => {
     if (!activeSpread || activeSpread.type === 'cover' || !currentProject) return false;
     const spineX = leftPagePixelW / scaleFactor;
     const exclusionUnit = convertUnit(19, 'mm', currentProject.canvasUnit || 'mm', currentProject.canvasDpi || 300);
@@ -2130,7 +2130,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
       const focalX = frame.x + frame.width / 2 + (frame.cropX || 0);
       return Math.abs(focalX - spineX) <= exclusionUnit;
     });
-  }, [activeSpread, currentProject, leftPagePixelW, scaleFactor]);
+  })();
 
   // Multi-selection status
   const selectedElements = (activeSpread.elements || []).filter((f) =>
