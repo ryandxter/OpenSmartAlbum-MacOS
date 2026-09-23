@@ -106,7 +106,7 @@ export function LayoutCycleHUD() {
     shuffleSpreadPhotos(activeSpread.id);
   }, [activeSpread, shuffleSpreadPhotos]);
 
-  // Global Keyboard Navigation (Space for Next, Shift+Space for Prev, S for Shuffle)
+  // Global Keyboard Navigation (S for Shuffle; Space cycling is handled cleanly by WorkspaceLayout state machine)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't trigger if user is typing in an input or dialog, or in crop mode
@@ -116,14 +116,7 @@ export function LayoutCycleHUD() {
         return;
       }
 
-      if (e.code === 'Space') {
-        e.preventDefault();
-        if (e.shiftKey) {
-          handlePrev();
-        } else {
-          handleNext();
-        }
-      } else if (e.key === 's' || e.key === 'S') {
+      if (e.key === 's' || e.key === 'S') {
         if (!e.ctrlKey && !e.metaKey && !e.altKey) {
           if (isPhotoSwapSelection) return;
           e.preventDefault();
@@ -134,7 +127,7 @@ export function LayoutCycleHUD() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleNext, handlePrev, handleShuffle, editingCropFrameId, isPhotoSwapSelection]);
+  }, [handleShuffle, editingCropFrameId, isPhotoSwapSelection]);
 
   if (!currentProject || !activeSpread || photos.length === 0 || variations.length === 0) {
     return null;

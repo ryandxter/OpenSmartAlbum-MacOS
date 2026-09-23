@@ -34,6 +34,7 @@ import { useAlbumStore } from './albumStore';
 import { useProjectStore } from './projectStore';
 import { usePhotoStore } from './photoStore';
 import { useHistoryStore } from './historyStore';
+import { useCarouselStore } from './carouselStore';
 
 // A copied selection keeps its internal groups, but never joins the source groups.
 function remapCopiedGroupIds(elements: AlbumElement[]): AlbumElement[] {
@@ -196,6 +197,7 @@ export interface EditorState {
   setDragging: (isDragging: boolean) => void;
   setResizing: (isResizing: boolean) => void;
   nudgeSelected: (spreadId: string, dx: number, dy: number) => void;
+  cycleLayout: (direction: 'next' | 'prev', activeMode?: 'print' | 'carousel') => void;
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -212,6 +214,17 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   multiResizeGapMode: 'proportional',
   isDragging: false,
   isResizing: false,
+
+  cycleLayout: (direction: 'next' | 'prev', activeMode?: 'print' | 'carousel') => {
+    if (activeMode === 'carousel') {
+      useCarouselStore.getState().cycleSlideLayout(direction);
+    } else {
+      const { currentAlbum, activeSpreadId } = useAlbumStore.getState();
+      const { currentProject } = useProjectStore.getState();
+      if (!currentAlbum || !activeSpreadId || !currentProject) return;
+      useAlbumStore.getState().cycleSpreadLayout(activeSpreadId, direction, currentProject);
+    }
+  },
 
   setSelectionGroupRotation: (rot: number | null) => set({ selectionGroupRotation: rot }),
   setMultiResizeGapMode: (mode: 'proportional' | 'fixed_gap') => set({ multiResizeGapMode: mode }),

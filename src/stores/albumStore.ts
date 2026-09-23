@@ -29,6 +29,7 @@ import {
   shuffleElementsPhotos,
   partitionPageBoxIntoKRects,
 } from '../domain/adaptiveLayout';
+import { generateDynamicVariations } from '../domain/layout/generator';
 import { useHistoryStore } from './historyStore';
 import { useEditorStore } from './editorStore';
 import { useProjectStore } from './projectStore';
@@ -1568,18 +1569,18 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
       : dims.pageWidth * 2 + dims.gutterWidth;
     const spreadHeight = dims.pageHeight;
 
-    const variations = generateAdaptiveLayoutVariations(
+    const variations = generateDynamicVariations(
       {
-        spreadWidth,
-        spreadHeight,
+        containerWidth: spreadWidth,
+        containerHeight: spreadHeight,
         isSpread,
-        safeMargin: dims.safeMargin,
+        isCover,
+        spacing: dims.spacing,
+        gutterWidth: dims.gutterWidth,
         safeMarginTop: dims.safeMarginTop,
         safeMarginBottom: dims.safeMarginBottom,
         safeMarginOutside: dims.safeMarginOutside,
         safeMarginSpine: dims.safeMarginSpine,
-        gutterWidth: dims.gutterWidth,
-        spacing: dims.spacing,
         lockedElements,
       },
       unlockedPhotos

@@ -111,6 +111,13 @@ export function WorkspaceLayout() {
   const [exportZipProgress, setExportZipProgress] = useState<ExportZipProgressPayload | null>(null);
   const exportZipTimeoutRef = useRef<number | null>(null);
 
+  // Spacebar Disambiguation State Machine Refs (Single-Tap vs Pan-Drag)
+  const spaceDownTimeRef = useRef<number | null>(null);
+  const isSpaceHeldRef = useRef(false);
+  const hasDraggedRef = useRef(false);
+  const shiftHeldRef = useRef(false);
+  const pointerDownPosRef = useRef<{ x: number; y: number } | null>(null);
+
   // Export Dialog & Progress Modal State
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isExportProgressOpen, setIsExportProgressOpen] = useState(false);
@@ -878,6 +885,81 @@ export function WorkspaceLayout() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
+
+  // Authoritative Spacebar Disambiguation State Machine (Single-Tap vs Pan-Drag)
+  useEffect(() => {
+    const handleSpaceKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        const target = e.target as HTMLElement;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+          return;
+        }
+        const { editingCropFrameId, editingTextElementId } = useEditorStore.getState();
+        if (editingCropFrameId || editingTextElementId) return;
+
+        e.preventDefault(); // Prevent page scroll
+        if (e.repeat) return;
+
+        spaceDownTimeRef.current = performance.now();
+        isSpaceHeldRef.current = true;
+        hasDraggedRef.current = false;
+        shiftHeldRef.current = e.shiftKey;
+        pointerDownPosRef.current = null;
+      }
+    };
+
+    const handlePointerMove = (e: MouseEvent | PointerEvent) => {
+      if (isSpaceHeldRef.current && (e.buttons === 1 || e.buttons === 4)) {
+        if (!pointerDownPosRef.current) {
+          pointerDownPosRef.current = { x: e.clientX, y: e.clientY };
+        } else {
+          const dx = e.clientX - pointerDownPosRef.current.x;
+          const dy = e.clientY - pointerDownPosRef.current.y;
+          if (Math.hypot(dx, dy) > 4) {
+            hasDraggedRef.current = true;
+          }
+        }
+      }
+    };
+
+    const handleSpaceKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        const target = e.target as HTMLElement;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+          return;
+        }
+
+        if (isSpaceHeldRef.current) {
+          const downTime = spaceDownTimeRef.current;
+          const elapsed = downTime !== null ? performance.now() - downTime : 9999;
+          const wasDrag = hasDraggedRef.current;
+          const shiftHeld = shiftHeldRef.current;
+
+          // Reset refs
+          isSpaceHeldRef.current = false;
+          spaceDownTimeRef.current = null;
+          hasDraggedRef.current = false;
+          pointerDownPosRef.current = null;
+
+          // Disambiguation: single tap without dragging under 600ms
+          if (!wasDrag && elapsed < 600) {
+            e.preventDefault();
+            useEditorStore.getState().cycleLayout(shiftHeld ? 'prev' : 'next', activeMode);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleSpaceKeyDown);
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('keyup', handleSpaceKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleSpaceKeyDown);
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('keyup', handleSpaceKeyUp);
+    };
+  }, [activeMode]);
 
   return (
     <div className={styles.workspace}>
