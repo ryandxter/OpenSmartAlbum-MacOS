@@ -48,7 +48,7 @@ Resume file: .planning/forensics/report-2026-09-23-0520.md
 
 ### Pending Todos
 
-None (all captured issues resolved and verified)
+- [2026-09-23] [layout] Explore and Architect Unlimited Layout Engine ala Pixellu SmartAlbums and Fundy Designer — [todo file](.planning/todos/pending/2026-09-23-unlimited-layout-engine-pixellu-smartalbums-fundy.md)
 
 ### Completed Todos (Today)
 
