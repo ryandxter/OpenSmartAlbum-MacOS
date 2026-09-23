@@ -23,6 +23,15 @@
   <a href="https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases"><img src="https://img.shields.io/badge/⬇️_Download_Latest_.DMG_(v1.2.4)-Apple_Silicon_&_Intel-2ea44f?style=for-the-badge&logo=apple" alt="Download DMG" /></a>
 </p>
 
+> [!IMPORTANT]
+> **macOS Gatekeeper Setup (First Launch):**  
+> Since community releases are distributed without an Apple Developer ID paid certificate ($99/yr), macOS will quarantine the file and display *"OpenSmartAlbum is damaged and can't be opened"*.  
+> **To start using the app:** Drag `OpenSmartAlbum.app` to `/Applications`, open Terminal, and run:
+> ```bash
+> xattr -cr /Applications/OpenSmartAlbum.app
+> ```
+> *(Or use `sudo xattr -rd com.apple.quarantine /Applications/OpenSmartAlbum.app` if prompted for admin permissions).*
+
 <br/>
 
 <a href="#-interactive-feature-tour">
@@ -40,6 +49,7 @@
 
 <p align="center">
   <a href="#en-overview">Overview</a> •
+  <a href="#en-install">Installation</a> •
   <a href="#en-features">Features</a> •
   <a href="#en-v124">v1.2.4 Update</a> •
   <a href="#en-presets">Presets</a> •
@@ -63,6 +73,24 @@ Most photo album software forces studios into costly monthly cloud subscriptions
 
 > [!TIP]
 > **Performance on Apple Silicon:** Memory usage stays under 180 MB during typical 30-spread album workflows thanks to Tauri 2's lightweight webview host and Rust's zero-copy image slicing.
+
+---
+
+<a name="en-install"></a>
+## 📥 Installation & Gatekeeper Bypass
+
+OpenSmartAlbum is distributed as a pre-packaged disk image (`.dmg`). Because this is a free community open-source binary distributed outside Apple's paid Mac App Store notarization program ($99/year), macOS Gatekeeper will flag the downloaded application as unverified and may show:  
+> *"OpenSmartAlbum is damaged and can't be opened. You should move it to the Trash."*
+
+### ⚡ Quick 3-Step Setup:
+1. **Download:** Download the latest `OpenSmartAlbum_*.dmg` from [GitHub Releases](https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases).
+2. **Move to Applications:** Double-click the DMG and drag **`OpenSmartAlbum.app`** into your **`Applications`** folder.
+3. **Bypass Gatekeeper:** Open **Terminal** (`⌘ Space` → type `Terminal` → press `Enter`) and run:
+   ```bash
+   xattr -cr /Applications/OpenSmartAlbum.app
+   ```
+   *(If your Mac asks for administrator credentials, run: `sudo xattr -rd com.apple.quarantine /Applications/OpenSmartAlbum.app`)*
+4. **Launch:** Open `OpenSmartAlbum` from Launchpad or Spotlight. You are ready to start designing!
 
 ---
 
@@ -273,6 +301,7 @@ npm run tauri build -- --target aarch64-apple-darwin
 
 <p align="center">
   <a href="#id-ringkasan">Ringkasan</a> •
+  <a href="#id-instalasi">Instalasi</a> •
   <a href="#id-fitur">Fitur Unggulan</a> •
   <a href="#id-v124">Pembaruan v1.2.4</a> •
   <a href="#id-format">Format & Preset</a> •
@@ -293,6 +322,24 @@ Banyak perangkat lunak desain album foto mengharuskan biaya langganan bulanan ma
 * 🖥️ **Tampilan Native macOS** — Overlay titlebar elegan, tombol traffic light macOS, gesture pinch-to-zoom trackpad, dan pintasan keyboard standar `⌘`.
 * 📱 **Instagram Carousel Mode** — Pemotong panorama multislide mulus (1:1, 4:5, 9:16) dilengkapi simulasi geser layar ponsel langsung di aplikasi.
 * 📦 **Installer .DMG Praktis** — Cukup unduh dan geser ke folder Aplikasi, mendukung penuh Apple Silicon (M1/M2/M3/M4) dan Intel Mac.
+
+---
+
+<a name="id-instalasi"></a>
+## 📥 Panduan Instalasi & Bypass Gatekeeper macOS
+
+OpenSmartAlbum didistribusikan dalam bentuk berkas citra disk macOS standar (`.dmg`). Karena aplikasi ini merupakan rilis komunitas open-source tanpa sertifikat berbayar Apple Developer ID tahunan ($99/tahun), fitur keamanan bawaan macOS (Gatekeeper) akan mengkarantina aplikasi dan menampilkan peringatan:  
+> *"OpenSmartAlbum is damaged and can't be opened. You should move it to the Trash."* atau *"Aplikasi berasal dari pengembang yang tidak teridentifikasi"*.
+
+### ⚡ Langkah Pemasangan Cepat:
+1. **Unduh:** Unduh berkas `OpenSmartAlbum_*.dmg` terbaru dari menu [GitHub Releases](https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases).
+2. **Pasang:** Klik dua kali berkas DMG, lalu seret ikon **`OpenSmartAlbum.app`** ke dalam folder **`Applications`** (Aplikasi).
+3. **Buka Blokir Gatekeeper:** Buka aplikasi **Terminal** (`⌘ Spasi` → ketik `Terminal` → tekan `Enter`) dan jalankan perintah:
+   ```bash
+   xattr -cr /Applications/OpenSmartAlbum.app
+   ```
+   *(Jika sistem meminta kata sandi administrator Anda, gunakan perintah: `sudo xattr -rd com.apple.quarantine /Applications/OpenSmartAlbum.app`)*
+4. **Jalankan Aplikasi:** Buka `OpenSmartAlbum` langsung dari Launchpad atau Spotlight. Aplikasi 100% siap digunakan!
 
 ---
 
