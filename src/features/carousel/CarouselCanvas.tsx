@@ -413,6 +413,84 @@ export function CarouselCanvas({
     };
   }, []);
 
+  // Carousel-specific keyboard shortcuts (Delete, Escape, Arrow nudge, Cmd+A)
+  // These must live here so keyboard actions route to carousel store, not album store.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable
+      ) return;
+      if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
+
+      const mac = navigator.platform.toUpperCase().includes('MAC');
+      const cmdOrCtrl = mac ? e.metaKey : e.ctrlKey;
+
+      // Delete / Backspace → remove selected carousel frame
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        const id = useCarouselStore.getState().selectedFrameId;
+        if (id) {
+          e.preventDefault();
+          useCarouselStore.getState().removePhotoFrame(id);
+          useCarouselStore.getState().setSelectedFrameId(null);
+        }
+        return;
+      }
+
+      // Escape → deselect frame
+      if (e.key === 'Escape') {
+        useCarouselStore.getState().setSelectedFrameId(null);
+        return;
+      }
+
+      // Cmd+A → select first frame on active slide (highlight active slide's first frame)
+      if (cmdOrCtrl && (e.key === 'a' || e.key === 'A')) {
+        const { currentCarousel, activeSlideIndex } = useCarouselStore.getState();
+        if (!currentCarousel) return;
+        const slide = currentCarousel.slides[activeSlideIndex];
+        if (slide && slide.elements.length > 0) {
+          e.preventDefault();
+          const firstPhoto = slide.elements.find((el) => el.type === 'photo');
+          if (firstPhoto) useCarouselStore.getState().setSelectedFrameId(firstPhoto.id);
+        }
+        return;
+      }
+
+      // Arrow keys → nudge selected carousel frame
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        const { selectedFrameId: selId } = useCarouselStore.getState();
+        if (!selId) return;
+        e.preventDefault();
+        const step = e.shiftKey ? 10 : 1;
+        let dx = 0;
+        let dy = 0;
+        if (e.key === 'ArrowLeft') dx = -step;
+        if (e.key === 'ArrowRight') dx = step;
+        if (e.key === 'ArrowUp') dy = -step;
+        if (e.key === 'ArrowDown') dy = step;
+        const { currentCarousel: cc } = useCarouselStore.getState();
+        if (!cc) return;
+        for (const slide of cc.slides) {
+          const frame = slide.elements.find((el) => el.type === 'photo' && el.id === selId) as CarouselPhotoFrame | undefined;
+          if (frame) {
+            useCarouselStore.getState().updatePhotoFrame(selId, {
+              x: Math.round(frame.x + dx),
+              y: Math.round(frame.y + dy),
+            });
+            break;
+          }
+        }
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Global mouse up for pan release safety
   useEffect(() => {
     const handleGlobalMouseUp = () => {

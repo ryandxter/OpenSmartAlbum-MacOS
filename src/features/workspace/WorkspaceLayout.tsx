@@ -739,6 +739,13 @@ export function WorkspaceLayout() {
       const mac = isMac();
       const cmdOrCtrl = mac ? e.metaKey : e.ctrlKey;
 
+      // In carousel mode: suppress all non-cmdOrCtrl single-key album shortcuts
+      // (Delete, T, L, G, R, S, Arrow, etc.) so they don't leak into album store.
+      // Global shortcuts (Cmd+S, Cmd+Z, Cmd+E, F1, zoom) still pass through.
+      if (activeMode === 'carousel' && !cmdOrCtrl && e.key !== 'F1' && e.key !== '?') {
+        return;
+      }
+
       // 0. F1 or ? -> Open Keyboard Shortcuts Dialog
       if (e.key === 'F1' || (!cmdOrCtrl && !e.altKey && e.key === '?')) {
         e.preventDefault();
@@ -971,7 +978,8 @@ export function WorkspaceLayout() {
           pointerDownPosRef.current = null;
 
           // Disambiguation: single tap without dragging under 600ms
-          if (!wasDrag && elapsed < 600) {
+          // Only cycle layout in print/album mode — carousel has its own spacebar handler
+          if (!wasDrag && elapsed < 600 && activeMode !== 'carousel') {
             e.preventDefault();
             useEditorStore.getState().cycleLayout(shiftHeld ? 'prev' : 'next', activeMode);
           }
