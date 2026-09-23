@@ -566,12 +566,15 @@ export function WorkspaceLayout() {
 
             if (payload.type === 'enter') {
               const paths = payload.paths || [];
+              // Ignore internal DOM drag events (e.g. from filmstrip tray) which have empty paths
+              if (paths.length === 0) return;
               setIsFinderDragging(true);
               setDraggedFileCount(paths.length);
               const clientX = payload.position.x / window.devicePixelRatio;
               const clientY = payload.position.y / window.devicePixelRatio;
               setFinderDropZone(resolveDropTargetZone(clientX, clientY));
             } else if (payload.type === 'over') {
+              if (!isFinderDragging) return;
               const clientX = payload.position.x / window.devicePixelRatio;
               const clientY = payload.position.y / window.devicePixelRatio;
               setFinderDropZone(resolveDropTargetZone(clientX, clientY));
@@ -580,13 +583,18 @@ export function WorkspaceLayout() {
               setFinderDropZone('none');
               setDraggedFileCount(0);
             } else if (payload.type === 'drop') {
-              const clientX = payload.position.x / window.devicePixelRatio;
-              const clientY = payload.position.y / window.devicePixelRatio;
-              const targetZone = resolveDropTargetZone(clientX, clientY);
               setIsFinderDragging(false);
               setFinderDropZone('none');
               setDraggedFileCount(0);
-              void handleFinderDrop(payload.paths, targetZone, clientX, clientY);
+              const paths = payload.paths || [];
+              // If paths is empty, this drop is an internal HTML5 DOM drag (from FilmstripTray or Canvas)
+              // DO NOT show any error toast! Let HTML5 onDrop handler manage it.
+              if (paths.length === 0) return;
+
+              const clientX = payload.position.x / window.devicePixelRatio;
+              const clientY = payload.position.y / window.devicePixelRatio;
+              const targetZone = resolveDropTargetZone(clientX, clientY);
+              void handleFinderDrop(paths, targetZone, clientX, clientY);
             }
           })
           .then((fn) => {

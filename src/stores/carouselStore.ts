@@ -372,7 +372,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     const updatedElements = slide.elements.map((el) => {
       if (el.type !== 'photo') return el;
       const p = payloads[pIdx++];
-      return p ? { ...el, ...p } : el;
+      return p ? { ...el, ...p, cropX: 0, cropY: 0, cropScale: 1.0 } : el;
     });
 
     const updatedSlides = currentCarousel.slides.map((s, idx) =>

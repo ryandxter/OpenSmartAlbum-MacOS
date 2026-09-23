@@ -11,6 +11,7 @@ import {
   getSlideIndexAtX,
 } from '../../domain/carousel';
 import { drawShapeToContext, getShapeSvgPath } from '../../domain/shapes';
+import { calculateImageOffset } from '../../domain/editor';
 import styles from './CarouselCanvas.module.css';
 
 interface CarouselCanvasProps {
@@ -67,7 +68,7 @@ function CarouselFrameNode({
   const shapeRef = useRef<Konva.Group>(null);
   const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
 
-  const displaySrc = frame.previewPath || frame.thumbnailPath || '';
+  const displaySrc = frame.previewPath || frame.thumbnailPath || frame.filePath || '';
 
   useEffect(() => {
     if (!displaySrc) {
@@ -94,11 +95,17 @@ function CarouselFrameNode({
     img.onload = () => {
       setCachedImage(url, img);
       setImageObj(img);
+      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+        const naturalAspect = img.naturalWidth / img.naturalHeight;
+        if (!frame.photoAspect || Math.abs(frame.photoAspect - naturalAspect) > 0.01) {
+          useCarouselStore.getState().updatePhotoFrame(frame.id, { photoAspect: naturalAspect });
+        }
+      }
     };
     img.onerror = () => {
       setImageObj(null);
     };
-  }, [displaySrc]);
+  }, [displaySrc, frame.id, frame.photoAspect]);
 
   const cornerRadiiArray: [number, number, number, number] = [
     frame.cornerRadiusTl ?? frame.cornerRadius ?? 0,
@@ -109,6 +116,21 @@ function CarouselFrameNode({
   const hasRounding = cornerRadiiArray.some((r) => r > 0);
   const strokePx = Math.max(1, Math.round(frame.borderWidth || 1));
   const strokeDash = frame.borderStyle === 'dashed' ? [strokePx * 2.5, strokePx * 1.5] : undefined;
+
+  // Real natural photo aspect ratio from loaded image or frame metadata
+  const naturalAspect = (imageObj && imageObj.naturalWidth > 0 && imageObj.naturalHeight > 0)
+    ? imageObj.naturalWidth / imageObj.naturalHeight
+    : (frame.photoAspect && frame.photoAspect > 0 ? frame.photoAspect : 1.0);
+
+  // Proportional aspect-cover fit geometry and centered offset inside frame
+  const { offsetX, offsetY, width: imgW, height: imgH } = calculateImageOffset(
+    frame.width,
+    frame.height,
+    naturalAspect,
+    frame.cropScale || 1.0,
+    frame.cropX || 0,
+    frame.cropY || 0
+  );
 
   return (
     <Group
@@ -163,12 +185,14 @@ function CarouselFrameNode({
           listening={false}
         />
 
-        {/* Render Image if loaded */}
+        {/* Render Image with proportional Aspect-Cover Fit */}
         {imageObj && (
           <KonvaImage
             image={imageObj}
-            width={frame.width}
-            height={frame.height}
+            x={offsetX}
+            y={offsetY}
+            width={imgW}
+            height={imgH}
           />
         )}
       </Group>

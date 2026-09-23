@@ -129,7 +129,7 @@ export function InspectorContainer({ onClose, onToast, activeMode }: InspectorCo
               isOpen={isOpen('layout')}
               onToggle={() => toggleSection('layout')}
             >
-              <LayoutSpacingSection onToast={onToast} />
+              <LayoutSpacingSection onToast={onToast} activeMode={activeMode} />
             </AccordionSection>
 
             {/* Section 2: Shapes & Borders */}

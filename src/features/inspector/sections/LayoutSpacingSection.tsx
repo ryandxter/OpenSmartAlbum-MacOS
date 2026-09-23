@@ -18,6 +18,7 @@ import {
 import { useEditorStore } from '../../../stores/editorStore';
 import { useAlbumStore } from '../../../stores/albumStore';
 import { useProjectStore } from '../../../stores/projectStore';
+import { useCarouselStore } from '../../../stores/carouselStore';
 import { NumberInput } from '../../../components/ui/NumberInput';
 import { getMaxGapForUnit } from '../../../domain/units';
 import { getAllAlbumSpreads } from '../../../domain/album';
@@ -25,9 +26,10 @@ import styles from '../InspectorShared.module.css';
 
 interface LayoutSpacingSectionProps {
   onToast?: (msg: string) => void;
+  activeMode?: 'print' | 'carousel';
 }
 
-export function LayoutSpacingSection({ onToast }: LayoutSpacingSectionProps) {
+export function LayoutSpacingSection({ onToast, activeMode = 'print' }: LayoutSpacingSectionProps) {
   const currentProject = useProjectStore((s) => s.currentProject);
   const currentAlbum = useAlbumStore((s) => s.currentAlbum);
   const activeSpreadId = useAlbumStore((s) => s.activeSpreadId);
@@ -51,7 +53,199 @@ export function LayoutSpacingSection({ onToast }: LayoutSpacingSectionProps) {
   const enterCropMode = useEditorStore((s) => s.enterCropMode);
   const exitCropMode = useEditorStore((s) => s.exitCropMode);
 
+  // Carousel Store Hooks
+  const currentCarousel = useCarouselStore((s) => s.currentCarousel);
+  const activeSlideIndex = useCarouselStore((s) => s.activeSlideIndex);
+  const selectedCarouselFrameId = useCarouselStore((s) => s.selectedFrameId);
+  const updateCarouselPhotoFrame = useCarouselStore((s) => s.updatePhotoFrame);
+  const updateSlideBackground = useCarouselStore((s) => s.updateSlideBackground);
+
   const [isRatioLocked, setIsRatioLocked] = useState(true);
+
+  if (activeMode === 'carousel') {
+    if (!currentCarousel) {
+      return <div className={styles.emptyHint}>No carousel project active.</div>;
+    }
+
+    const activeSlide = currentCarousel.slides[activeSlideIndex] || currentCarousel.slides[0];
+    const selectedCarouselFrame = activeSlide?.elements.find((el) => el.id === selectedCarouselFrameId);
+
+    if (selectedCarouselFrame && selectedCarouselFrame.type === 'photo') {
+      const f = selectedCarouselFrame;
+      return (
+        <div>
+          {/* Frame Dimensions */}
+          <div className={styles.propGroup}>
+            <div className={styles.groupHeader}>
+              <span className={styles.label}>Frame Dimensions</span>
+              <span className={styles.subLabel}>pixels</span>
+            </div>
+            <div className={styles.propGrid2}>
+              <NumberInput
+                label="W"
+                value={Math.round(f.width)}
+                min={20}
+                max={5000}
+                onChange={(val) => {
+                  const newW = Math.max(20, Math.round(val));
+                  const newH = isRatioLocked && f.photoAspect ? Math.round(newW / f.photoAspect) : f.height;
+                  updateCarouselPhotoFrame(f.id, { width: newW, height: newH });
+                }}
+              />
+              <NumberInput
+                label="H"
+                value={Math.round(f.height)}
+                min={20}
+                max={5000}
+                onChange={(val) => {
+                  const newH = Math.max(20, Math.round(val));
+                  const newW = isRatioLocked && f.photoAspect ? Math.round(newH * f.photoAspect) : f.width;
+                  updateCarouselPhotoFrame(f.id, { width: newW, height: newH });
+                }}
+              />
+            </div>
+            <div className={styles.propGrid2} style={{ marginTop: 8 }}>
+              <NumberInput
+                label="X"
+                value={Math.round(f.x)}
+                onChange={(val) => updateCarouselPhotoFrame(f.id, { x: Math.round(val) })}
+              />
+              <NumberInput
+                label="Y"
+                value={Math.round(f.y)}
+                onChange={(val) => updateCarouselPhotoFrame(f.id, { y: Math.round(val) })}
+              />
+            </div>
+            <button
+              type="button"
+              className={`${styles.actionBtn} ${isRatioLocked ? styles.iconBtnActive : ''}`}
+              style={{ marginTop: 8 }}
+              onClick={() => setIsRatioLocked(!isRatioLocked)}
+            >
+              {isRatioLocked ? <Lock size={12} strokeWidth={1.5} /> : <Unlock size={12} strokeWidth={1.5} />}
+              <span>{isRatioLocked ? 'Lock Aspect Ratio' : 'Unlock Aspect Ratio'}</span>
+            </button>
+          </div>
+
+          {/* Rotation */}
+          <div className={styles.propGroup}>
+            <div className={styles.groupHeader}>
+              <span className={styles.label}>Rotation</span>
+              <span className={styles.subLabel}>degrees</span>
+            </div>
+            <div className={styles.propGrid2}>
+              <NumberInput
+                label="Angle"
+                value={f.rotation || 0}
+                min={-360}
+                max={360}
+                onChange={(val) => updateCarouselPhotoFrame(f.id, { rotation: Math.round(val) })}
+              />
+              <div className={styles.buttonGroup}>
+                <button
+                  type="button"
+                  className={styles.iconBtn}
+                  onClick={() => updateCarouselPhotoFrame(f.id, { rotation: ((f.rotation || 0) - 90 + 360) % 360 })}
+                  title="Rotate 90° CCW"
+                >
+                  <RotateCcw size={13} strokeWidth={1.5} />
+                </button>
+                <button
+                  type="button"
+                  className={styles.iconBtn}
+                  onClick={() => updateCarouselPhotoFrame(f.id, { rotation: ((f.rotation || 0) + 90) % 360 })}
+                  title="Rotate 90° CW"
+                >
+                  <RotateCw size={13} strokeWidth={1.5} />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Aspect & Crop actions */}
+          <div className={styles.propGroup}>
+            <div className={styles.groupHeader}>
+              <span className={styles.label}>Aspect Ratio & Crop</span>
+            </div>
+            <div className={styles.propGrid2}>
+              <button
+                type="button"
+                className={styles.actionBtn}
+                onClick={() => {
+                  const aspect = f.photoAspect || 1.0;
+                  const newW = Math.round(f.height * aspect);
+                  updateCarouselPhotoFrame(f.id, { width: newW, cropX: 0, cropY: 0, cropScale: 1.0 });
+                  onToast?.('↺ Reset frame to original photo aspect ratio');
+                }}
+                title="Fit frame dimensions to original photo aspect ratio"
+              >
+                <RefreshIcon size={12} strokeWidth={1.5} />
+                <span>Reset Ratio</span>
+              </button>
+              <button
+                type="button"
+                className={styles.actionBtn}
+                onClick={() => {
+                  updateCarouselPhotoFrame(f.id, { cropX: 0, cropY: 0, cropScale: 1.0 });
+                  onToast?.('↺ Centered photo and reset crop');
+                }}
+                title="Center photo and reset zoom"
+              >
+                <span>Reset Crop</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Carousel Canvas Mode (No frame selected)
+    const totalSlides = currentCarousel.slides.length;
+    const slideW = currentCarousel.slideWidthPx;
+    const slideH = currentCarousel.slideHeightPx;
+
+    return (
+      <div>
+        {/* Slide Dimensions Readout */}
+        <div className={styles.propGroup}>
+          <div className={styles.groupHeader}>
+            <span className={styles.label}>Slide Dimensions</span>
+            <span className={styles.subLabel}>{slideW} × {slideH} px</span>
+          </div>
+          <div className={styles.emptyHint} style={{ textAlign: 'left', padding: '4px 0' }}>
+            Carousel ratio: <strong>{currentCarousel.ratio}</strong>. Active slide: <strong>Slide {activeSlideIndex + 1} of {totalSlides}</strong>.
+          </div>
+        </div>
+
+        {/* Slide Background Color */}
+        <div className={styles.propGroup}>
+          <div className={styles.groupHeader}>
+            <span className={styles.label}>Slide Background</span>
+            <span className={styles.subLabel}>{activeSlide?.backgroundColor || '#000000'}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
+            <input
+              type="color"
+              value={activeSlide?.backgroundColor || '#000000'}
+              onChange={(e) => updateSlideBackground(activeSlideIndex, e.target.value)}
+              style={{
+                width: 38,
+                height: 30,
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: 4,
+                cursor: 'pointer',
+                background: 'transparent',
+              }}
+              title="Change slide background color"
+            />
+            <span style={{ fontSize: 12, color: '#a1a1aa' }}>
+              Slide {activeSlideIndex + 1} Background
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const allSpreads = currentAlbum ? getAllAlbumSpreads(currentAlbum) : [];
   const activeSpread = allSpreads.find((s) => s.id === activeSpreadId) || allSpreads[0];

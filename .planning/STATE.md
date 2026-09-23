@@ -48,6 +48,10 @@ Resume file: .planning/forensics/report-2026-09-23-0520.md
 
 ### Pending Todos
 
-- [2026-09-23] [ui] Investigate and Fix Built App GUI Discrepancy with E2E Test — [todo file](.planning/todos/pending/2026-09-23-investigate-and-fix-built-app-gui-discrepancy-with-e2e-test.md)
-- [2026-09-23] [ui] Fix Filmstrip Photo Reuse, Layout Shuffle Failure, and Image Stretching Distortion — [todo file](.planning/todos/pending/2026-09-23-fix-filmstrip-reuse-layout-shuffle-stretching.md)
+None (all captured issues resolved and verified)
+
+### Completed Todos (Today)
+
+- [2026-09-23] [ui] Investigate and Fix Built App GUI Discrepancy with E2E Test — [todo file](.planning/todos/done/2026-09-23-investigate-and-fix-built-app-gui-discrepancy-with-e2e-test.md)
+- [2026-09-23] [ui] Fix Filmstrip Photo Reuse, Layout Shuffle Failure, and Image Stretching Distortion — [todo file](.planning/todos/done/2026-09-23-fix-filmstrip-reuse-layout-shuffle-stretching.md)
 
