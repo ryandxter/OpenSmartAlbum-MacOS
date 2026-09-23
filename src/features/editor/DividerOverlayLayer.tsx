@@ -20,6 +20,8 @@ export const DividerOverlayLayer: React.FC<DividerOverlayLayerProps> = ({
   onCommit,
   disabled = false,
 }) => {
+  // All hooks must be called unconditionally (Rules of Hooks) —
+  // the early-return guard MUST come AFTER all hook declarations.
   const [hoveredDividerId, setHoveredDividerId] = useState<string | null>(null);
   const [activeDraggingId, setActiveDraggingId] = useState<string | null>(null);
 
@@ -28,6 +30,7 @@ export const DividerOverlayLayer: React.FC<DividerOverlayLayerProps> = ({
   const rafIdRef = useRef<number | null>(null);
   const latestDeltaRef = useRef<number>(0);
 
+  // Guard AFTER hooks — safe: hooks are always called in the same order/count
   if (disabled || dividers.length === 0) {
     return null;
   }
