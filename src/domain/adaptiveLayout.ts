@@ -13,6 +13,7 @@ export interface AdaptivePhoto {
   photoAspect?: number;
   rating?: number; // 0 to 5 stars for hero scoring
   isFavorite?: boolean;
+  isHero?: boolean;
   createdAt?: string;
 }
 

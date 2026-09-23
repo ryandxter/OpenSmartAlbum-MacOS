@@ -418,6 +418,8 @@ export interface AlbumState {
     project: Project,
     options?: { replaceCurrentSpread?: boolean }
   ) => Promise<void>;
+  promoteToFullBleedSpread: (spreadId: string, frameId: string, project: Project) => void;
+  setHeroPhotoOnSpread: (spreadId: string, frameId: string, project: Project) => void;
 }
 
 export const useAlbumStore = create<AlbumState>((set, get) => ({
@@ -1882,5 +1884,210 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
       activeSpreadId: lastCreatedSpreadId || activeSpreadId,
       saveStatus: 'unsaved',
     });
+  },
+
+  promoteToFullBleedSpread: (spreadId: string, frameId: string, project: Project) => {
+    const { currentAlbum } = get();
+    if (!currentAlbum) return;
+
+    const isCover = currentAlbum.coverSpread.id === spreadId;
+    if (isCover) return; // Full bleed spread promotion is designed for interior 2-page spreads
+
+    const spreadIndex = currentAlbum.spreads.findIndex((s) => s.id === spreadId);
+    if (spreadIndex === -1) return;
+    const spread = currentAlbum.spreads[spreadIndex]!;
+
+    const targetFrame = (spread.elements || []).find(
+      (el): el is PhotoFrameElement => el.type === 'photo' && el.id === frameId
+    );
+    if (!targetFrame) return;
+
+    // Single atomic undo snapshot
+    useHistoryStore.getState().pushState(currentAlbum);
+
+    const dims = getProjectDimensionsInCanvasUnit(project, spread);
+    const spreadWidth = dims.pageWidth * 2 + dims.gutterWidth;
+    const spreadHeight = dims.pageHeight;
+    const bleed = dims.bleed ?? 0;
+
+    // Full bleed photo geometry
+    const fullBleedFrame: PhotoFrameElement = {
+      ...targetFrame,
+      x: -bleed,
+      y: -bleed,
+      width: spreadWidth + 2 * bleed,
+      height: spreadHeight + 2 * bleed,
+      rotation: 0,
+      cropX: 0,
+      cropY: 0,
+      cropScale: 1.0,
+    };
+
+    // Extract other photos for non-destructive reflow
+    const remainingPhotos = (spread.elements || []).filter(
+      (el): el is PhotoFrameElement => el.type === 'photo' && el.id !== frameId
+    );
+    const nonPhotoElements = (spread.elements || []).filter((el) => el.type !== 'photo');
+
+    // Update active spread with full bleed photo
+    const updatedTargetSpread: Spread = {
+      ...spread,
+      elements: [fullBleedFrame, ...nonPhotoElements],
+    };
+
+    let updatedSpreads = [...currentAlbum.spreads];
+    updatedSpreads[spreadIndex] = updatedTargetSpread;
+
+    // Zero-Loss Invariant: Reflow remaining photos to a newly created interior spread
+    if (remainingPhotos.length > 0) {
+      const newSpreadNum = spreadIndex + 2;
+      const newSpread = createInteriorSpread(currentAlbum, project, newSpreadNum);
+
+      const reflowAdaptivePhotos: AdaptivePhoto[] = remainingPhotos.map((el) => ({
+        id: el.id,
+        photoId: el.photoId,
+        filePath: el.filePath,
+        fileName: el.fileName,
+        previewPath: el.previewPath,
+        thumbnailPath: el.thumbnailPath,
+        photoAspect: el.photoAspect,
+      }));
+
+      const variations = generateDynamicVariations(
+        {
+          containerWidth: spreadWidth,
+          containerHeight: spreadHeight,
+          spacing: dims.spacing,
+          isSpread: true,
+          gutterWidth: dims.gutterWidth,
+          safeMarginTop: dims.safeMarginTop,
+          safeMarginBottom: dims.safeMarginBottom,
+          safeMarginOutside: dims.safeMarginOutside,
+          safeMarginSpine: dims.safeMarginSpine,
+        },
+        reflowAdaptivePhotos
+      );
+
+      if (variations.length > 0) {
+        newSpread.elements = buildSpreadElementsFromVariation(
+          variations[0]!,
+          reflowAdaptivePhotos,
+          project.borderEnabled,
+          project.borderWidth,
+          project.borderColor
+        );
+      } else {
+        newSpread.elements = remainingPhotos;
+      }
+
+      updatedSpreads.splice(spreadIndex + 1, 0, newSpread);
+    }
+
+    const renumberedAlbum = recalculateAlbumPageNumbers({
+      ...currentAlbum,
+      spreads: updatedSpreads,
+    });
+
+    set({
+      currentAlbum: renumberedAlbum,
+      saveStatus: 'unsaved',
+    });
+  },
+
+  setHeroPhotoOnSpread: (spreadId: string, frameId: string, project: Project) => {
+    const { currentAlbum } = get();
+    if (!currentAlbum) return;
+
+    const isCover = currentAlbum.coverSpread.id === spreadId;
+    const spread = isCover
+      ? currentAlbum.coverSpread
+      : currentAlbum.spreads.find((s) => s.id === spreadId);
+
+    if (!spread) return;
+
+    const photoElements = (spread.elements || []).filter(
+      (el): el is PhotoFrameElement => el.type === 'photo'
+    );
+    if (photoElements.length < 2) return;
+
+    const targetFrame = photoElements.find((el) => el.id === frameId);
+    if (!targetFrame) return;
+
+    // Single atomic undo snapshot
+    useHistoryStore.getState().pushState(currentAlbum);
+
+    const dims = getProjectDimensionsInCanvasUnit(project, spread);
+    const isSpread = !isCover;
+    const spreadWidth = isCover
+      ? (spread.leftPage ? spread.leftPage.width : dims.pageWidth) +
+        (spread.rightPage ? spread.rightPage.width : 0) +
+        dims.gutterWidth
+      : dims.pageWidth * 2 + dims.gutterWidth;
+    const spreadHeight = dims.pageHeight;
+
+    const targetHeroId = targetFrame.photoId || targetFrame.id;
+
+    const adaptivePhotos: AdaptivePhoto[] = photoElements.map((el) => ({
+      id: el.id,
+      photoId: el.photoId,
+      filePath: el.filePath,
+      fileName: el.fileName,
+      previewPath: el.previewPath,
+      thumbnailPath: el.thumbnailPath,
+      photoAspect: el.photoAspect,
+      isHero: el.id === frameId || el.photoId === targetHeroId,
+    }));
+
+    const variations = generateDynamicVariations(
+      {
+        containerWidth: spreadWidth,
+        containerHeight: spreadHeight,
+        spacing: dims.spacing,
+        isSpread,
+        isCover,
+        gutterWidth: dims.gutterWidth,
+        safeMarginTop: dims.safeMarginTop,
+        safeMarginBottom: dims.safeMarginBottom,
+        safeMarginOutside: dims.safeMarginOutside,
+        safeMarginSpine: dims.safeMarginSpine,
+        heroPhotoId: targetHeroId,
+      },
+      adaptivePhotos
+    );
+
+    if (variations.length === 0) return;
+
+    const bestVariation = variations[0]!;
+    const newSpreadElements = buildSpreadElementsFromVariation(
+      bestVariation,
+      adaptivePhotos,
+      project.borderEnabled,
+      project.borderWidth,
+      project.borderColor
+    );
+
+    const nonPhotoElements = (spread.elements || []).filter((el) => el.type !== 'photo');
+    const finalElements = [...newSpreadElements, ...nonPhotoElements];
+
+    if (isCover) {
+      set({
+        currentAlbum: {
+          ...currentAlbum,
+          coverSpread: { ...currentAlbum.coverSpread, elements: finalElements },
+        },
+        saveStatus: 'unsaved',
+      });
+    } else {
+      const updatedSpreads = currentAlbum.spreads.map((s) =>
+        s.id === spread.id ? { ...s, elements: finalElements } : s
+      );
+      set({
+        currentAlbum: {
+          ...currentAlbum,
+          spreads: updatedSpreads,
+        },
+        saveStatus: 'unsaved',
+      });
+    }
   },
 }));

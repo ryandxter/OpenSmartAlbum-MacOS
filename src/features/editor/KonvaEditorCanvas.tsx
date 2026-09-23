@@ -15,6 +15,8 @@ import {
   ArrowLeftRight,
   Group as GroupIcon,
   Ungroup as UngroupIcon,
+  Maximize2,
+  Star,
 } from 'lucide-react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useAlbumStore } from '../../stores/albumStore';
@@ -2087,6 +2089,24 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
   pasteboardRef.current = pasteboard;
   const stageOrigin = { x: pasteboard.pageX - workspaceScroll.x, y: pasteboard.pageY - workspaceScroll.y };
 
+  const spineExclusionPx = currentProject
+    ? convertUnit(19, 'mm', currentProject.canvasUnit || 'mm', currentProject.canvasDpi || 300) * scaleFactor
+    : 19 * scaleFactor;
+
+  const hasSpineViolation = useMemo(() => {
+    if (!activeSpread || activeSpread.type === 'cover' || !currentProject) return false;
+    const spineX = leftPagePixelW / scaleFactor;
+    const exclusionUnit = convertUnit(19, 'mm', currentProject.canvasUnit || 'mm', currentProject.canvasDpi || 300);
+
+    const photos = (activeSpread.elements || []).filter((el): el is PhotoFrameElement => el.type === 'photo');
+    return photos.some((frame) => {
+      const spans = frame.x < spineX && (frame.x + frame.width) > spineX;
+      if (!spans) return false;
+      const focalX = frame.x + frame.width / 2 + (frame.cropX || 0);
+      return Math.abs(focalX - spineX) <= exclusionUnit;
+    });
+  }, [activeSpread, currentProject, leftPagePixelW, scaleFactor]);
+
   // Multi-selection status
   const selectedElements = (activeSpread.elements || []).filter((f) =>
     selectedFrameIds.includes(f.id)
@@ -2627,6 +2647,39 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
           }
         },
       });
+    }
+
+    if (count === 1 && !hasLocked && isAllPhotos && selectedElements[0]) {
+      const targetFrame = selectedElements[0] as PhotoFrameElement;
+      const isCover = activeSpread.type === 'cover' || !activeSpread.leftPage || !activeSpread.rightPage;
+      const spreadPhotoCount = (activeSpread.elements || []).filter((el) => el.type === 'photo').length;
+
+      items.push(
+        {
+          id: 'set-full-bleed-spread',
+          label: 'Set as Full Bleed Spread (2-Page Panorama)',
+          icon: <Maximize2 size={13} strokeWidth={1.5} />,
+          disabled: isCover,
+          onClick: () => {
+            if (currentProject) {
+              useAlbumStore.getState().promoteToFullBleedSpread(activeSpread.id, targetFrame.id, currentProject);
+              if (onToast) onToast('✓ Promoted to full bleed spread');
+            }
+          },
+        },
+        {
+          id: 'set-hero-anchor',
+          label: 'Set as Hero / Anchor Photo',
+          icon: <Star size={13} strokeWidth={1.5} />,
+          disabled: spreadPhotoCount < 2,
+          onClick: () => {
+            if (currentProject) {
+              useAlbumStore.getState().setHeroPhotoOnSpread(activeSpread.id, targetFrame.id, currentProject);
+              if (onToast) onToast('✓ Set as hero photo');
+            }
+          },
+        }
+      );
     }
 
     if (count >= 1) {
@@ -3615,6 +3668,53 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                   stroke="#475569"
                   strokeWidth={1}
                 />
+              </Group>
+            )}
+
+            {/* Spine Clearance Protection Corridor (CTX-04) */}
+            {hasSpineViolation && (
+              <Group listening={false}>
+                <Rect
+                  x={leftPagePixelW - spineExclusionPx}
+                  y={0}
+                  width={spineExclusionPx * 2}
+                  height={screenSpreadH}
+                  fill="rgba(245, 158, 11, 0.08)"
+                />
+                <Line
+                  points={[leftPagePixelW - spineExclusionPx, 0, leftPagePixelW - spineExclusionPx, screenSpreadH]}
+                  stroke="#F59E0B"
+                  strokeWidth={1}
+                  dash={[6, 4]}
+                  opacity={0.8}
+                />
+                <Line
+                  points={[leftPagePixelW + spineExclusionPx, 0, leftPagePixelW + spineExclusionPx, screenSpreadH]}
+                  stroke="#F59E0B"
+                  strokeWidth={1}
+                  dash={[6, 4]}
+                  opacity={0.8}
+                />
+                <Group x={leftPagePixelW} y={16}>
+                  <Label offsetX={110} offsetY={0}>
+                    <Tag
+                      fill="#78350F"
+                      stroke="#F59E0B"
+                      strokeWidth={1}
+                      cornerRadius={4}
+                      shadowColor="rgba(0,0,0,0.4)"
+                      shadowBlur={4}
+                    />
+                    <KonvaText
+                      text="⚠️ Subject in Spine Binding Zone (19mm)"
+                      fontSize={10}
+                      fontStyle="bold"
+                      fill="#FEF3C7"
+                      padding={4}
+                      fontFamily="sans-serif"
+                    />
+                  </Label>
+                </Group>
               </Group>
             )}
 

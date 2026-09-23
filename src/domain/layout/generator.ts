@@ -17,6 +17,7 @@ export interface LayoutGeneratorOptions {
   safeMarginOutside?: number;
   safeMarginSpine?: number;
   lockedElements?: PhotoFrameElement[];
+  heroPhotoId?: string; // Explicit Hero photo anchor (Phase 12)
 }
 
 interface CandidateSlotSet {
@@ -38,11 +39,20 @@ export function generateDynamicVariations(
   const n = photos.length;
   if (n === 0) return [];
 
-  const photoInputs: PhotoAspectInput[] = photos.map(p => ({
-    aspect: p.photoAspect && p.photoAspect > 0 ? p.photoAspect : 1.5,
-    rating: p.rating,
-    isFavorite: p.isFavorite,
-  }));
+  const hasHeroTarget = Boolean(options.heroPhotoId || photos.some((p) => p.isHero));
+
+  const photoInputs: PhotoAspectInput[] = photos.map((p) => {
+    const isExplicitHero = Boolean(
+      (options.heroPhotoId && (p.id === options.heroPhotoId || p.photoId === options.heroPhotoId)) ||
+      p.isHero
+    );
+    return {
+      aspect: p.photoAspect && p.photoAspect > 0 ? p.photoAspect : 1.5,
+      rating: p.rating,
+      isFavorite: p.isFavorite,
+      isHero: isExplicitHero,
+    };
+  });
   const photoAspects = photoInputs.map(p => p.aspect);
   const fingerprint = getPhotosFingerprint(photos);
 
@@ -120,13 +130,18 @@ export function generateDynamicVariations(
 
     const match = matchPhotosToSlots(photoInputs, cand.rects);
 
+    let finalScore = match.score;
+    if (hasHeroTarget && (cand.archetype.includes('hero') || cand.name.toLowerCase().includes('hero'))) {
+      finalScore = Math.min(100, finalScore + 15);
+    }
+
     variations.push({
       id: `dyn-${cand.archetype}-${n}-${candidateIdx++}`,
       name: cand.name,
       description: cand.description,
       rects: cand.rects,
       tags: cand.tags,
-      score: match.score,
+      score: finalScore,
       cropPenalty: match.avgCropPenalty,
       fingerprint,
       photoAssignments: match.mapping,

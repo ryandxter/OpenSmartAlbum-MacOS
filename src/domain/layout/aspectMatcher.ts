@@ -4,6 +4,7 @@ export interface PhotoAspectInput {
   aspect: number; // width / height
   rating?: number; // 0 to 5
   isFavorite?: boolean;
+  isHero?: boolean; // Explicit Hero Anchor (Phase 12)
 }
 
 export interface MatchResult {
@@ -16,7 +17,7 @@ export interface MatchResult {
  * Calculates energy cost for placing a photo in a slot based on:
  * 1. Scale-invariant log-aspect distance (|ln(P) - ln(S)|)
  * 2. Cross-orientation mismatch penalty (landscape photo in portrait slot, or vice versa)
- * 3. Hero importance weighting (high star/favorite photos prioritized in larger slots)
+ * 3. Hero importance weighting (high star/favorite/explicit hero photos prioritized in larger slots)
  */
 export function calculateSlotCost(
   photo: PhotoAspectInput,
@@ -40,13 +41,15 @@ export function calculateSlotCost(
     orientPenalty = 2.5; // Significant deterrent against orientation mismatch
   }
 
-  // 3. Hero importance weighting: high-star / favorite photos should receive larger slots
+  // 3. Hero importance weighting: high-star / favorite / explicit hero photos should receive largest slots
   let heroBonus = 0;
-  const isHero = (photo.rating !== undefined && photo.rating >= 4) || Boolean(photo.isFavorite);
+  const isHero = Boolean(photo.isHero) || (photo.rating !== undefined && photo.rating >= 4) || Boolean(photo.isFavorite);
   if (isHero && maxSlotArea > 0) {
     const slotArea = slot.width * slot.height;
     const areaRatio = slotArea / maxSlotArea; // 1.0 = largest slot
-    heroBonus = (1.0 - areaRatio) * 1.5; // Penalty for placing hero in smaller slot
+    // Heavy penalty against placing explicit hero in non-dominant slots
+    const penaltyMultiplier = photo.isHero ? 20.0 : 3.0;
+    heroBonus = (1.0 - areaRatio) * penaltyMultiplier;
   }
 
   return aspectCost + orientPenalty + heroBonus;
