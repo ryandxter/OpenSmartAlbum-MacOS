@@ -30,6 +30,7 @@ import {
   partitionPageBoxIntoKRects,
 } from '../domain/adaptiveLayout';
 import { generateDynamicVariations } from '../domain/layout/generator';
+import { generateAutoFlowPlan } from '../domain/storytelling/autoFlowEngine';
 import { useHistoryStore } from './historyStore';
 import { useEditorStore } from './editorStore';
 import { useProjectStore } from './projectStore';
@@ -412,6 +413,11 @@ export interface AlbumState {
   cycleSpreadLayout: (spreadId: string, direction: 'next' | 'prev', project: Project) => void;
   shuffleSpreadPhotos: (spreadId: string) => void;
   applyAdaptiveLayoutByIndex: (spreadId: string, index: number, project: Project) => void;
+  autoFlowPhotosToSpreads: (
+    photos: Photo[],
+    project: Project,
+    options?: { replaceCurrentSpread?: boolean }
+  ) => Promise<void>;
 }
 
 export const useAlbumStore = create<AlbumState>((set, get) => ({
@@ -1767,5 +1773,114 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
         saveStatus: 'unsaved',
       });
     }
+  },
+
+  autoFlowPhotosToSpreads: async (
+    photos: Photo[],
+    project: Project,
+    options?: { replaceCurrentSpread?: boolean }
+  ) => {
+    const { currentAlbum, activeSpreadId } = get();
+    if (!currentAlbum || photos.length === 0) return;
+
+    // Atomic History Snapshot: single Cmd+Z reverts entire auto-flow
+    useHistoryStore.getState().pushState(currentAlbum);
+
+    const adaptivePhotos: AdaptivePhoto[] = photos.map((p) => ({
+      id: p.id,
+      photoId: p.id,
+      filePath: p.filePath,
+      fileName: p.fileName,
+      previewPath: p.previewPath ?? undefined,
+      thumbnailPath: p.thumbnailPath ?? undefined,
+      photoAspect: p.width > 0 && p.height > 0 ? p.width / p.height : 1.5,
+      isFavorite: p.isFavorite,
+      createdAt: p.createdAt,
+    }));
+
+    // Derive spread geometry from project canvas unit
+    const sampleSpread = currentAlbum.spreads[0] || currentAlbum.coverSpread;
+    const dims = getProjectDimensionsInCanvasUnit(project, sampleSpread);
+    const spreadWidth = dims.pageWidth * 2 + dims.gutterWidth;
+    const spreadHeight = dims.pageHeight;
+
+    const generatorOpts = {
+      containerWidth: spreadWidth,
+      containerHeight: spreadHeight,
+      spacing: dims.spacing,
+      isSpread: true,
+      gutterWidth: dims.gutterWidth,
+      safeMarginTop: dims.safeMarginTop,
+      safeMarginBottom: dims.safeMarginBottom,
+      safeMarginOutside: dims.safeMarginOutside,
+      safeMarginSpine: dims.safeMarginSpine,
+    };
+
+    const plans = generateAutoFlowPlan(adaptivePhotos, generatorOpts, {
+      maxPhotosPerSpread: 6,
+      minPhotosPerSpread: 1,
+    });
+
+    if (plans.length === 0) return;
+
+    let updatedSpreads = [...currentAlbum.spreads];
+    const isCover = currentAlbum.coverSpread.id === activeSpreadId;
+    const activeSpread = isCover
+      ? currentAlbum.coverSpread
+      : updatedSpreads.find((s) => s.id === activeSpreadId);
+
+    const shouldReplaceActive =
+      Boolean(options?.replaceCurrentSpread) &&
+      Boolean(activeSpread) &&
+      !isCover &&
+      activeSpread!.elements.length === 0;
+
+    let planStartIdx = 0;
+    if (shouldReplaceActive && activeSpread) {
+      const firstPlan = plans[0]!;
+      const firstSpreadElements = buildSpreadElementsFromVariation(
+        firstPlan.selectedVariation,
+        firstPlan.photos,
+        project.borderEnabled,
+        project.borderWidth,
+        project.borderColor
+      );
+
+      updatedSpreads = updatedSpreads.map((s) =>
+        s.id === activeSpread.id ? { ...s, elements: firstSpreadElements } : s
+      );
+      planStartIdx = 1;
+    }
+
+    // Append remaining plans as new interior spreads
+    let lastCreatedSpreadId = activeSpreadId;
+    for (let pIdx = planStartIdx; pIdx < plans.length; pIdx++) {
+      const plan = plans[pIdx]!;
+      const spreadNum = updatedSpreads.length + 1;
+      const newSpread = createInteriorSpread(currentAlbum, project, spreadNum);
+
+      const elements = buildSpreadElementsFromVariation(
+        plan.selectedVariation,
+        plan.photos,
+        project.borderEnabled,
+        project.borderWidth,
+        project.borderColor
+      );
+
+      newSpread.elements = elements;
+      updatedSpreads.push(newSpread);
+      lastCreatedSpreadId = newSpread.id;
+    }
+
+    const updatedAlbum = recalculateAlbumPageNumbers({
+      ...currentAlbum,
+      spreads: updatedSpreads,
+    });
+
+    set({
+      currentAlbum: updatedAlbum,
+      activeSpreadId: lastCreatedSpreadId || activeSpreadId,
+      saveStatus: 'unsaved',
+    });
   },
 }));

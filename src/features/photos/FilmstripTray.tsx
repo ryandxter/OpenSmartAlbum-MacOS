@@ -409,7 +409,7 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
       aria-label="Photo Library Filmstrip"
     >
       {/* Batch Action Bar (Appears when 2 or more photos are selected - Lightroom style) */}
-      <BatchActionBar onRequestDelete={requestPhotoDelete} />
+      <BatchActionBar onRequestDelete={requestPhotoDelete} activeMode={activeMode} />
       {copyNotice && <div className={styles.copyNotice} role="status">{copyNotice}</div>}
       {libraryError && (
         <div className={styles.libraryError}>

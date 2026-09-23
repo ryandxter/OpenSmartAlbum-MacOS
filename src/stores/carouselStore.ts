@@ -14,6 +14,8 @@ import {
 import { CAROUSEL_LAYOUT_PRESETS, CarouselLayoutPhotoInput } from '../domain/carouselLayout';
 import { generateDynamicVariations } from '../domain/layout/generator';
 import { AdaptivePhoto } from '../domain/adaptiveLayout';
+import { generateAutoFlowPlan } from '../domain/storytelling/autoFlowEngine';
+import type { Photo } from '../domain/photo';
 
 export interface CarouselState {
   currentCarousel: Carousel | null;
@@ -39,6 +41,7 @@ export interface CarouselState {
   applyDynamicSlideLayoutByIndex: (slideIndex: number, variationIndex: number) => void;
   applyCarouselLayout: (slideIndex: number, presetId: string, photos?: CarouselLayoutPhotoInput[]) => void;
   shuffleSlidePhotos: (slideIndex: number) => void;
+  autoFlowPhotosToSlides: (photos: Photo[]) => Promise<void>;
   toggleSliceGuides: () => void;
   setShowSliceGuides: (show: boolean) => void;
 }
@@ -579,6 +582,125 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         ...currentCarousel,
         slides: updatedSlides,
       },
+    });
+  },
+
+  autoFlowPhotosToSlides: async (photos: Photo[]) => {
+    const { currentCarousel } = get();
+    if (!currentCarousel || photos.length === 0) return;
+
+    const adaptivePhotos: AdaptivePhoto[] = photos.map((p) => ({
+      id: p.id,
+      photoId: p.id,
+      filePath: p.filePath,
+      fileName: p.fileName,
+      previewPath: p.previewPath ?? undefined,
+      thumbnailPath: p.thumbnailPath ?? undefined,
+      photoAspect: p.width > 0 && p.height > 0 ? p.width / p.height : 1.5,
+      isFavorite: p.isFavorite,
+      createdAt: p.createdAt,
+    }));
+
+    const slideW = currentCarousel.slideWidthPx;
+    const slideH = currentCarousel.slideHeightPx;
+
+    const generatorOpts = {
+      containerWidth: slideW,
+      containerHeight: slideH,
+      spacing: 16,
+      isSpread: false,
+    };
+
+    const plans = generateAutoFlowPlan(adaptivePhotos, generatorOpts, {
+      maxPhotosPerSpread: 4,
+      minPhotosPerSpread: 1,
+    });
+
+    if (plans.length === 0) return;
+
+    let updatedSlides = [...currentCarousel.slides];
+    const activeSlide = updatedSlides[get().activeSlideIndex];
+    const canPopulateActive = activeSlide && activeSlide.elements.length === 0;
+
+    let planStartIdx = 0;
+    if (canPopulateActive && activeSlide) {
+      const firstPlan = plans[0]!;
+      const frames: CarouselPhotoFrame[] = firstPlan.selectedVariation.rects.map((rect, i) => {
+        const photoIdx =
+          firstPlan.selectedVariation.photoAssignments &&
+          firstPlan.selectedVariation.photoAssignments[i] !== undefined
+            ? firstPlan.selectedVariation.photoAssignments[i]!
+            : i;
+        const photo = firstPlan.photos[photoIdx] || firstPlan.photos[i] || firstPlan.photos[0]!;
+        return {
+          type: 'photo',
+          id: `frame-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 7)}`,
+          photoId: (photo && (photo.photoId || photo.id)) || `photo-${i}`,
+          filePath: (photo && photo.filePath) || '',
+          fileName: photo ? photo.fileName : undefined,
+          previewPath: photo ? photo.previewPath : undefined,
+          thumbnailPath: photo ? photo.thumbnailPath : undefined,
+          photoAspect: (photo && photo.photoAspect) || 1.0,
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height,
+          cropX: 0,
+          cropY: 0,
+          cropScale: 1.0,
+        };
+      });
+
+      updatedSlides[get().activeSlideIndex] = {
+        ...activeSlide,
+        elements: frames,
+      };
+      planStartIdx = 1;
+    }
+
+    // Append remaining plans as new slides
+    for (let pIdx = planStartIdx; pIdx < plans.length; pIdx++) {
+      const plan = plans[pIdx]!;
+      const newSlide = createCarouselSlide(currentCarousel);
+      const frames: CarouselPhotoFrame[] = plan.selectedVariation.rects.map((rect, i) => {
+        const photoIdx =
+          plan.selectedVariation.photoAssignments &&
+          plan.selectedVariation.photoAssignments[i] !== undefined
+            ? plan.selectedVariation.photoAssignments[i]!
+            : i;
+        const photo = plan.photos[photoIdx] || plan.photos[i] || plan.photos[0]!;
+        return {
+          type: 'photo',
+          id: `frame-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 7)}`,
+          photoId: (photo && (photo.photoId || photo.id)) || `photo-${i}`,
+          filePath: (photo && photo.filePath) || '',
+          fileName: photo ? photo.fileName : undefined,
+          previewPath: photo ? photo.previewPath : undefined,
+          thumbnailPath: photo ? photo.thumbnailPath : undefined,
+          photoAspect: (photo && photo.photoAspect) || 1.0,
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height,
+          cropX: 0,
+          cropY: 0,
+          cropScale: 1.0,
+        };
+      });
+
+      newSlide.elements = frames;
+      updatedSlides.push(newSlide);
+    }
+
+    const renumbered = updatedSlides.map((s, idx) => ({ ...s, slideIndex: idx }));
+
+    set({
+      currentCarousel: {
+        ...currentCarousel,
+        slides: renumbered,
+        totalSlides: renumbered.length,
+      },
+      activeSlideIndex: renumbered.length - 1,
     });
   },
 

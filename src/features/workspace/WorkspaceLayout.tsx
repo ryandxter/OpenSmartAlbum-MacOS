@@ -337,8 +337,24 @@ export function WorkspaceLayout() {
         }
       }
 
-      // 2. Multi-photo drop (2-6 photos) on empty spread -> Smart Auto-Partitioning (D-03)
+      // 2. Multi-photo drop (>6 photos) -> Auto-Flow Multi-Spread Storytelling Engine (FLOW-04)
       const existingPhotoCount = (targetSpread.elements || []).filter((e) => e.type === 'photo').length;
+      if (newPhotos.length > 6) {
+        showToast(`Auto-flowing ${newPhotos.length} photos across sequential spreads...`);
+        await useAlbumStore.getState().autoFlowPhotosToSpreads(newPhotos, currentProject, {
+          replaceCurrentSpread: existingPhotoCount === 0 && !isCover,
+        });
+
+        const placedIdSet = new Set(newPhotos.map((p) => p.id));
+        usePhotoStore.setState((s) => ({
+          photos: s.photos.map((p) => (placedIdSet.has(p.id) ? { ...p, usedCount: (p.usedCount || 0) + 1 } : p)),
+        }));
+
+        showToast(`Auto-flowed ${newPhotos.length} photos into album`);
+        return;
+      }
+
+      // 3. Multi-photo drop (2-6 photos) on empty spread -> Smart Auto-Partitioning (D-03)
       if (existingPhotoCount === 0 && newPhotos.length >= 2 && newPhotos.length <= 6) {
         const dims = getProjectDimensionsInCanvasUnit(currentProject, targetSpread);
         const isSpread = !isCover;
@@ -454,6 +470,19 @@ export function WorkspaceLayout() {
       const slideWidth = currentCarousel.slideWidthPx;
       const slideHeight = currentCarousel.slideHeightPx;
       const slideX = getSlideXOffset(currentCarousel, activeSlideIndex);
+
+      if (newPhotos.length > 4) {
+        showToast(`Auto-flowing ${newPhotos.length} photos across sequential slides...`);
+        await useCarouselStore.getState().autoFlowPhotosToSlides(newPhotos);
+
+        const placedIdSet = new Set(newPhotos.map((p) => p.id));
+        usePhotoStore.setState((s) => ({
+          photos: s.photos.map((p) => (placedIdSet.has(p.id) ? { ...p, usedCount: (p.usedCount || 0) + 1 } : p)),
+        }));
+
+        showToast(`Auto-flowed ${newPhotos.length} photos across carousel slides`);
+        return;
+      }
 
       if (targetSlide.elements.length === 0 && newPhotos.length >= 2) {
         const margin = 40;

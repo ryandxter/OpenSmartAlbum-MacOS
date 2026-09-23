@@ -8,13 +8,21 @@ import {
   Trash2,
   ChevronDown,
   X,
+  Sparkles,
 } from 'lucide-react';
 import { isMac } from '../../utils/platform';
 import { usePhotoStore } from '../../stores/photoStore';
 import { useProjectStore } from '../../stores/projectStore';
+import { useAlbumStore } from '../../stores/albumStore';
+import { useCarouselStore } from '../../stores/carouselStore';
 import styles from './BatchActionBar.module.css';
 
-export function BatchActionBar({ onRequestDelete }: { onRequestDelete: (ids: string[], name: string) => void }) {
+export interface BatchActionBarProps {
+  onRequestDelete: (ids: string[], name: string) => void;
+  activeMode?: 'print' | 'carousel';
+}
+
+export function BatchActionBar({ onRequestDelete, activeMode = 'print' }: BatchActionBarProps) {
   const currentProject = useProjectStore((s) => s.currentProject);
   const {
     selectedPhotoIds,
@@ -61,6 +69,25 @@ export function BatchActionBar({ onRequestDelete }: { onRequestDelete: (ids: str
     await removePhotosFromFolder(currentProject.id, activeFolderId, selectedPhotoIds);
   };
 
+  const handleAutoFlow = async () => {
+    if (selectedPhotos.length === 0) return;
+    if (activeMode === 'carousel') {
+      await useCarouselStore.getState().autoFlowPhotosToSlides(selectedPhotos);
+    } else {
+      const { currentAlbum, activeSpreadId } = useAlbumStore.getState();
+      const activeSpread = currentAlbum?.spreads.find((s) => s.id === activeSpreadId);
+      const replaceActive = activeSpread && activeSpread.elements.length === 0;
+      await useAlbumStore.getState().autoFlowPhotosToSpreads(selectedPhotos, currentProject, {
+        replaceCurrentSpread: Boolean(replaceActive),
+      });
+    }
+    const placedIdSet = new Set(selectedPhotos.map((p) => p.id));
+    usePhotoStore.setState((s) => ({
+      photos: s.photos.map((p) => (placedIdSet.has(p.id) ? { ...p, usedCount: (p.usedCount || 0) + 1 } : p)),
+    }));
+    clearSelection();
+  };
+
   return (
     <>
       <div className={styles.bar}>
@@ -79,6 +106,21 @@ export function BatchActionBar({ onRequestDelete }: { onRequestDelete: (ids: str
         </div>
 
         <div className={styles.actionsGroup}>
+          {/* Auto-Flow Multi-Spread / Slides */}
+          <button
+            type="button"
+            className={`${styles.actionBtn} ${styles.autoFlowBtn}`}
+            onClick={handleAutoFlow}
+            title={
+              activeMode === 'carousel'
+                ? `Auto-Flow ${count} photos into storytelling carousel slides`
+                : `Auto-Flow ${count} photos across storytelling album spreads`
+            }
+          >
+            <Sparkles size={13} strokeWidth={1.5} />
+            <span>Auto-Flow ({count})</span>
+          </button>
+
           {/* Favorite All */}
           <button
             type="button"
