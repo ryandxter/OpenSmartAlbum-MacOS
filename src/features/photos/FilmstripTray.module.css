@@ -620,8 +620,8 @@
 }
 
 .cardUsed {
-  opacity: 0.65;
-  filter: grayscale(45%);
+  /* Full contrast & vibrant colors preserved — photos are readily reusable */
+  position: relative;
 }
 
 .selectCheckbox {

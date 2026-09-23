@@ -461,25 +461,6 @@ export function CarouselCanvas({
         return;
       }
 
-      // Cmd+Z / Cmd+Shift+Z / Cmd+Y
-      if (cmdOrCtrl && (e.key === 'z' || e.key === 'Z')) {
-        e.preventDefault();
-        if (e.shiftKey) {
-          useCarouselStore.getState().redo();
-          onToast?.('↷ Redo');
-        } else {
-          useCarouselStore.getState().undo();
-          onToast?.('↶ Undo');
-        }
-        return;
-      }
-      if (cmdOrCtrl && !mac && (e.key === 'y' || e.key === 'Y')) {
-        e.preventDefault();
-        useCarouselStore.getState().redo();
-        onToast?.('↷ Redo');
-        return;
-      }
-
       // Arrow keys → nudge all selected carousel frames
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         const { selectedFrameIds: selIds, currentCarousel: cc } = useCarouselStore.getState();
@@ -757,6 +738,41 @@ export function CarouselCanvas({
     if (photosToPlace.length === 1) {
       const photo = photosToPlace[0]!;
       const aspect = photo.width && photo.height ? photo.width / photo.height : 1.0;
+
+      // Check if dropped directly over an existing frame to REPLACE its photo
+      const hitFrame = allFrames.find(
+        (f) =>
+          !f.locked &&
+          canvasX >= f.x &&
+          canvasX <= f.x + f.width &&
+          canvasY >= f.y &&
+          canvasY <= f.y + f.height
+      );
+
+      if (hitFrame) {
+        const { updatePhotoFrame, setActiveSlide: setSlide, setSelectedFrameId: setSel } = useCarouselStore.getState();
+        updatePhotoFrame(hitFrame.id, {
+          photoId: photo.id,
+          filePath: photo.filePath,
+          fileName: photo.fileName,
+          previewPath: photo.previewPath || undefined,
+          thumbnailPath: photo.thumbnailPath || undefined,
+          photoAspect: aspect,
+          cropX: 0,
+          cropY: 0,
+          cropScale: 1.0,
+        });
+        const hitSlideIdx = getSlideIndexAtX(currentCarousel, hitFrame.x + hitFrame.width / 2);
+        setSlide(hitSlideIdx);
+        setSel(hitFrame.id);
+
+        usePhotoStore.setState((s) => ({
+          photos: s.photos.map((p) => (p.id === photo.id ? { ...p, usedCount: (p.usedCount || 0) + 1 } : p)),
+        }));
+        onToast?.(`Replaced photo in frame with ${photo.fileName}`);
+        return;
+      }
+
       const maxW = slideW * 0.8;
       const maxH = slideH * 0.8;
       let frameW = maxW;

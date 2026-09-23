@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   Plus,
   Copy,
@@ -6,9 +7,88 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import { useCarouselStore } from '../../stores/carouselStore';
-import { CarouselRatio, MAX_CAROUSEL_SLIDES, MIN_CAROUSEL_SLIDES } from '../../domain/carousel';
+import {
+  CarouselRatio,
+  CarouselSlide,
+  CarouselPhotoFrame,
+  MAX_CAROUSEL_SLIDES,
+  MIN_CAROUSEL_SLIDES,
+  getSlideIntersectingFrames,
+} from '../../domain/carousel';
 import styles from './SlideNavigator.module.css';
+
+function safeConvertFileSrc(filePath: string): string {
+  try {
+    return convertFileSrc(filePath);
+  } catch {
+    return filePath;
+  }
+}
+
+interface MiniSlidePreviewProps {
+  slide: CarouselSlide;
+  slideIndex: number;
+  slideWidth: number;
+  slideHeight: number;
+  allFrames: CarouselPhotoFrame[];
+}
+
+function MiniSlidePreview({ slide, slideIndex, slideWidth, slideHeight, allFrames }: MiniSlidePreviewProps) {
+  const intersectingFrames = getSlideIntersectingFrames(allFrames, slideIndex, slideWidth);
+
+  return (
+    <div
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        backgroundColor: slide.backgroundColor || '#FFFFFF',
+        overflow: 'hidden',
+      }}
+    >
+      {intersectingFrames.map(({ frame, localX }) => {
+        const leftPct = (localX / slideWidth) * 100;
+        const topPct = (frame.y / slideHeight) * 100;
+        const widthPct = (frame.width / slideWidth) * 100;
+        const heightPct = (frame.height / slideHeight) * 100;
+        const imgSrc = frame.thumbnailPath || frame.previewPath || frame.filePath;
+
+        return (
+          <div
+            key={frame.id}
+            style={{
+              position: 'absolute',
+              left: `${leftPct}%`,
+              top: `${topPct}%`,
+              width: `${widthPct}%`,
+              height: `${heightPct}%`,
+              overflow: 'hidden',
+              backgroundColor: '#27272A',
+              borderRadius: frame.cornerRadius ? `${frame.cornerRadius * 0.08}px` : undefined,
+            }}
+          >
+            {imgSrc && (
+              <img
+                src={safeConvertFileSrc(imgSrc)}
+                alt=""
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
+                  pointerEvents: 'none',
+                }}
+                loading="lazy"
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 interface SlideNavigatorProps {
   onOpenSimulator: () => void;
@@ -30,6 +110,13 @@ export function SlideNavigator({ onOpenSimulator }: SlideNavigatorProps) {
   const isAtMin = totalSlides <= MIN_CAROUSEL_SLIDES;
 
   const currentRatio = currentCarousel?.ratio || '1:1';
+  const slideWidth = currentCarousel?.slideWidthPx || 1080;
+  const slideHeight = currentCarousel?.slideHeightPx || 1080;
+
+  const allFrames: CarouselPhotoFrame[] = useMemo(() => {
+    if (!currentCarousel) return [];
+    return currentCarousel.slides.flatMap((s) => s.elements.filter((el): el is CarouselPhotoFrame => el.type === 'photo'));
+  }, [currentCarousel]);
 
   return (
     <nav className={styles.navigatorContainer} aria-label="Carousel Slide Navigator">
@@ -43,7 +130,9 @@ export function SlideNavigator({ onOpenSimulator }: SlideNavigatorProps) {
             <div
               key={slide.id}
               className={`${styles.slideCard} ${isActive ? styles.slideCardActive : ''}`}
-              style={{ backgroundColor: slide.backgroundColor || '#FFFFFF' }}
+              style={{
+                aspectRatio: `${slideWidth} / ${slideHeight}`,
+              }}
               onClick={() => setActiveSlide(idx)}
               title={`Slide ${idx + 1} (${photoCount} photo${photoCount === 1 ? '' : 's'})`}
               role="button"
@@ -54,6 +143,15 @@ export function SlideNavigator({ onOpenSimulator }: SlideNavigatorProps) {
                 }
               }}
             >
+              {/* Mini Slide Preview Rendering Photos */}
+              <MiniSlidePreview
+                slide={slide}
+                slideIndex={idx}
+                slideWidth={slideWidth}
+                slideHeight={slideHeight}
+                allFrames={allFrames}
+              />
+
               {/* Slide Number Badge */}
               <span className={styles.slideNumberBadge}>{idx + 1}</span>
             </div>

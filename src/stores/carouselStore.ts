@@ -467,6 +467,8 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     const chosen = variations[nextIndex] || variations[0];
     if (!chosen) return;
 
+    const slideStartX = activeSlideIndex * currentCarousel.slideWidthPx;
+
     const newPhotoElements: CarouselPhotoFrame[] = chosen.rects.map((rect, i) => {
       const photoIdx =
         chosen.photoAssignments && chosen.photoAssignments[i] !== undefined
@@ -482,10 +484,10 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         previewPath: photo ? photo.previewPath : undefined,
         thumbnailPath: photo ? photo.thumbnailPath : undefined,
         photoAspect: (photo && photo.photoAspect) || 1.0,
-        x: rect.x,
-        y: rect.y,
-        width: rect.width,
-        height: rect.height,
+        x: Math.round(slideStartX + rect.x),
+        y: Math.round(rect.y),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
         cropX: 0,
         cropY: 0,
         cropScale: 1.0,
@@ -553,6 +555,8 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     const chosen = variations[clampedIndex] || variations[0];
     if (!chosen) return;
 
+    const slideStartX = slideIndex * currentCarousel.slideWidthPx;
+
     const newPhotoElements: CarouselPhotoFrame[] = chosen.rects.map((rect, i) => {
       const photoIdx =
         chosen.photoAssignments && chosen.photoAssignments[i] !== undefined
@@ -568,10 +572,10 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         previewPath: photo ? photo.previewPath : undefined,
         thumbnailPath: photo ? photo.thumbnailPath : undefined,
         photoAspect: (photo && photo.photoAspect) || 1.0,
-        x: rect.x,
-        y: rect.y,
-        width: rect.width,
-        height: rect.height,
+        x: Math.round(slideStartX + rect.x),
+        y: Math.round(rect.y),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
         cropX: 0,
         cropY: 0,
         cropScale: 1.0,
@@ -798,6 +802,8 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
             ? firstPlan.selectedVariation.photoAssignments[i]!
             : i;
         const photo = firstPlan.photos[photoIdx] || firstPlan.photos[i] || firstPlan.photos[0]!;
+        const activeSlideIdx = get().activeSlideIndex;
+        const activeSlideStartX = activeSlideIdx * slideW;
         return {
           type: 'photo',
           id: `frame-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 7)}`,
@@ -807,10 +813,10 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
           previewPath: photo ? photo.previewPath : undefined,
           thumbnailPath: photo ? photo.thumbnailPath : undefined,
           photoAspect: (photo && photo.photoAspect) || 1.0,
-          x: rect.x,
-          y: rect.y,
-          width: rect.width,
-          height: rect.height,
+          x: Math.round(activeSlideStartX + rect.x),
+          y: Math.round(rect.y),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
           cropX: 0,
           cropY: 0,
           cropScale: 1.0,
@@ -828,6 +834,8 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     for (let pIdx = planStartIdx; pIdx < plans.length; pIdx++) {
       const plan = plans[pIdx]!;
       const newSlide = createCarouselSlide(currentCarousel);
+      const targetSlideIdx = updatedSlides.length;
+      const targetSlideStartX = targetSlideIdx * slideW;
       const frames: CarouselPhotoFrame[] = plan.selectedVariation.rects.map((rect, i) => {
         const photoIdx =
           plan.selectedVariation.photoAssignments &&
@@ -844,10 +852,10 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
           previewPath: photo ? photo.previewPath : undefined,
           thumbnailPath: photo ? photo.thumbnailPath : undefined,
           photoAspect: (photo && photo.photoAspect) || 1.0,
-          x: rect.x,
-          y: rect.y,
-          width: rect.width,
-          height: rect.height,
+          x: Math.round(targetSlideStartX + rect.x),
+          y: Math.round(rect.y),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
           cropX: 0,
           cropY: 0,
           cropScale: 1.0,

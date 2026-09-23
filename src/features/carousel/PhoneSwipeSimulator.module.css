@@ -1,52 +1,110 @@
-.overlay {
+.simulatorBackdrop {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(8px);
-  z-index: 1000;
+  background-color: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 9999;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   user-select: none;
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.modalHeader {
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Phone Mockup Frame (iPhone 16 Pro Style) */
+.phoneChassis {
+  position: relative;
+  width: 360px;
+  height: 680px;
+  max-height: 90vh;
+  background-color: #000000;
+  border-radius: 46px;
+  border: 10px solid #27272A;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+/* Dynamic Island / Top Notch */
+.phoneNotch {
   position: absolute;
-  top: 24px;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 24px;
+  background-color: #000000;
+  border-radius: 20px;
+  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 100%;
-  max-width: 500px;
-  padding: 0 24px;
-  color: var(--color-text-primary, #F4F4F5);
+  padding: 0 10px;
 }
 
-.titleGroup {
+.speakerPill {
+  width: 36px;
+  height: 4px;
+  background-color: #18181B;
+  border-radius: 2px;
+}
+
+.cameraDot {
+  width: 10px;
+  height: 10px;
+  background-color: #121214;
+  border: 1.5px solid #1c1c1f;
+  border-radius: 50%;
+}
+
+/* Simulated App Header */
+.phoneHeader {
+  height: 52px;
+  padding-top: 18px;
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.title {
-  font-size: 15px;
+  justify-content: space-between;
+  padding-left: 16px;
+  padding-right: 14px;
+  color: #F4F4F5;
+  font-size: 13px;
   font-weight: 600;
-  margin: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: #000000;
+  z-index: 20;
 }
 
-.subtitle {
-  font-size: 12px;
-  color: var(--color-text-secondary, #A1A1AA);
-  margin: 0;
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.phoneIcon {
+  color: #A1A1AA;
+}
+
+.accountName {
+  font-weight: 600;
+  color: #F4F4F5;
+  letter-spacing: -0.01em;
 }
 
 .closeBtn {
-  background: var(--color-bg-surface, #2D2D32);
-  border: 1px solid var(--color-border-subtle, #2E2E33);
-  color: var(--color-text-secondary, #A1A1AA);
-  width: 32px;
-  height: 32px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #D4D4D8;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -56,53 +114,27 @@
 }
 
 .closeBtn:hover {
-  background: var(--color-bg-tertiary, #27272A);
+  background: rgba(255, 255, 255, 0.2);
   color: #FFFFFF;
 }
 
-/* Phone Mockup Frame */
-.phoneFrame {
-  position: relative;
-  width: 360px;
-  height: 640px;
-  background-color: #000000;
-  border-radius: 44px;
-  border: 10px solid #27272A;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.1);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Dynamic Island / Top Notch */
-.notch {
+/* Slide Counter Indicator (Instagram-Style Top-Right Badge) */
+.slideIndicator {
   position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 90px;
-  height: 22px;
-  background-color: #000000;
-  border-radius: 20px;
-  z-index: 20;
-}
-
-/* Simulated App Header */
-.appHeader {
-  height: 48px;
-  padding-top: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-left: 16px;
-  padding-right: 16px;
-  color: #F4F4F5;
-  font-size: 12px;
+  top: 60px;
+  right: 14px;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: #FFFFFF;
+  font-size: 10px;
   font-weight: 600;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 3px 8px;
+  border-radius: 12px;
+  z-index: 25;
 }
 
-/* Carousel Viewport */
+/* Carousel Swipe Viewport */
 .carouselViewport {
   flex: 1;
   display: flex;
@@ -110,6 +142,7 @@
   scroll-snap-type: x mandatory;
   scroll-behavior: smooth;
   scrollbar-width: none;
+  background-color: #09090B;
 }
 
 .carouselViewport::-webkit-scrollbar {
@@ -119,20 +152,30 @@
 /* Individual Slide inside phone */
 .slideItem {
   flex: 0 0 100%;
+  width: 100%;
   height: 100%;
   scroll-snap-align: start;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #18181B;
+  background-color: #09090B;
+  overflow: hidden;
 }
 
 .slideSurface {
   width: 100%;
+  max-width: 100%;
   position: relative;
   overflow: hidden;
   background-color: #FFFFFF;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.photoFrame {
+  position: absolute;
+  overflow: hidden;
+  background-color: #1E1E22;
 }
 
 /* Navigation Arrow Overlays */
@@ -143,37 +186,42 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   color: #FFFFFF;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 10;
-  transition: opacity 0.15s ease;
+  z-index: 20;
+  transition: all 0.15s ease;
 }
 
 .navArrow:hover {
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(0, 0, 0, 0.9);
+  transform: translateY(-50%) scale(1.08);
 }
 
 .navArrowLeft {
-  left: 8px;
+  left: 10px;
 }
 
 .navArrowRight {
-  right: 8px;
+  right: 10px;
 }
 
 /* Footer / Dots Indicator */
 .dotsContainer {
-  height: 40px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
+  background-color: #000000;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 20;
 }
 
 .dot {
@@ -181,11 +229,11 @@
   height: 6px;
   border-radius: 50%;
   background-color: rgba(255, 255, 255, 0.3);
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .dotActive {
   width: 18px;
   border-radius: 4px;
-  background-color: var(--color-accent, #E4E4E7);
+  background-color: var(--color-accent, #38BDF8);
 }

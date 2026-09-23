@@ -48,3 +48,4 @@ Last activity: 2026-09-23 — Phase 13 complete: interactive divider dragging (6
 
 - [2026-09-23] [ui] Investigate and Fix Built App GUI Discrepancy with E2E Test — [todo file](.planning/todos/done/2026-09-23-investigate-and-fix-built-app-gui-discrepancy-with-e2e-test.md)
 - [2026-09-23] [ui] Fix Filmstrip Photo Reuse, Layout Shuffle Failure, and Image Stretching Distortion — [todo file](.planning/todos/done/2026-09-23-fix-filmstrip-reuse-layout-shuffle-stretching.md)
+- [2026-09-23] [forensics] Diagnosed 6 carousel and workspace issues (preview, dynamic layouts slide 2+, panoramas count, shortcuts closure, used photos styling, phone simulator CSS) — [report](.planning/forensics/report-20260923-161200.md)

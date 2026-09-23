@@ -99,6 +99,8 @@ export function WorkspaceLayout() {
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
   const [isFilmstripOpen, setIsFilmstripOpen] = useState(true);
   const [activeMode, setActiveMode] = useState<'print' | 'carousel'>('print');
+  const activeModeRef = useRef(activeMode);
+  activeModeRef.current = activeMode;
   const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
 
   // External Finder Drag-and-Drop Ingestion state
@@ -839,12 +841,14 @@ export function WorkspaceLayout() {
         return;
       }
 
+      const curMode = activeModeRef.current;
+
       // Below shortcuts require cmdOrCtrl:
       if (!cmdOrCtrl) return;
 
       if (e.key === 'z' || e.key === 'Z') {
         e.preventDefault();
-        if (activeMode === 'carousel') {
+        if (curMode === 'carousel') {
           if (e.shiftKey) {
             useCarouselStore.getState().redo();
             showToast('↷ Redo');
@@ -861,7 +865,7 @@ export function WorkspaceLayout() {
         }
       } else if (e.key === 'y' || e.key === 'Y') {
         e.preventDefault();
-        if (activeMode === 'carousel') {
+        if (curMode === 'carousel') {
           useCarouselStore.getState().redo();
           showToast('↷ Redo');
         } else {
@@ -898,12 +902,12 @@ export function WorkspaceLayout() {
         const isHoveredOnFilmstrip = Boolean(document.querySelector('[aria-label="Photo Library Filmstrip"]:hover'));
         if (isHoveredOnFilmstrip) {
           usePhotoStore.getState().selectAll();
-          if (activeMode === 'carousel') {
+          if (curMode === 'carousel') {
             useCarouselStore.getState().setSelectedFrameIds([]);
           } else {
             useEditorStore.getState().clearSelection();
           }
-        } else if (activeMode === 'carousel') {
+        } else if (curMode === 'carousel') {
           useCarouselStore.getState().selectAllFramesOnSlide();
           usePhotoStore.getState().clearSelection();
           showToast('✓ Selected all elements on slide');
@@ -937,7 +941,7 @@ export function WorkspaceLayout() {
         setZoomLevel((z) => Math.max(5, z - 15));
       }
     },
-    [undo, redo, saveProject, exportProjectAsAfsn, importProjectFromAfsn, openNewProject, confirmSafeAction, showToast, activeSpreadId, activeSpread, selectedFrameIds, toggleLockSelectedFrames, addTextToSpread, setEditingTextElementId, currentProject, handleFitToScreen]
+    [activeMode, undo, redo, saveProject, exportProjectAsAfsn, importProjectFromAfsn, openNewProject, confirmSafeAction, showToast, activeSpreadId, activeSpread, selectedFrameIds, toggleLockSelectedFrames, addTextToSpread, setEditingTextElementId, currentProject, handleFitToScreen]
   );
 
   useEffect(() => {

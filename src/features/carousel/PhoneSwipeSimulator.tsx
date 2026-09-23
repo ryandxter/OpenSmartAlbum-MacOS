@@ -114,7 +114,7 @@ export function PhoneSwipeSimulator({ isOpen, onClose }: PhoneSwipeSimulatorProp
                 >
                   {/* Photo Frames intersecting slide (including multi-slide spanning panoramas) */}
                   {intersectingFrames.map(({ frame: photoFrame, localX }) => {
-                    const displaySrc = photoFrame.previewPath || photoFrame.thumbnailPath || '';
+                    const displaySrc = photoFrame.thumbnailPath || photoFrame.previewPath || photoFrame.filePath || '';
                     let src = displaySrc;
                     if (displaySrc) {
                       try {

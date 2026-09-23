@@ -766,7 +766,7 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
                               {/* Bottom Status Overlay */}
                               <div className={styles.bottomOverlay}>
                                 <span className={`${styles.usedTag} ${isUsed ? styles.usedActive : ''}`}>
-                                  {isUsed ? 'Used' : 'Unused'}
+                                  {isUsed ? ((photo.usedCount || 1) > 1 ? `Used (${photo.usedCount}×)` : 'Used') : 'Unused'}
                                 </span>
                                 <span className={styles.dimTag}>
                                   {photo.width > photo.height ? 'Landscape' : photo.width < photo.height ? 'Portrait' : 'Square'}

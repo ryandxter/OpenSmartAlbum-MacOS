@@ -401,6 +401,167 @@ export const CAROUSEL_LAYOUT_PRESETS: CarouselLayoutPreset[] = [
       </svg>`;
     },
   },
+
+  // Panorama: 4-Slide Cinematic Walkthrough
+  {
+    id: 'panorama_4_slide',
+    name: '4-Slide Cinematic Panorama',
+    description: '1 ultra-wide panoramic photo seamlessly spanning 4 consecutive slides.',
+    category: 'panorama',
+    spanSlides: 4,
+    minPhotos: 1,
+    maxPhotos: 1,
+    generate: ({ slideWidth, slideHeight, slideIndex, photos }) => {
+      const slideStartX = slideIndex * slideWidth;
+      return [
+        createFrame(photos[0], slideStartX, 0, slideWidth * 4, slideHeight),
+      ];
+    },
+    previewSvg: () => {
+      return `<svg width="140" height="70" viewBox="0 0 140 70" xmlns="http://www.w3.org/2000/svg">
+        <rect width="140" height="70" rx="4" fill="var(--color-bg-secondary, #18181b)"/>
+        <rect x="10" y="18" width="120" height="34" rx="2" fill="rgba(59, 130, 246, 0.15)" stroke="rgba(59, 130, 246, 0.4)" stroke-width="1.2"/>
+        <line x1="40" y1="18" x2="40" y2="52" stroke="#3b82f6" stroke-dasharray="2 2" stroke-width="1"/>
+        <line x1="70" y1="18" x2="70" y2="52" stroke="#3b82f6" stroke-dasharray="2 2" stroke-width="1"/>
+        <line x1="100" y1="18" x2="100" y2="52" stroke="#3b82f6" stroke-dasharray="2 2" stroke-width="1"/>
+      </svg>`;
+    },
+  },
+
+  // Panorama: 2-Slide Dual Inset Cards
+  {
+    id: 'panorama_2_slide_dual_insets',
+    name: '2-Slide Panorama + Dual Cards',
+    description: 'Continuous background panorama across 2 slides with 1 inset card on each slide.',
+    category: 'panorama',
+    spanSlides: 2,
+    minPhotos: 3,
+    maxPhotos: 3,
+    generate: ({ slideWidth, slideHeight, slideIndex, photos }) => {
+      const slideStartX = slideIndex * slideWidth;
+      const cardW = Math.round(slideWidth * 0.42);
+      const cardH = Math.round(slideHeight * 0.46);
+      const card1X = slideStartX + Math.round(slideWidth * 0.5 - cardW / 2);
+      const card1Y = Math.round(slideHeight * 0.5 - cardH / 2);
+      const card2X = slideStartX + slideWidth + Math.round(slideWidth * 0.5 - cardW / 2);
+      const card2Y = card1Y;
+
+      return [
+        createFrame(photos[0], slideStartX, 0, slideWidth * 2, slideHeight),
+        createFrame(photos[1], card1X, card1Y, cardW, cardH, { cornerRadius: 8 }),
+        createFrame(photos[2], card2X, card2Y, cardW, cardH, { cornerRadius: 8 }),
+      ];
+    },
+    previewSvg: () => {
+      return `<svg width="140" height="70" viewBox="0 0 140 70" xmlns="http://www.w3.org/2000/svg">
+        <rect width="140" height="70" rx="4" fill="var(--color-bg-secondary, #18181b)"/>
+        <rect x="25" y="12" width="90" height="46" rx="2" fill="rgba(59, 130, 246, 0.15)" stroke="rgba(59, 130, 246, 0.4)" stroke-width="1.2"/>
+        <line x1="70" y1="12" x2="70" y2="58" stroke="#3b82f6" stroke-dasharray="3 3" stroke-width="1.5"/>
+        <rect x="36" y="24" width="22" height="22" rx="3" fill="rgba(255, 255, 255, 0.85)" stroke="rgba(0, 0, 0, 0.25)" stroke-width="1"/>
+        <rect x="82" y="24" width="22" height="22" rx="3" fill="rgba(255, 255, 255, 0.85)" stroke="rgba(0, 0, 0, 0.25)" stroke-width="1"/>
+      </svg>`;
+    },
+  },
+
+  // Panorama: 2-Slide Asymmetric Split
+  {
+    id: 'panorama_2_slide_asymmetric',
+    name: '2-Slide Asymmetric Panorama',
+    description: 'Wide panorama spanning 1.5 slides with a side portrait photo on the right of slide 2.',
+    category: 'panorama',
+    spanSlides: 2,
+    minPhotos: 2,
+    maxPhotos: 2,
+    generate: ({ slideWidth, slideHeight, slideIndex, photos, spacing = 20 }) => {
+      const slideStartX = slideIndex * slideWidth;
+      const panoW = Math.round(slideWidth * 1.48);
+      const sideW = Math.round(slideWidth * 0.48);
+      const sideX = slideStartX + panoW + spacing;
+      const margin = 30;
+
+      return [
+        createFrame(photos[0], slideStartX, 0, panoW, slideHeight),
+        createFrame(photos[1], sideX, margin, sideW, slideHeight - margin * 2, { cornerRadius: 6 }),
+      ];
+    },
+    previewSvg: () => {
+      return `<svg width="140" height="70" viewBox="0 0 140 70" xmlns="http://www.w3.org/2000/svg">
+        <rect width="140" height="70" rx="4" fill="var(--color-bg-secondary, #18181b)"/>
+        <rect x="20" y="12" width="70" height="46" rx="2" fill="rgba(59, 130, 246, 0.15)" stroke="rgba(59, 130, 246, 0.4)" stroke-width="1.2"/>
+        <line x1="68" y1="12" x2="68" y2="58" stroke="#3b82f6" stroke-dasharray="3 3" stroke-width="1.5"/>
+        <rect x="94" y="15" width="24" height="40" rx="2" fill="rgba(255, 255, 255, 0.15)" stroke="rgba(255, 255, 255, 0.3)" stroke-width="1"/>
+      </svg>`;
+    },
+  },
+
+  // Panorama: 3-Slide Ultra with Dual Insets
+  {
+    id: 'panorama_3_slide_dual_focus',
+    name: '3-Slide Ultra + Dual Insets',
+    description: '1 continuous panorama across 3 slides with focus detail cards on slides 1 and 3.',
+    category: 'panorama',
+    spanSlides: 3,
+    minPhotos: 3,
+    maxPhotos: 3,
+    generate: ({ slideWidth, slideHeight, slideIndex, photos }) => {
+      const slideStartX = slideIndex * slideWidth;
+      const cardW = Math.round(slideWidth * 0.44);
+      const cardH = Math.round(slideHeight * 0.44);
+      const card1X = slideStartX + (slideWidth - cardW) / 2;
+      const card1Y = (slideHeight - cardH) / 2;
+      const card2X = slideStartX + slideWidth * 2 + (slideWidth - cardW) / 2;
+      const card2Y = card1Y;
+
+      return [
+        createFrame(photos[0], slideStartX, 0, slideWidth * 3, slideHeight),
+        createFrame(photos[1], card1X, card1Y, cardW, cardH, { cornerRadius: 8 }),
+        createFrame(photos[2], card2X, card2Y, cardW, cardH, { cornerRadius: 8 }),
+      ];
+    },
+    previewSvg: () => {
+      return `<svg width="140" height="70" viewBox="0 0 140 70" xmlns="http://www.w3.org/2000/svg">
+        <rect width="140" height="70" rx="4" fill="var(--color-bg-secondary, #18181b)"/>
+        <rect x="15" y="16" width="110" height="38" rx="2" fill="rgba(59, 130, 246, 0.15)" stroke="rgba(59, 130, 246, 0.4)" stroke-width="1.2"/>
+        <line x1="51.6" y1="16" x2="51.6" y2="54" stroke="#3b82f6" stroke-dasharray="3 3" stroke-width="1.5"/>
+        <line x1="88.3" y1="16" x2="88.3" y2="54" stroke="#3b82f6" stroke-dasharray="3 3" stroke-width="1.5"/>
+        <rect x="24" y="24" width="18" height="22" rx="2" fill="rgba(255, 255, 255, 0.85)" stroke="rgba(0, 0, 0, 0.25)" stroke-width="1"/>
+        <rect x="98" y="24" width="18" height="22" rx="2" fill="rgba(255, 255, 255, 0.85)" stroke="rgba(0, 0, 0, 0.25)" stroke-width="1"/>
+      </svg>`;
+    },
+  },
+
+  // Panorama: 2-Slide Split Pano + 2 Header Photos
+  {
+    id: 'panorama_2_slide_split_vertical',
+    name: '2-Slide Bottom Pano + Top Split',
+    description: 'Continuous bottom panorama across 2 slides with 2 individual photos on the top half.',
+    category: 'panorama',
+    spanSlides: 2,
+    minPhotos: 3,
+    maxPhotos: 3,
+    generate: ({ slideWidth, slideHeight, slideIndex, photos, spacing = 16, margin = 30 }) => {
+      const slideStartX = slideIndex * slideWidth;
+      const topH = Math.round((slideHeight - margin * 2 - spacing) * 0.48);
+      const bottomH = (slideHeight - margin * 2 - spacing) - topH;
+      const topW = slideWidth - margin * 2;
+      const bottomY = margin + topH + spacing;
+
+      return [
+        createFrame(photos[0], slideStartX + margin, margin, topW, topH, { cornerRadius: 6 }),
+        createFrame(photos[1], slideStartX + slideWidth + margin, margin, topW, topH, { cornerRadius: 6 }),
+        createFrame(photos[2], slideStartX + margin, bottomY, slideWidth * 2 - margin * 2, bottomH, { cornerRadius: 6 }),
+      ];
+    },
+    previewSvg: () => {
+      return `<svg width="140" height="70" viewBox="0 0 140 70" xmlns="http://www.w3.org/2000/svg">
+        <rect width="140" height="70" rx="4" fill="var(--color-bg-secondary, #18181b)"/>
+        <rect x="25" y="10" width="40" height="20" rx="2" fill="rgba(255, 255, 255, 0.12)" stroke="rgba(255, 255, 255, 0.25)" stroke-width="1"/>
+        <rect x="75" y="10" width="40" height="20" rx="2" fill="rgba(255, 255, 255, 0.12)" stroke="rgba(255, 255, 255, 0.25)" stroke-width="1"/>
+        <line x1="70" y1="10" x2="70" y2="60" stroke="#3b82f6" stroke-dasharray="3 3" stroke-width="1.5"/>
+        <rect x="25" y="35" width="90" height="25" rx="2" fill="rgba(59, 130, 246, 0.2)" stroke="rgba(59, 130, 246, 0.4)" stroke-width="1.2"/>
+      </svg>`;
+    },
+  },
 ];
 
 /**
