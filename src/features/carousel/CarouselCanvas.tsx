@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { Stage, Layer, Rect, Line, Text as KonvaText, Group, Image as KonvaImage, Transformer, Path as KonvaPath } from 'react-konva';
 import Konva from 'konva';
 import { convertFileSrc } from '@tauri-apps/api/core';
@@ -14,6 +14,8 @@ import {
 } from '../../domain/carousel';
 import { drawShapeToContext, getShapeSvgPath } from '../../domain/shapes';
 import { calculateImageOffset } from '../../domain/editor';
+import { DividerOverlayLayer } from '../editor/DividerOverlayLayer';
+import { extractCanvasDividers, findPhotoSwapTarget, RectFrameInput } from '../../domain/layout/dividerGraph';
 import styles from './CarouselCanvas.module.css';
 
 interface CarouselCanvasProps {
@@ -62,12 +64,16 @@ function CarouselFrameNode({
   onSelect,
   onChange,
   onContextMenu,
+  onDragMove,
+  onDragEnd,
 }: {
   frame: CarouselPhotoFrame;
   isSelected: boolean;
   onSelect: (e: Konva.KonvaEventObject<any>) => void;
   onChange: (updates: Partial<CarouselPhotoFrame>) => void;
   onContextMenu?: (e: Konva.KonvaEventObject<PointerEvent>) => void;
+  onDragMove?: (e: Konva.KonvaEventObject<DragEvent>) => void;
+  onDragEnd?: (e: Konva.KonvaEventObject<DragEvent>) => void;
 }) {
   const shapeRef = useRef<Konva.Group>(null);
   const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
@@ -153,12 +159,13 @@ function CarouselFrameNode({
         e.cancelBubble = true;
         onContextMenu?.(e);
       }}
-      onDragEnd={(e) => {
+      onDragMove={onDragMove}
+      onDragEnd={onDragEnd || ((e) => {
         onChange({
           x: Math.round(e.target.x()),
           y: Math.round(e.target.y()),
         });
-      }}
+      })}
     >
       {/* Clipped Photo Viewport */}
       <Group
@@ -471,6 +478,33 @@ export function CarouselCanvas({
   const allFrames: CarouselPhotoFrame[] = currentCarousel
     ? currentCarousel.slides.flatMap((s) => s.elements.filter((el): el is CarouselPhotoFrame => el.type === 'photo'))
     : [];
+
+  const [hoveredSwapTargetFrameId, setHoveredSwapTargetFrameId] = useState<string | null>(null);
+
+  const carouselPhotoFrames: RectFrameInput[] = useMemo(() => {
+    return allFrames.map((f) => ({
+      id: f.id,
+      x: f.x,
+      y: f.y,
+      width: f.width,
+      height: f.height,
+      rotation: f.rotation,
+      locked: f.locked,
+    }));
+  }, [allFrames]);
+
+  const carouselDividers = useMemo(() => {
+    return extractCanvasDividers(carouselPhotoFrames, {
+      minDimension: 120,
+      minOverlap: 10,
+      maxGap: 60,
+    });
+  }, [carouselPhotoFrames]);
+
+  const hoveredSwapTargetFrame = useMemo(() => {
+    if (!hoveredSwapTargetFrameId) return null;
+    return allFrames.find((f) => f.id === hoveredSwapTargetFrameId) || null;
+  }, [allFrames, hoveredSwapTargetFrameId]);
 
   // Update Transformer selection
   useEffect(() => {
@@ -816,6 +850,32 @@ export function CarouselCanvas({
                     frameId: frame.id,
                   });
                 }}
+                onDragMove={(e) => {
+                  const node = e.target;
+                  const cx = node.x() + node.width() / 2;
+                  const cy = node.y() + node.height() / 2;
+                  const target = findPhotoSwapTarget(carouselPhotoFrames, { x: cx, y: cy }, frame.id);
+                  setHoveredSwapTargetFrameId(target?.id || null);
+                }}
+                onDragEnd={(e) => {
+                  const node = e.target;
+                  const cx = node.x() + node.width() / 2;
+                  const cy = node.y() + node.height() / 2;
+                  const target = findPhotoSwapTarget(carouselPhotoFrames, { x: cx, y: cy }, frame.id);
+                  if (target) {
+                    // Snap dragged node back to original position
+                    node.position({ x: frame.x, y: frame.y });
+                    node.getLayer()?.batchDraw();
+                    useCarouselStore.getState().swapFrames(frame.id, target.id);
+                    onToast?.('Swapped photos');
+                  } else {
+                    updatePhotoFrame(frame.id, {
+                      x: Math.round(node.x()),
+                      y: Math.round(node.y()),
+                    });
+                  }
+                  setHoveredSwapTargetFrameId(null);
+                }}
               />
             ))}
 
@@ -835,6 +895,41 @@ export function CarouselCanvas({
                   return oldBox;
                 }
                 return newBox;
+              }}
+            />
+
+            {/* Cyan Swap Target Ring — glows on hovered drop target during photo drag */}
+            {hoveredSwapTargetFrame && (
+              <Rect
+                x={hoveredSwapTargetFrame.x}
+                y={hoveredSwapTargetFrame.y}
+                width={hoveredSwapTargetFrame.width}
+                height={hoveredSwapTargetFrame.height}
+                stroke="#38BDF8"
+                strokeWidth={3}
+                dash={[8, 6]}
+                shadowColor="#38BDF8"
+                shadowBlur={14}
+                shadowOpacity={0.7}
+                listening={false}
+                cornerRadius={4}
+              />
+            )}
+
+            {/* Interactive Divider Overlay — drag-to-resize adjacent frames */}
+            <DividerOverlayLayer
+              dividers={carouselDividers}
+              scaleFactor={scale}
+              stageRef={stageRef}
+              frames={carouselPhotoFrames}
+              onCommit={(updates) => {
+                useCarouselStore.getState().batchUpdateFrames(
+                  updates.map((u) => ({
+                    id: u.id,
+                    updates: u.geometry as Partial<CarouselPhotoFrame>,
+                  }))
+                );
+                onToast?.(`Resized ${updates.length} frame${updates.length !== 1 ? 's' : ''}`);
               }}
             />
           </Layer>

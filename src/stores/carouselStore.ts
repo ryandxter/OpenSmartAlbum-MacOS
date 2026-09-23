@@ -45,6 +45,8 @@ export interface CarouselState {
   setPanoramaSpan: ((frameId: string, spanSlides: 2 | 3) => void) &
     ((slideIndex: number, frameId: string, spanSlides: 2 | 3) => void);
   setHeroPhotoOnSlide: (slideIndex: number, frameId: string) => void;
+  batchUpdateFrames: (updates: Array<{ id: string; updates: Partial<CarouselPhotoFrame> }>) => void;
+  swapFrames: (frameIdA: string, frameIdB: string) => void;
   toggleSliceGuides: () => void;
   setShowSliceGuides: (show: boolean) => void;
 }
@@ -855,6 +857,96 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         ...currentCarousel,
         slides: updatedSlides,
       },
+    });
+  },
+
+  batchUpdateFrames: (updates: Array<{ id: string; updates: Partial<CarouselPhotoFrame> }>) => {
+    const { currentCarousel } = get();
+    if (!currentCarousel || updates.length === 0) return;
+
+    const updateMap = new Map(updates.map((u) => [u.id, u.updates]));
+
+    const updatedSlides = currentCarousel.slides.map((slide) => {
+      const updatedElements = slide.elements.map((el) => {
+        const patch = updateMap.get(el.id);
+        return patch ? { ...el, ...patch } : el;
+      });
+      return { ...slide, elements: updatedElements };
+    });
+
+    set({
+      currentCarousel: {
+        ...currentCarousel,
+        slides: updatedSlides,
+      },
+    });
+  },
+
+  swapFrames: (frameIdA: string, frameIdB: string) => {
+    const { currentCarousel } = get();
+    if (!currentCarousel || frameIdA === frameIdB) return;
+
+    let frameA: CarouselPhotoFrame | null = null;
+    let frameB: CarouselPhotoFrame | null = null;
+
+    for (const slide of currentCarousel.slides) {
+      for (const el of slide.elements) {
+        if (el.id === frameIdA && el.type === 'photo') frameA = el;
+        if (el.id === frameIdB && el.type === 'photo') frameB = el;
+      }
+    }
+
+    if (!frameA || !frameB) return;
+
+    const payloadA = {
+      photoId: frameA.photoId,
+      filePath: frameA.filePath,
+      fileName: frameA.fileName,
+      previewPath: frameA.previewPath,
+      thumbnailPath: frameA.thumbnailPath,
+      photoAspect: frameA.photoAspect,
+    };
+
+    const payloadB = {
+      photoId: frameB.photoId,
+      filePath: frameB.filePath,
+      fileName: frameB.fileName,
+      previewPath: frameB.previewPath,
+      thumbnailPath: frameB.thumbnailPath,
+      photoAspect: frameB.photoAspect,
+    };
+
+    const updatedSlides = currentCarousel.slides.map((slide) => {
+      const updatedElements = slide.elements.map((el) => {
+        if (el.id === frameIdA) {
+          return {
+            ...el,
+            ...payloadB,
+            cropX: 0,
+            cropY: 0,
+            cropScale: 1.0,
+          };
+        }
+        if (el.id === frameIdB) {
+          return {
+            ...el,
+            ...payloadA,
+            cropX: 0,
+            cropY: 0,
+            cropScale: 1.0,
+          };
+        }
+        return el;
+      });
+      return { ...slide, elements: updatedElements };
+    });
+
+    set({
+      currentCarousel: {
+        ...currentCarousel,
+        slides: updatedSlides,
+      },
+      selectedFrameId: frameIdB,
     });
   },
 

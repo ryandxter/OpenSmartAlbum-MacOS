@@ -56,6 +56,8 @@ import { convertPtToUnit, convertUnit, Unit } from '../../domain/units';
 import { ContextMenu, ContextMenuItem } from '../../components/ui';
 import { findPhotoSwapTarget } from './photoSwapDrag';
 import { drawShapeToContext, getShapeSvgPath } from '../../domain/shapes';
+import { DividerOverlayLayer } from './DividerOverlayLayer';
+import { extractCanvasDividers, RectFrameInput } from '../../domain/layout/dividerGraph';
 import { isMac } from '../../utils/platform';
 import styles from './KonvaEditorCanvas.module.css';
 
@@ -1220,6 +1222,29 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
 
   const allSpreads = currentAlbum ? getAllAlbumSpreads(currentAlbum) : [];
   const activeSpread = allSpreads.find((s) => s.id === activeSpreadId) || allSpreads[0];
+
+  const activePhotoFrames: RectFrameInput[] = useMemo(() => {
+    return (activeSpread?.elements || [])
+      .filter((el): el is PhotoFrameElement => el.type === 'photo')
+      .map((f) => ({
+        id: f.id,
+        x: f.x,
+        y: f.y,
+        width: f.width,
+        height: f.height,
+        rotation: f.rotation,
+        locked: f.locked,
+      }));
+  }, [activeSpread?.elements]);
+
+  const canvasDividers = useMemo(() => {
+    if (!activeSpread || editingCropFrameId || editingTextElementId) return [];
+    return extractCanvasDividers(activePhotoFrames, {
+      minDimension: 25.4,
+      minOverlap: 3,
+      maxGap: 25,
+    });
+  }, [activePhotoFrames, activeSpread, editingCropFrameId, editingTextElementId]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
@@ -4519,6 +4544,24 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                 </Group>
               );
             })()}
+
+            {/* Interactive In-Canvas Divider Dragging Layer (60fps RAF coalesced) */}
+            <DividerOverlayLayer
+              dividers={canvasDividers}
+              scaleFactor={scaleFactor}
+              stageRef={stageRef}
+              frames={activePhotoFrames}
+              disabled={Boolean(editingCropFrameId || editingTextElementId || isFrameMoveDragging || isPanning)}
+              onCommit={(updates) => {
+                if (!activeSpread) return;
+                const mappedUpdates = updates.map((u) => ({
+                  id: u.id,
+                  geometry: u.geometry as Partial<PhotoFrameElement>,
+                }));
+                batchUpdateFrames(activeSpread.id, mappedUpdates);
+                if (onToast) onToast(`Resized ${updates.length} adjacent photo frames`);
+              }}
+            />
 
             {/* Direct on-canvas photo-content handle; dragging it never moves frame geometry. */}
             {swapHandleFrame && !isFrameMoveDragging && (() => {
