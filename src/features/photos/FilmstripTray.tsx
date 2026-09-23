@@ -356,29 +356,40 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
     if (!isSelected) {
       selectPhoto(photo.id, 'single', sortedPhotos);
     }
-    const ids = isSelected ? sortedPhotos.filter((item) => selectedPhotoIds.includes(item.id)).map((item) => item.id) : [photo.id];
+    const ids = isSelected
+      ? sortedPhotos.filter((item) => selectedPhotoIds.includes(item.id)).map((item) => item.id)
+      : [photo.id];
     usePhotoStore.setState({ draggedPhotoIds: ids });
     e.dataTransfer.setData('application/x-afsn-photo-ids', JSON.stringify(ids));
     if (ids.length > 1) e.dataTransfer.setData('application/x-afsn-multi-photo', String(ids.length));
     e.dataTransfer.setData('application/json', JSON.stringify(ids));
-    e.dataTransfer.setData('text/plain', ids[0] || photo.id);
+    e.dataTransfer.setData('text/plain', ids.join(','));
     e.dataTransfer.effectAllowed = 'copyMove';
-    if (ids.length > 1) {
-      const dragImage = document.createElement('canvas');
-      dragImage.width = 150;
-      dragImage.height = 48;
-      const context = dragImage.getContext('2d');
-      if (context) {
-        context.fillStyle = '#182433';
-        context.fillRect(0, 0, 150, 48);
-        context.strokeStyle = '#38bdf8';
-        context.strokeRect(1, 1, 148, 46);
-        context.fillStyle = '#f1f5f9';
-        context.font = '600 14px sans-serif';
-        context.fillText(`${ids.length} Photos`, 18, 30);
-        e.dataTransfer.setDragImage(dragImage, 18, 24);
+
+    // Safe WebKit Drag Image: Must use DOM-attached element to prevent drag session cancellation
+    try {
+      let badge = document.getElementById('afsn-drag-ghost-badge');
+      if (!badge) {
+        badge = document.createElement('div');
+        badge.id = 'afsn-drag-ghost-badge';
+        badge.style.position = 'fixed';
+        badge.style.top = '-1000px';
+        badge.style.left = '-1000px';
+        badge.style.padding = '6px 12px';
+        badge.style.background = '#0f172a';
+        badge.style.color = '#38bdf8';
+        badge.style.border = '1px solid #38bdf8';
+        badge.style.borderRadius = '6px';
+        badge.style.fontWeight = 'bold';
+        badge.style.fontSize = '12px';
+        badge.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5)';
+        badge.style.pointerEvents = 'none';
+        badge.style.zIndex = '999999';
+        document.body.appendChild(badge);
       }
-    }
+      badge.textContent = ids.length > 1 ? `📁 ${ids.length} Photos Selected` : photo.fileName;
+      e.dataTransfer.setDragImage(badge, 20, 16);
+    } catch {}
   };
 
   // Execute Photo Deletion after ConfirmDialog
@@ -399,6 +410,109 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
   const activeFolderName = activeFolderId
     ? folders.find((f) => f.id === activeFolderId)?.name || 'Folder'
     : null;
+
+  // Marquee (Rubberband) Drag-to-Select State
+  const [marqueeBox, setMarqueeBox] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const marqueeStartRef = useRef<{ clientX: number; clientY: number; scrollLeft: number } | null>(null);
+  const isMarqueeActiveRef = useRef(false);
+
+  const handleBodyPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('button, input, select, textarea, [data-context-menu]')) {
+      return;
+    }
+
+    // If starting directly on a photo card, let native card click/drag handle it
+    if (target.closest(`.${styles.photoCard}`)) {
+      return;
+    }
+
+    marqueeStartRef.current = {
+      clientX: e.clientX,
+      clientY: e.clientY,
+      scrollLeft: bodyRef.current ? bodyRef.current.scrollLeft : 0,
+    };
+    isMarqueeActiveRef.current = false;
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {}
+  };
+
+  const handleBodyPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!marqueeStartRef.current || !bodyRef.current) return;
+    const bodyBox = bodyRef.current.getBoundingClientRect();
+    const currentScroll = bodyRef.current.scrollLeft;
+
+    const startX = marqueeStartRef.current.clientX - bodyBox.left + marqueeStartRef.current.scrollLeft;
+    const currentX = e.clientX - bodyBox.left + currentScroll;
+    const startY = marqueeStartRef.current.clientY - bodyBox.top;
+    const currentY = e.clientY - bodyBox.top;
+
+    const dx = Math.abs(currentX - startX);
+    const dy = Math.abs(currentY - startY);
+
+    if (!isMarqueeActiveRef.current && (dx > 4 || dy > 4)) {
+      isMarqueeActiveRef.current = true;
+    }
+
+    if (isMarqueeActiveRef.current) {
+      const boxLeft = Math.min(startX, currentX);
+      const boxTop = Math.min(startY, currentY);
+      const boxWidth = dx;
+      const boxHeight = dy;
+
+      setMarqueeBox({ left: boxLeft, top: boxTop, width: boxWidth, height: boxHeight });
+
+      // Hit-test cards
+      const hitIds: string[] = [];
+      const cards = bodyRef.current.querySelectorAll(`.${styles.photoCard}`);
+      cards.forEach((card) => {
+        const cardBox = card.getBoundingClientRect();
+        const cardLeft = cardBox.left - bodyBox.left + currentScroll;
+        const cardTop = cardBox.top - bodyBox.top;
+        const cardRight = cardLeft + cardBox.width;
+        const cardBottom = cardTop + cardBox.height;
+
+        const intersects = !(
+          boxLeft + boxWidth < cardLeft ||
+          boxLeft > cardRight ||
+          boxTop + boxHeight < cardTop ||
+          boxTop > cardBottom
+        );
+
+        const photoId = card.getAttribute('data-photo-id');
+        if (intersects && photoId) {
+          hitIds.push(photoId);
+        }
+      });
+
+      if (e.shiftKey) {
+        usePhotoStore.setState((s) => ({
+          selectedPhotoIds: Array.from(new Set([...s.selectedPhotoIds, ...hitIds])),
+        }));
+      } else {
+        usePhotoStore.setState({ selectedPhotoIds: hitIds });
+      }
+    }
+  };
+
+  const handleBodyPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {}
+    if (marqueeStartRef.current && !isMarqueeActiveRef.current) {
+      clearSelection();
+    }
+    marqueeStartRef.current = null;
+    isMarqueeActiveRef.current = false;
+    setMarqueeBox(null);
+  };
 
   return (
     <section
@@ -615,7 +729,25 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
 
       {/* Filmstrip Body */}
       {isOpen && (
-        <div ref={bodyRef} className={styles.body} onClick={clearSelection}>
+        <div
+          ref={bodyRef}
+          className={styles.body}
+          onPointerDown={handleBodyPointerDown}
+          onPointerMove={handleBodyPointerMove}
+          onPointerUp={handleBodyPointerUp}
+          onPointerCancel={handleBodyPointerUp}
+        >
+          {marqueeBox && (
+            <div
+              className={styles.marqueeBox}
+              style={{
+                left: marqueeBox.left,
+                top: marqueeBox.top,
+                width: marqueeBox.width,
+                height: marqueeBox.height,
+              }}
+            />
+          )}
           {sortedPhotos.length > 0 ? (
             <div className={styles.photoList}>
               {sortedPhotos.map((photo) => {
@@ -626,6 +758,7 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
                 return (
                   <div
                     key={photo.id}
+                    data-photo-id={photo.id}
                     className={`${styles.photoCard} ${isSelected ? styles.cardSelected : ''} ${isActive ? styles.cardActive : ''} ${photo.isMissing ? styles.cardMissing : ''} ${isUsed ? styles.cardUsed : ''}`}
                     onClick={(e) => handleCardClick(e, photo)}
                     onDoubleClick={() => {
@@ -689,7 +822,9 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
                       handleCardDragStart(e, photo);
                     }}
                     onDragEnd={() => {
-                      usePhotoStore.setState({ draggedPhotoIds: [] });
+                      setTimeout(() => {
+                        usePhotoStore.setState({ draggedPhotoIds: [] });
+                      }, 400);
                     }}
                     title={
                       isUsed
@@ -809,7 +944,7 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
                               <>
                                 <div className={styles.processingBottomStrip} />
                                 <span className={styles.placeholderQueueBadge}>
-                                  {photo.format.toUpperCase()}
+                                  {(photo.format || 'IMG').toUpperCase()}
                                 </span>
                               </>
                             )}

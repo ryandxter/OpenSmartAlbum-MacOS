@@ -9,6 +9,7 @@ import {
   ChevronDown,
   X,
   Sparkles,
+  GripVertical,
 } from 'lucide-react';
 import { isMac } from '../../utils/platform';
 import { usePhotoStore } from '../../stores/photoStore';
@@ -94,6 +95,51 @@ export function BatchActionBar({ onRequestDelete, activeMode = 'print' }: BatchA
         <div className={styles.leftInfo}>
           <span className={styles.countBadge}>{count}</span>
           <span className={styles.title}>{count} Photos Selected</span>
+          <div
+            className={styles.dragHandle}
+            draggable={true}
+            onDragStart={(e) => {
+              const ids = selectedPhotos.map((p) => p.id);
+              usePhotoStore.setState({ draggedPhotoIds: ids });
+              e.dataTransfer.setData('application/x-afsn-photo-ids', JSON.stringify(ids));
+              e.dataTransfer.setData('application/x-afsn-multi-photo', String(ids.length));
+              e.dataTransfer.setData('application/json', JSON.stringify(ids));
+              e.dataTransfer.setData('text/plain', ids.join(','));
+              e.dataTransfer.effectAllowed = 'copyMove';
+              try {
+                let badge = document.getElementById('afsn-drag-ghost-badge');
+                if (!badge) {
+                  badge = document.createElement('div');
+                  badge.id = 'afsn-drag-ghost-badge';
+                  badge.style.position = 'fixed';
+                  badge.style.top = '-1000px';
+                  badge.style.left = '-1000px';
+                  badge.style.padding = '6px 12px';
+                  badge.style.background = '#0f172a';
+                  badge.style.color = '#38bdf8';
+                  badge.style.border = '1px solid #38bdf8';
+                  badge.style.borderRadius = '6px';
+                  badge.style.fontWeight = 'bold';
+                  badge.style.fontSize = '12px';
+                  badge.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5)';
+                  badge.style.pointerEvents = 'none';
+                  badge.style.zIndex = '999999';
+                  document.body.appendChild(badge);
+                }
+                badge.textContent = `📁 ${ids.length} Photos Selected`;
+                e.dataTransfer.setDragImage(badge, 20, 16);
+              } catch {}
+            }}
+            onDragEnd={() => {
+              setTimeout(() => {
+                usePhotoStore.setState({ draggedPhotoIds: [] });
+              }, 400);
+            }}
+            title="Click and drag to drop all selected photos onto slide or spread"
+          >
+            <GripVertical size={13} strokeWidth={2} />
+            <span>Drag All ({count})</span>
+          </div>
           <button
             type="button"
             className={styles.deselectBtn}

@@ -1,0 +1,238 @@
+[
+  {
+    "suite": "Print Album Sizes",
+    "name": "Square 20×20 cm",
+    "passed": true,
+    "details": "200×200 mm"
+  },
+  {
+    "suite": "Print Album Sizes",
+    "name": "Square 30×30 cm",
+    "passed": true,
+    "details": "300×300 mm"
+  },
+  {
+    "suite": "Print Album Sizes",
+    "name": "Landscape 30×20 cm",
+    "passed": true,
+    "details": "300×200 mm"
+  },
+  {
+    "suite": "Print Album Sizes",
+    "name": "Portrait 20×30 cm",
+    "passed": true,
+    "details": "200×300 mm"
+  },
+  {
+    "suite": "Print Album Sizes",
+    "name": "A4 Portrait (210×297 mm)",
+    "passed": true,
+    "details": "210×297 mm"
+  },
+  {
+    "suite": "Print Album Sizes",
+    "name": "A4 Landscape (297×210 mm)",
+    "passed": true,
+    "details": "297×210 mm"
+  },
+  {
+    "suite": "Print Album Sizes",
+    "name": "Square 8×8 in",
+    "passed": true,
+    "details": "203.2×203.2 mm"
+  },
+  {
+    "suite": "Print Album Sizes",
+    "name": "Landscape 10×8 in",
+    "passed": true,
+    "details": "254×203.2 mm"
+  },
+  {
+    "suite": "Print Album Sizes",
+    "name": "Portrait 8×10 in",
+    "passed": true,
+    "details": "203.2×254 mm"
+  },
+  {
+    "suite": "Print Album Sizes",
+    "name": "Wide 12×8 in",
+    "passed": true,
+    "details": "304.8×203.2 mm"
+  },
+  {
+    "suite": "Print Album Sizes",
+    "name": "Large Square 12×12 in",
+    "passed": true,
+    "details": "304.8×304.8 mm"
+  },
+  {
+    "suite": "Print Album Sizes",
+    "name": "Visual Screenshot Captured",
+    "passed": true,
+    "details": "/Users/chiio/VSCode/albumaker/.planning/forensics/e2e-screenshots/01-print-album-verified.png"
+  },
+  {
+    "suite": "Carousel Ratios",
+    "name": "Ratio 1:1 (1080×1080 px)",
+    "passed": true
+  },
+  {
+    "suite": "Carousel Ratios",
+    "name": "Ratio 4:5 (1080×1350 px)",
+    "passed": true
+  },
+  {
+    "suite": "Carousel Ratios",
+    "name": "Ratio 9:16 (1080×1920 px)",
+    "passed": true
+  },
+  {
+    "suite": "Carousel Slide Count",
+    "name": "Slide Count: 2 slides",
+    "passed": true,
+    "details": "2 slides generated"
+  },
+  {
+    "suite": "Carousel Slide Count",
+    "name": "Slide Count: 3 slides",
+    "passed": true,
+    "details": "3 slides generated"
+  },
+  {
+    "suite": "Carousel Slide Count",
+    "name": "Slide Count: 4 slides",
+    "passed": true,
+    "details": "4 slides generated"
+  },
+  {
+    "suite": "Carousel Slide Count",
+    "name": "Slide Count: 5 slides",
+    "passed": true,
+    "details": "5 slides generated"
+  },
+  {
+    "suite": "Carousel Slide Count",
+    "name": "Slide Count: 6 slides",
+    "passed": true,
+    "details": "6 slides generated"
+  },
+  {
+    "suite": "Carousel Slide Count",
+    "name": "Slide Count: 7 slides",
+    "passed": true,
+    "details": "7 slides generated"
+  },
+  {
+    "suite": "Carousel Slide Count",
+    "name": "Slide Count: 8 slides",
+    "passed": true,
+    "details": "8 slides generated"
+  },
+  {
+    "suite": "Carousel Slide Count",
+    "name": "Slide Count: 9 slides",
+    "passed": true,
+    "details": "9 slides generated"
+  },
+  {
+    "suite": "Carousel Slide Count",
+    "name": "Slide Count: 10 slides",
+    "passed": true,
+    "details": "10 slides generated"
+  },
+  {
+    "suite": "Carousel Ratios",
+    "name": "Visual Screenshot Captured (10 Slides)",
+    "passed": true,
+    "details": "/Users/chiio/VSCode/albumaker/.planning/forensics/e2e-screenshots/02-carousel-10-slides.png"
+  },
+  {
+    "suite": "Drag & Drop",
+    "name": "Filmstrip Multi-Selection & Marquee Pointer Drag",
+    "passed": true
+  },
+  {
+    "suite": "Drag & Drop",
+    "name": "Batch Action Bar Rendered with 4 Photos",
+    "passed": true
+  },
+  {
+    "suite": "Drag & Drop",
+    "name": "Draggable Batch Handle Rendered (\"Drag All (4)\")",
+    "passed": true
+  },
+  {
+    "suite": "Drag & Drop",
+    "name": "Multi-Photo Drop onto Carousel Slide 4",
+    "passed": true,
+    "details": "4 frames placed on Slide 4 with x >= 3240px"
+  },
+  {
+    "suite": "Drag & Drop",
+    "name": "Visual Screenshot Captured (Multi-Drop Slide 4)",
+    "passed": true,
+    "details": "/Users/chiio/VSCode/albumaker/.planning/forensics/e2e-screenshots/03-multi-photo-drop-slide4.png"
+  },
+  {
+    "suite": "Shapes & Borders",
+    "name": "Shape: rectangle with Cyan Border",
+    "passed": true
+  },
+  {
+    "suite": "Shapes & Borders",
+    "name": "Shape: rounded with Cyan Border",
+    "passed": true
+  },
+  {
+    "suite": "Shapes & Borders",
+    "name": "Shape: circle with Cyan Border",
+    "passed": true
+  },
+  {
+    "suite": "Shapes & Borders",
+    "name": "Shape: heart with Cyan Border",
+    "passed": true
+  },
+  {
+    "suite": "Shapes & Borders",
+    "name": "Shape: star with Cyan Border",
+    "passed": true
+  },
+  {
+    "suite": "Shapes & Borders",
+    "name": "Shape: diamond with Cyan Border",
+    "passed": true
+  },
+  {
+    "suite": "Shapes & Borders",
+    "name": "Shape: hexagon with Cyan Border",
+    "passed": true
+  },
+  {
+    "suite": "Shapes & Borders",
+    "name": "Visual Screenshot Captured (Vector Shapes)",
+    "passed": true,
+    "details": "/Users/chiio/VSCode/albumaker/.planning/forensics/e2e-screenshots/04-shapes-and-borders.png"
+  },
+  {
+    "suite": "Dynamic Layouts",
+    "name": "Cycle Dynamic Layout on Slide 4 (Maintains Slide Offset)",
+    "passed": true
+  },
+  {
+    "suite": "Seamless Panorama",
+    "name": "2-Slide Seamless Panorama Span (2160px width)",
+    "passed": true
+  },
+  {
+    "suite": "Seamless Panorama",
+    "name": "3-Slide Seamless Panorama Span (3240px width)",
+    "passed": true
+  },
+  {
+    "suite": "Seamless Panorama",
+    "name": "Visual Screenshot Captured (Panorama Span)",
+    "passed": true,
+    "details": "/Users/chiio/VSCode/albumaker/.planning/forensics/e2e-screenshots/05-seamless-panorama-span.png"
+  }
+]

@@ -2188,7 +2188,6 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
       justDroppedRef.current = false;
     }, 250);
 
-    const transferTypes = Array.from(e.dataTransfer.types);
     const libraryPhotos = usePhotoStore.getState().photos;
     const byId = new Map(libraryPhotos.map((photo) => [photo.id, photo]));
     let photoIds: string[] = [];
@@ -2203,7 +2202,13 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
 
     if (photoIds.length === 0) {
       const textId = e.dataTransfer.getData('text/plain');
-      if (byId.has(textId)) photoIds = [textId];
+      if (textId) {
+        if (textId.includes(',')) {
+          photoIds = textId.split(',').map((id) => id.trim()).filter((id) => byId.has(id));
+        } else if (byId.has(textId)) {
+          photoIds = [textId];
+        }
+      }
     }
 
     if (photoIds.length === 0) {
@@ -2213,8 +2218,11 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
       }
     }
 
-    if (photoIds.length === 0 && transferTypes.includes('application/x-afsn-photo-ids')) {
-      photoIds = usePhotoStore.getState().selectedPhotoIds;
+    if (photoIds.length === 0) {
+      const selectedIds = usePhotoStore.getState().selectedPhotoIds;
+      if (selectedIds && selectedIds.length > 0) {
+        photoIds = [...selectedIds];
+      }
     }
 
     usePhotoStore.setState({ draggedPhotoIds: [] });
