@@ -232,3 +232,37 @@ export function scaleFramesForRatioSwitch(
     };
   });
 }
+
+/**
+ * Resolves all frames that intersect a given slide index,
+ * returning the frame along with its local coordinate offset relative to the slide's left boundary.
+ * Essential for multi-slide seamless panoramas in PhoneSwipeSimulator and multi-slice exports.
+ */
+export function getSlideIntersectingFrames(
+  source: Carousel | CarouselPhotoFrame[],
+  slideIndex: number,
+  slideWidth?: number
+): { frame: CarouselPhotoFrame; localX: number }[] {
+  let allFrames: CarouselPhotoFrame[];
+  let width: number;
+
+  if ('slides' in source) {
+    allFrames = source.slides.flatMap((s) => s.elements.filter((el): el is CarouselPhotoFrame => el.type === 'photo'));
+    width = source.slideWidthPx;
+  } else {
+    allFrames = source;
+    width = slideWidth || 1080;
+  }
+
+  const slideStart = slideIndex * width;
+  const slideEnd = slideStart + width;
+
+  return allFrames
+    .filter((f) => f.x < slideEnd && f.x + f.width > slideStart)
+    .map((frame) => ({
+      frame,
+      localX: frame.x - slideStart,
+    }));
+}
+
+

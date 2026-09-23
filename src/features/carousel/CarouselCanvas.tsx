@@ -2,6 +2,8 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { Stage, Layer, Rect, Line, Text as KonvaText, Group, Image as KonvaImage, Transformer, Path as KonvaPath } from 'react-konva';
 import Konva from 'konva';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { Maximize2, Star, RotateCcw, Trash2 } from 'lucide-react';
+import { ContextMenu, ContextMenuItem } from '../../components/ui';
 import { useCarouselStore } from '../../stores/carouselStore';
 import { usePhotoStore } from '../../stores/photoStore';
 import {
@@ -59,11 +61,13 @@ function CarouselFrameNode({
   isSelected,
   onSelect,
   onChange,
+  onContextMenu,
 }: {
   frame: CarouselPhotoFrame;
   isSelected: boolean;
   onSelect: (e: Konva.KonvaEventObject<any>) => void;
   onChange: (updates: Partial<CarouselPhotoFrame>) => void;
+  onContextMenu?: (e: Konva.KonvaEventObject<PointerEvent>) => void;
 }) {
   const shapeRef = useRef<Konva.Group>(null);
   const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
@@ -144,6 +148,11 @@ function CarouselFrameNode({
       draggable={!frame.locked}
       onClick={onSelect}
       onTap={onSelect}
+      onContextMenu={(e) => {
+        e.evt.preventDefault();
+        e.cancelBubble = true;
+        onContextMenu?.(e);
+      }}
       onDragEnd={(e) => {
         onChange({
           x: Math.round(e.target.x()),
@@ -269,6 +278,17 @@ export function CarouselCanvas({
 
   const selectedFrameId = useCarouselStore((s) => s.selectedFrameId);
   const setSelectedFrameId = useCarouselStore((s) => s.setSelectedFrameId);
+  const removePhotoFrame = useCarouselStore((s) => s.removePhotoFrame);
+  const setPanoramaSpan = useCarouselStore((s) => s.setPanoramaSpan);
+  const setHeroPhotoOnSlide = useCarouselStore((s) => s.setHeroPhotoOnSlide);
+
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean;
+    x: number;
+    y: number;
+    frameId?: string | null;
+  }>({ isOpen: false, x: 0, y: 0, frameId: null });
+
   const [hoveredDropSlideIndex, setHoveredDropSlideIndex] = useState<number | null>(null);
   const [containerSize, setContainerSize] = useState({ width: 1200, height: 800 });
   const [stagePos, setStagePos] = useState({ x: 40, y: 40 });
@@ -466,6 +486,67 @@ export function CarouselCanvas({
     trRef.current.nodes([]);
     trRef.current.getLayer()?.batchDraw();
   }, [selectedFrameId]);
+
+  const getCarouselContextMenuItems = (): ContextMenuItem[] => {
+    if (!contextMenu.frameId) return [];
+    const targetFrame = allFrames.find((f) => f.id === contextMenu.frameId);
+    if (!targetFrame) return [];
+
+    const items: ContextMenuItem[] = [
+      {
+        id: 'span-2-slides',
+        label: 'Set as Seamless Panorama Span (2 Slides)',
+        icon: <Maximize2 size={14} />,
+        onClick: () => {
+          setPanoramaSpan(targetFrame.id, 2);
+          onToast?.('Spanned photo across 2 slides');
+        },
+      },
+      {
+        id: 'span-3-slides',
+        label: 'Set as Seamless Panorama Span (3 Slides)',
+        icon: <Maximize2 size={14} />,
+        onClick: () => {
+          setPanoramaSpan(targetFrame.id, 3);
+          onToast?.('Spanned photo across 3 slides');
+        },
+      },
+      {
+        id: 'set-hero-photo',
+        label: 'Set as Hero / Anchor Photo',
+        icon: <Star size={14} />,
+        onClick: () => {
+          if (!currentCarousel) return;
+          const centerX = targetFrame.x + targetFrame.width / 2;
+          const slideIdx = getSlideIndexAtX(currentCarousel, centerX);
+          setHeroPhotoOnSlide(slideIdx, targetFrame.id);
+          onToast?.(`Set photo as Hero on Slide ${slideIdx + 1}`);
+        },
+      },
+      { id: 'divider-1', label: '', divider: true },
+      {
+        id: 'reset-crop',
+        label: 'Reset Crop & Center',
+        icon: <RotateCcw size={14} />,
+        onClick: () => {
+          updatePhotoFrame(targetFrame.id, { cropX: 0, cropY: 0, cropScale: 1.0 });
+          onToast?.('Reset crop and centered photo');
+        },
+      },
+      {
+        id: 'delete-frame',
+        label: 'Delete Photo Frame',
+        icon: <Trash2 size={14} />,
+        danger: true,
+        onClick: () => {
+          removePhotoFrame(targetFrame.id);
+          setSelectedFrameId(null);
+          onToast?.('Deleted photo frame');
+        },
+      },
+    ];
+    return items;
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -721,6 +802,20 @@ export function CarouselCanvas({
                 onChange={(updates) => {
                   updatePhotoFrame(frame.id, updates);
                 }}
+                onContextMenu={(e) => {
+                  setSelectedFrameId(frame.id);
+                  if (currentCarousel) {
+                    const centerX = frame.x + frame.width / 2;
+                    const targetIdx = getSlideIndexAtX(currentCarousel, centerX);
+                    setActiveSlide(targetIdx);
+                  }
+                  setContextMenu({
+                    isOpen: true,
+                    x: e.evt.clientX,
+                    y: e.evt.clientY,
+                    frameId: frame.id,
+                  });
+                }}
               />
             ))}
 
@@ -747,6 +842,47 @@ export function CarouselCanvas({
           {/* Layer 3: Slice Boundary Guides & Slide Number Badges (Overlay) */}
           {showSliceGuides && (
             <Layer listening={false}>
+              {/* Virtual Cut Indicators for Spanning Frames */}
+              {allFrames
+                .filter((f) => f.width > slideWidth + 1)
+                .map((frame) => {
+                  const startSlide = Math.floor(frame.x / slideWidth);
+                  const endSlide = Math.floor((frame.x + frame.width - 1) / slideWidth);
+                  const cutXPositions: number[] = [];
+                  for (let s = startSlide + 1; s <= endSlide; s++) {
+                    const boundaryX = s * slideWidth;
+                    if (boundaryX > frame.x && boundaryX < frame.x + frame.width) {
+                      cutXPositions.push(boundaryX);
+                    }
+                  }
+                  return (
+                    <Group key={`cuts-${frame.id}`}>
+                      {cutXPositions.map((cutX) => (
+                        <Group key={`cut-${frame.id}-${cutX}`}>
+                          <Line
+                            points={[cutX, frame.y, cutX, frame.y + frame.height]}
+                            stroke="rgba(56, 189, 248, 0.75)"
+                            strokeWidth={1.5}
+                            dash={[4, 4]}
+                          />
+                          <Group x={cutX - 35} y={frame.y + frame.height / 2 - 10}>
+                            <Rect width={70} height={20} fill="rgba(15, 23, 42, 0.85)" cornerRadius={4} />
+                            <KonvaText
+                              text="Slide Cut"
+                              x={14}
+                              y={5}
+                              fill="#38bdf8"
+                              fontSize={10}
+                              fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
+                              fontStyle="600"
+                            />
+                          </Group>
+                        </Group>
+                      ))}
+                    </Group>
+                  );
+                })}
+
               {currentCarousel?.slides.map((slide, idx) => {
                 const xOffset = getSlideXOffset(currentCarousel, idx);
                 return (
@@ -786,6 +922,14 @@ export function CarouselCanvas({
           )}
         </Stage>
       </div>
+
+      <ContextMenu
+        isOpen={contextMenu.isOpen}
+        x={contextMenu.x}
+        y={contextMenu.y}
+        items={getCarouselContextMenuItems()}
+        onClose={() => setContextMenu((p) => ({ ...p, isOpen: false }))}
+      />
     </div>
   );
 }

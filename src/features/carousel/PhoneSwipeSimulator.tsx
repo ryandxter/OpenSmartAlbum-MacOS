@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { X, ChevronLeft, ChevronRight, Smartphone } from 'lucide-react';
 import { useCarouselStore } from '../../stores/carouselStore';
+import { getSlideIntersectingFrames } from '../../domain/carousel';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import styles from './PhoneSwipeSimulator.module.css';
 
@@ -16,6 +17,7 @@ export function PhoneSwipeSimulator({ isOpen, onClose }: PhoneSwipeSimulatorProp
 
   const slides = currentCarousel?.slides || [];
   const totalSlides = slides.length;
+  const allFrames = slides.flatMap((s) => s.elements.filter((el) => el.type === 'photo'));
 
   const scrollToSlide = useCallback((index: number) => {
     if (!viewportRef.current) return;
@@ -49,49 +51,44 @@ export function PhoneSwipeSimulator({ isOpen, onClose }: PhoneSwipeSimulatorProp
   const handleScroll = () => {
     if (!viewportRef.current) return;
     const scrollLeft = viewportRef.current.scrollLeft;
-    const slideWidth = viewportRef.current.clientWidth;
-    if (slideWidth > 0) {
-      const activeIdx = Math.round(scrollLeft / slideWidth);
-      if (activeIdx !== currentSlideIndex) {
-        setCurrentSlideIndex(activeIdx);
-      }
+    const width = viewportRef.current.clientWidth;
+    if (width > 0) {
+      const page = Math.round(scrollLeft / width);
+      setCurrentSlideIndex(page);
     }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className={styles.overlay} role="dialog" aria-modal="true" aria-label="Phone Swipe Simulator">
-      {/* Modal Header */}
-      <div className={styles.modalHeader}>
-        <div className={styles.titleGroup}>
-          <Smartphone size={18} strokeWidth={1.5} />
-          <div>
-            <h3 className={styles.title}>Instagram Swipe Simulator</h3>
-            <p className={styles.subtitle}>Test seamless panorama transitions between slides</p>
-          </div>
+    <div className={styles.simulatorBackdrop} onClick={onClose}>
+      <div className={styles.phoneChassis} onClick={(e) => e.stopPropagation()}>
+        {/* Top Speaker / Dynamic Island Notch */}
+        <div className={styles.phoneNotch}>
+          <div className={styles.speakerPill} />
+          <div className={styles.cameraDot} />
         </div>
 
-        <button
-          type="button"
-          className={styles.closeBtn}
-          onClick={onClose}
-          title="Close Simulator (Esc)"
-        >
-          <X size={16} strokeWidth={1.5} />
-        </button>
-      </div>
+        {/* Header inside Phone Screen */}
+        <div className={styles.phoneHeader}>
+          <div className={styles.headerLeft}>
+            <Smartphone size={15} strokeWidth={1.5} className={styles.phoneIcon} />
+            <span className={styles.accountName}>Feed Preview</span>
+          </div>
+          <button
+            type="button"
+            className={styles.closeBtn}
+            onClick={onClose}
+            aria-label="Close phone simulator"
+          >
+            <X size={15} strokeWidth={2} />
+          </button>
+        </div>
 
-      {/* Phone Mockup Frame */}
-      <div className={styles.phoneFrame}>
-        {/* Dynamic Island / Notch */}
-        <div className={styles.notch} />
-
-        {/* Mock App Header */}
-        <div className={styles.appHeader}>
-          <span>OpenSmartAlbum</span>
-          <span style={{ fontSize: 11, opacity: 0.7 }}>
-            {currentSlideIndex + 1}/{totalSlides}
+        {/* Slide Counter Indicator */}
+        <div className={styles.slideIndicator}>
+          <span>
+            {currentSlideIndex + 1} / {totalSlides}
           </span>
         </div>
 
@@ -102,6 +99,10 @@ export function PhoneSwipeSimulator({ isOpen, onClose }: PhoneSwipeSimulatorProp
           onScroll={handleScroll}
         >
           {slides.map((slide, idx) => {
+            const slideW = currentCarousel?.slideWidthPx || 1080;
+            const slideH = currentCarousel?.slideHeightPx || 1080;
+            const intersectingFrames = getSlideIntersectingFrames(allFrames, idx, slideW);
+
             return (
               <div key={slide.id} className={styles.slideItem}>
                 <div
@@ -111,45 +112,37 @@ export function PhoneSwipeSimulator({ isOpen, onClose }: PhoneSwipeSimulatorProp
                     aspectRatio: currentCarousel ? `${currentCarousel.slideWidthPx} / ${currentCarousel.slideHeightPx}` : '1 / 1',
                   }}
                 >
-                  {/* Photo Frames inside slide */}
-                  {slide.elements
-                    .filter((el) => el.type === 'photo')
-                    .map((photoFrame) => {
-                      const displaySrc = photoFrame.previewPath || photoFrame.thumbnailPath || '';
-                      let src = displaySrc;
-                      if (displaySrc) {
-                        try {
-                          src = convertFileSrc(displaySrc);
-                        } catch {
-                          src = displaySrc;
-                        }
+                  {/* Photo Frames intersecting slide (including multi-slide spanning panoramas) */}
+                  {intersectingFrames.map(({ frame: photoFrame, localX }) => {
+                    const displaySrc = photoFrame.previewPath || photoFrame.thumbnailPath || '';
+                    let src = displaySrc;
+                    if (displaySrc) {
+                      try {
+                        src = convertFileSrc(displaySrc);
+                      } catch {
+                        src = displaySrc;
                       }
+                    }
+                    const leftPct = (localX / slideW) * 100;
+                    const topPct = (photoFrame.y / slideH) * 100;
+                    const widthPct = (photoFrame.width / slideW) * 100;
+                    const heightPct = (photoFrame.height / slideH) * 100;
 
-                      // Position relative to slide
-                      const slideX = idx * (currentCarousel?.slideWidthPx || 1080);
-                      const relX = photoFrame.x - slideX;
-                      const slideW = currentCarousel?.slideWidthPx || 1080;
-                      const slideH = currentCarousel?.slideHeightPx || 1080;
-
-                      const leftPct = (relX / slideW) * 100;
-                      const topPct = (photoFrame.y / slideH) * 100;
-                      const widthPct = (photoFrame.width / slideW) * 100;
-                      const heightPct = (photoFrame.height / slideH) * 100;
-
-                      return (
-                        <div
-                          key={photoFrame.id}
-                          style={{
-                            position: 'absolute',
-                            left: `${leftPct}%`,
-                            top: `${topPct}%`,
-                            width: `${widthPct}%`,
-                            height: `${heightPct}%`,
-                            backgroundColor: '#1E1E22',
-                            overflow: 'hidden',
-                            borderRadius: photoFrame.cornerRadius ? `${photoFrame.cornerRadius}px` : undefined,
-                          }}
-                        >
+                    return (
+                      <div
+                        key={photoFrame.id}
+                        className={styles.photoFrame}
+                        style={{
+                          position: 'absolute',
+                          left: `${leftPct}%`,
+                          top: `${topPct}%`,
+                          width: `${widthPct}%`,
+                          height: `${heightPct}%`,
+                          backgroundColor: '#1E1E22',
+                          overflow: 'hidden',
+                          borderRadius: photoFrame.cornerRadius ? `${photoFrame.cornerRadius}px` : undefined,
+                        }}
+                      >
                           {src && (
                             <img
                               src={src}

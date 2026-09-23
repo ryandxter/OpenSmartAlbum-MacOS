@@ -42,6 +42,9 @@ export interface CarouselState {
   applyCarouselLayout: (slideIndex: number, presetId: string, photos?: CarouselLayoutPhotoInput[]) => void;
   shuffleSlidePhotos: (slideIndex: number) => void;
   autoFlowPhotosToSlides: (photos: Photo[]) => Promise<void>;
+  setPanoramaSpan: ((frameId: string, spanSlides: 2 | 3) => void) &
+    ((slideIndex: number, frameId: string, spanSlides: 2 | 3) => void);
+  setHeroPhotoOnSlide: (slideIndex: number, frameId: string) => void;
   toggleSliceGuides: () => void;
   setShowSliceGuides: (show: boolean) => void;
 }
@@ -701,6 +704,157 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         totalSlides: renumbered.length,
       },
       activeSlideIndex: renumbered.length - 1,
+    });
+  },
+
+  setPanoramaSpan: (arg1: any, arg2: any, arg3?: any) => {
+    const { currentCarousel } = get();
+    if (!currentCarousel) return;
+
+    let slideIndex: number;
+    let frameId: string;
+    let spanSlides: 2 | 3;
+
+    if (typeof arg1 === 'string') {
+      frameId = arg1;
+      spanSlides = (arg2 as 2 | 3) || 2;
+      slideIndex = currentCarousel.slides.findIndex((s) => s.elements.some((el) => el.id === frameId));
+      if (slideIndex === -1) return;
+    } else {
+      slideIndex = arg1;
+      frameId = arg2 as string;
+      spanSlides = arg3 || 2;
+    }
+
+    const slide = currentCarousel.slides[slideIndex];
+    if (!slide) return;
+
+    const frame = slide.elements.find((el) => el.id === frameId);
+    if (!frame) return;
+
+    const slideW = currentCarousel.slideWidthPx;
+    const slideH = currentCarousel.slideHeightPx;
+
+    // Check if subsequent slides exist; if not, automatically append slides to fit span
+    let updatedSlides = [...currentCarousel.slides];
+    const neededTotal = slideIndex + spanSlides;
+    while (updatedSlides.length < neededTotal && updatedSlides.length < MAX_CAROUSEL_SLIDES) {
+      updatedSlides.push(createCarouselSlide(currentCarousel));
+    }
+
+    const targetW = slideW * spanSlides;
+    const targetX = slideIndex * slideW;
+
+    // Update target frame to span targetW across slides
+    const updatedElements = slide.elements.map((el) =>
+      el.id === frameId
+        ? {
+            ...el,
+            x: targetX,
+            y: 0,
+            width: targetW,
+            height: slideH,
+            rotation: 0,
+            cropX: 0,
+            cropY: 0,
+            cropScale: 1.0,
+          }
+        : el
+    );
+
+    updatedSlides[slideIndex] = {
+      ...slide,
+      elements: updatedElements,
+    };
+
+    const renumbered = updatedSlides.map((s, idx) => ({ ...s, slideIndex: idx }));
+
+    set({
+      currentCarousel: {
+        ...currentCarousel,
+        slides: renumbered,
+        totalSlides: renumbered.length,
+      },
+    });
+  },
+
+  setHeroPhotoOnSlide: (slideIndex: number, frameId: string) => {
+    const { currentCarousel } = get();
+    if (!currentCarousel) return;
+
+    const slide = currentCarousel.slides[slideIndex];
+    if (!slide || slide.elements.length < 2) return;
+
+    const targetFrame = slide.elements.find((el) => el.id === frameId);
+    if (!targetFrame) return;
+
+    const slideW = currentCarousel.slideWidthPx;
+    const slideH = currentCarousel.slideHeightPx;
+    const targetHeroId = targetFrame.photoId || targetFrame.id;
+
+    const adaptivePhotos: AdaptivePhoto[] = slide.elements.map((el) => ({
+      id: el.id,
+      photoId: el.photoId,
+      filePath: el.filePath,
+      fileName: el.fileName,
+      previewPath: el.previewPath,
+      thumbnailPath: el.thumbnailPath,
+      photoAspect: el.photoAspect,
+      isHero: el.id === frameId || el.photoId === targetHeroId,
+    }));
+
+    const variations = generateDynamicVariations(
+      {
+        containerWidth: slideW,
+        containerHeight: slideH,
+        spacing: 16,
+        isSpread: false,
+        heroPhotoId: targetHeroId,
+      },
+      adaptivePhotos
+    );
+
+    if (variations.length === 0) return;
+
+    const bestVariation = variations[0]!;
+    const slideStartX = slideIndex * slideW;
+
+    const updatedFrames: CarouselPhotoFrame[] = bestVariation.rects.map((rect, i) => {
+      const photoIdx =
+        bestVariation.photoAssignments && bestVariation.photoAssignments[i] !== undefined
+          ? bestVariation.photoAssignments[i]!
+          : i;
+      const photo = adaptivePhotos[photoIdx] || adaptivePhotos[i] || adaptivePhotos[0]!;
+      return {
+        type: 'photo',
+        id: photo.id || `frame-${Date.now()}-${i}`,
+        photoId: photo.photoId || `photo-${i}`,
+        filePath: photo.filePath || '',
+        fileName: photo.fileName,
+        previewPath: photo.previewPath,
+        thumbnailPath: photo.thumbnailPath,
+        photoAspect: photo.photoAspect || 1.0,
+        x: slideStartX + rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+        cropX: 0,
+        cropY: 0,
+        cropScale: 1.0,
+      };
+    });
+
+    const updatedSlides = [...currentCarousel.slides];
+    updatedSlides[slideIndex] = {
+      ...slide,
+      elements: updatedFrames,
+    };
+
+    set({
+      currentCarousel: {
+        ...currentCarousel,
+        slides: updatedSlides,
+      },
     });
   },
 

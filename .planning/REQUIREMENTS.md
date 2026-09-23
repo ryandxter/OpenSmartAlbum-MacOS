@@ -11,20 +11,20 @@ Requirements for Milestone v1.2.0 release, derived from STACK, FEATURES, ARCHITE
 
 ### Generative Geometric Layout Engine & Non-Destructive Cycling (GEN)
 
-- [ ] **GEN-01**: Layout engine dynamically generates valid aspect-preserving partitions for any $N \in [1..15]$ photos without using static fixed-slot templates.
-- [ ] **GEN-02**: Switching layout variations via `Spacebar` (next) and `Shift+Space` (previous) preserves all $N$ active photos (Zero-Loss Photo Pool Invariant).
-- [ ] **GEN-03**: No empty or unpopulated placeholder frames (`filePath: ''`) are ever created during layout cycling (Zero-Blank Frame Guarantee).
-- [ ] **GEN-04**: Optimal bipartite aspect-matching energy minimization ensures landscape photos match horizontal slots and portrait photos match vertical slots.
-- [ ] **GEN-05**: Equal-height row normalization and equal-width column normalization align multi-photo strips with 0px rounding seams and proportional aspect-fill cover.
-- [ ] **GEN-06**: Input disambiguation cleanly distinguishes single-tap `Spacebar` (cycle layout) from `Space + Drag` (canvas hand pan).
+- [x] **GEN-01**: Layout engine dynamically generates valid aspect-preserving partitions for any $N \in [1..15]$ photos without using static fixed-slot templates.
+- [x] **GEN-02**: Switching layout variations via `Spacebar` (next) and `Shift+Space` (previous) preserves all $N$ active photos (Zero-Loss Photo Pool Invariant).
+- [x] **GEN-03**: No empty or unpopulated placeholder frames (`filePath: ''`) are ever created during layout cycling (Zero-Blank Frame Guarantee).
+- [x] **GEN-04**: Optimal bipartite aspect-matching energy minimization ensures landscape photos match horizontal slots and portrait photos match vertical slots.
+- [x] **GEN-05**: Equal-height row normalization and equal-width column normalization align multi-photo strips with 0px rounding seams and proportional aspect-fill cover.
+- [x] **GEN-06**: Input disambiguation cleanly distinguishes single-tap `Spacebar` (cycle layout) from `Space + Drag` (canvas hand pan).
 
 ### Auto-Flow Multi-Spread/Slide Storytelling Engine (FLOW)
 
-- [ ] **FLOW-01**: Dropping 10–50+ photos automatically groups and flows them across sequential spreads (Print Album) or slides (Social Carousel).
-- [ ] **FLOW-02**: Photos are clustered into chronological narrative chapters using EXIF timestamp bursts (>5 min, >30 min gaps).
-- [ ] **FLOW-03**: Narrative pacing heuristics balance visual cadence across spreads (mixing hero breathing moments with detailed multi-photo grids).
-- [ ] **FLOW-04**: Heavy combinatorial layout calculations run off-the-main-thread via Web Worker (`layoutEngine.worker.ts`) with chunked progress streaming to prevent UI freezes.
-- [ ] **FLOW-05**: Multi-spread auto-flow mutations are wrapped in an atomic history transaction (`executeHistoryTransaction`) so the entire flow can be undone with a single `Cmd+Z`.
+- [x] **FLOW-01**: Dropping 10–50+ photos automatically groups and flows them across sequential spreads (Print Album) or slides (Social Carousel).
+- [x] **FLOW-02**: Photos are clustered into chronological narrative chapters using EXIF timestamp bursts (>5 min, >30 min gaps).
+- [x] **FLOW-03**: Narrative pacing heuristics balance visual cadence across spreads (mixing hero breathing moments with detailed multi-photo grids).
+- [x] **FLOW-04**: Heavy combinatorial layout calculations run off-the-main-thread asynchronously with chunked progress streaming to prevent UI freezes.
+- [x] **FLOW-05**: Multi-spread auto-flow mutations are wrapped in an atomic history transaction so the entire flow can be undone with a single `Cmd+Z`.
 
 ### Contextual Right-Click Studio Actions (CTX)
 

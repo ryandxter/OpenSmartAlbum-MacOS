@@ -93,8 +93,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 12-01: Implement contextual right-click studio menu and photo prominence rebalancing engine in `src/domain/layout/` and canvas components.
-- [ ] 12-02: Implement multi-slide seamless panorama spanning with virtual cut lines, spine gutter clearance, and export slicing support.
+- [x] 12-01: Implement contextual right-click studio menu and photo prominence rebalancing engine in `src/domain/layout/` and canvas components.
+- [x] 12-02: Implement multi-slide seamless panorama spanning with virtual cut lines, spine gutter clearance, and export slicing support.
 
 #### Phase 13: Interactive In-Canvas Divider Dragging & Direct Photo Swapping
 **Goal**: Allow real-time dragging of partition divider lines between photos at 60fps using imperative Konva node manipulation, and enable direct drag-and-drop photo swapping between frames.
@@ -121,10 +121,10 @@ Phases execute in numeric order: 10 → 11 → 12 → 13
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
-| 10. Dynamic Generative Layout Core | v1.2.0 | 0/2 | Not started | - |
-| 11. Auto-Flow Storytelling Engine | v1.2.0 | 0/2 | Not started | - |
-| 12. Contextual Actions & Panorama Spans | v1.2.0 | 0/2 | Not started | - |
-| 13. Interactive Divider Dragging & Swapping | v1.2.0 | 0/2 | Not started | - |
+| 10. Dynamic Generative Layout Core | v1.2.0 | 2/2 | COMPLETED | 2026-09-23 |
+| 11. Auto-Flow Storytelling Engine | v1.2.0 | 2/2 | COMPLETED | 2026-09-23 |
+| 12. Contextual Actions & Panorama Spans | v1.2.0 | 2/2 | COMPLETED | 2026-09-23 |
+| 13. Interactive Divider Dragging & Swapping | v1.2.0 | 0/2 | In progress | - |
 
 ---
 *Roadmap generated: 2026-09-23*

@@ -3,14 +3,14 @@ gsd_state_version: "1.0"
 milestone: v1.2.0
 milestone_name: Unlimited Studio Layout & Storytelling Engine
 status: in_progress
-last_updated: "2026-09-23T11:18:00.000Z"
+last_updated: "2026-09-23T12:20:00.000Z"
 last_activity: 2026-09-23
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 9
-  completed_plans: 5
-  percent: 55
+  completed_plans: 7
+  percent: 78
 ---
 
 # Project State: OpenSmartAlbum-MacOS Milestone v1.2.0
@@ -20,14 +20,14 @@ progress:
 See: `.planning/PROJECT.md`, `.planning/REQUIREMENTS.md` & `.planning/ROADMAP.md`
 
 **Core value:** Unlimited generative studio layouting, non-destructive cycling, auto-flow multi-spread storytelling, and fluid in-canvas divider manipulation without photo loss or distortion.
-**Current status:** Phase 11 completed and verified (100% Green). Advancing to Phase 12: Contextual Right-Click Studio Actions & Panorama Span Engine.
+**Current status:** Phase 12 completed and verified (100% Green). Advancing to Phase 13: Interactive In-Canvas Divider Dragging & Direct Photo Swapping.
 
 ## Current Position
 
-Phase: Phase 12 (Contextual Right-Click Studio Actions & Panorama Span Engine)
+Phase: Phase 13 (Interactive In-Canvas Divider Dragging & Direct Photo Swapping)
 Plan: Ready to research and plan
 Status: In progress
-Last activity: 2026-09-23 — Phase 11 complete and verified with code review.
+Last activity: 2026-09-23 — Phase 12 complete and verified with code review.
 
 ## Milestone v1.2.0 Phases
 
@@ -35,8 +35,8 @@ Last activity: 2026-09-23 — Phase 11 complete and verified with code review.
 |---|---|---|---|---|
 | Phase 10: Dynamic Generative Layout Core | COMPLETED | GEN-01..GEN-06 | 3/3 | Pure TS R-BSP engine, row/col normalizers, non-destructive Spacebar cycling, zero blanks |
 | Phase 11: Auto-Flow Storytelling Engine | COMPLETED | FLOW-01..FLOW-05 | 2/2 | EXIF burst clustering, narrative pacing, multi-spread/slide ingestion, atomic single-step undo |
-| Phase 12: Contextual Actions & Panorama Spans | In progress | CTX-01..CTX-04 | 0/2 | Right-click Full Bleed Spread, Seamless Carousel Span, Hero anchor rebalancing, spine clearance |
-| Phase 13: Interactive Divider Dragging & Swapping | Not started | DIV-01..DIV-05 | 0/2 | 60fps Konva divider dragging with RAF coalescing, direct photo swap, single undo entry |
+| Phase 12: Contextual Actions & Panorama Spans | COMPLETED | CTX-01..CTX-04 | 2/2 | Right-click Full Bleed Spread, Seamless Carousel Span, Hero anchor rebalancing, spine clearance |
+| Phase 13: Interactive Divider Dragging & Swapping | In progress | DIV-01..DIV-05 | 0/2 | 60fps Konva divider dragging with RAF coalescing, direct photo swap, single undo entry |
 
 ## Accumulated Context
 
