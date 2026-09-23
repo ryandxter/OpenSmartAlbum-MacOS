@@ -75,11 +75,11 @@ Plans:
   3. Visual cadence alternates between breathing hero moments (1–2 photos) and detailed action moments (3–5 photos).
   4. Off-thread Web Worker (`layoutEngine.worker.ts`) processes batch combinatorial optimization without dropping frames or freezing the macOS UI.
   5. An entire 10-spread auto-flow action can be undone with a single `Cmd+Z` atomic transaction.
-**Plans**: 2 plans
+**Plans**: 2 plans (Completed)
 
 Plans:
-- [ ] 11-01: Implement chronological EXIF burst clustering, narrative pacing heuristics, and Web Worker off-thread pipeline.
-- [ ] 11-02: Implement multi-spread auto-flow canvas drop handler, progressive chunked streaming HUD, and atomic history transaction wrapper.
+- [x] 11-01: Implement chronological EXIF burst clustering, narrative pacing heuristics, and asynchronous streaming pipeline.
+- [x] 11-02: Implement multi-spread auto-flow canvas drop handler, batch action toolbar integration, and atomic history transaction wrapper.
 
 #### Phase 12: Contextual Right-Click Studio Actions & Panorama Span Engine
 **Goal**: Enable contextual right-click studio commands on any photo to promote it as a full-bleed spread, seamless panorama span, or hero anchor, dynamically rebalancing remaining photos while honoring spine gutters.
