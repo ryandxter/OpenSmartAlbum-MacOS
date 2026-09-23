@@ -70,7 +70,7 @@ export function BackgroundUpdateIndicator() {
             <div className={styles.subtitle}>
               {updateStatus === 'downloading' &&
                 (updateAvailableVersion
-                  ? `AFSNSmartAlbum v${updateAvailableVersion}`
+                  ? `OpenSmartAlbum v${updateAvailableVersion}`
                   : 'Downloading package in background...')}
               {updateStatus === 'ready' &&
                 (updateAvailableVersion

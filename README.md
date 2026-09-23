@@ -2,7 +2,7 @@
 
 <div align="center">
 
-<img src="./logosmartalbumafsn2.png" alt="OpenSmartAlbum Logo" width="130" height="130" />
+<img src="./assets/app-icon.png" alt="OpenSmartAlbum macOS Icon" width="130" height="130" style="border-radius: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);" />
 
 # OpenSmartAlbum for macOS
 ### Professional, Offline-First Photo Album & Instagram Panorama Suite
@@ -15,47 +15,49 @@
 [![E2E Tests](https://img.shields.io/badge/E2E%20Tests-42%2F42%20Passed-34C759.svg?style=for-the-badge&logo=playwright)](https://github.com/ryandxter/OpenSmartAlbum-MacOS)
 
 <p align="center">
-  <b>Tailor-made for wedding photographers, print labs, and visual creators.</b><br/>
-  Aspect-ratio preserving bin-packing layouts, sub-millimeter magnetic snapping, native Apple Silicon acceleration, and seamless Instagram carousel slicing — 100% offline.
+  <b>Pilih Bahasa / Select Language:</b><br/>
+  <a href="#-english"><b>🇬🇧 English</b></a> • <a href="#-bahasa-indonesia"><b>🇮🇩 Bahasa Indonesia</b></a>
 </p>
 
 <p align="center">
   <a href="https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases"><img src="https://img.shields.io/badge/⬇️_Download_Latest_.DMG_(v1.2.4)-Apple_Silicon_&_Intel-2ea44f?style=for-the-badge&logo=apple" alt="Download DMG" /></a>
 </p>
 
-<!-- Interactive Jump Navigation -->
-<p align="center">
-  <a href="#-overview">Overview</a> •
-  <a href="#-interactive-feature-tour">Features</a> •
-  <a href="#-new-in-v124-marquee-selection--batch-drag">v1.2.4 Update</a> •
-  <a href="#-album-presets--carousel-formats">Presets</a> •
-  <a href="#-macos-keyboard-shortcuts">Shortcuts</a> •
-  <a href="#-faq--troubleshooting">FAQ</a> •
-  <a href="#-building-from-source">Build Guide</a>
-</p>
-
 <br/>
 
 <a href="#-interactive-feature-tour">
-  <img src="./assets/preview.jpg" alt="OpenSmartAlbum macOS Workspace Preview" width="100%" style="border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);" />
+  <img src="./assets/preview.jpg" alt="OpenSmartAlbum macOS Workspace Preview" width="100%" style="border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" />
 </a>
 
-<p align="center"><i>Interactive Dark Mode workspace on macOS: 2-page wedding spread, cyan magnetic HUD guides, spread thumbnails, inspector controls, and RAW filmstrip tray.</i></p>
+<p align="center"><i>Authentic OpenSmartAlbum macOS workspace: 2-page fine-art wedding spread, cyan magnetic HUD guides, inspector controls, and RAW filmstrip library.</i></p>
 
 </div>
 
 ---
 
-<a name="-overview"></a>
+<a name="-english"></a>
+# 🇬🇧 English
+
+<p align="center">
+  <a href="#en-overview">Overview</a> •
+  <a href="#en-features">Features</a> •
+  <a href="#en-v124">v1.2.4 Update</a> •
+  <a href="#en-presets">Presets</a> •
+  <a href="#en-shortcuts">Shortcuts</a> •
+  <a href="#en-faq">FAQ</a> •
+  <a href="#en-build">Build</a>
+</p>
+
+<a name="en-overview"></a>
 ## 🎯 Overview
 
-Most photo album software forces studios into costly monthly subscriptions, lags when handling 50MP RAW libraries, or requires running emulated Windows software on macOS.
+Most photo album software forces studios into costly monthly cloud subscriptions, lags heavily when handling 50MP RAW libraries, or requires running emulated Windows apps.
 
 **OpenSmartAlbum macOS** is a high-performance native desktop application engineered for speed, absolute client data privacy, and modern Apple hardware integration:
 
 * 🛡️ **100% Offline & Private** — Client high-res photos and RAW files never leave your local SSD. No cloud telemetry, no account required.
 * ⚡ **Pure Rust Image Pipeline** — Multi-core image decoding, sharpening, and export via `rayon` & `image-rs`. Zero external C/C++ runtime bloat.
-* 🖥️ **Native macOS Chrome** — Overlay titlebar, native traffic light controls, smooth trackpad pinch gestures, and standard `⌘` shortcuts.
+* 🖥️ **Native macOS Polish** — Seamless overlay titlebar, macOS traffic lights, trackpad gestures (pinch-to-zoom), and native `⌘` keybindings.
 * 📱 **Seamless Instagram Carousel Slicer** — Multi-slide seamless panorama creator (1:1, 4:5, 9:16) with built-in swipe simulator.
 * 📦 **Zero-Setup DMG** — Standard drag-and-drop macOS `.dmg` installer built natively for Apple Silicon (M1/M2/M3/M4) and Intel Macs.
 
@@ -64,10 +66,8 @@ Most photo album software forces studios into costly monthly subscriptions, lags
 
 ---
 
-<a name="-interactive-feature-tour"></a>
+<a name="en-features"></a>
 ## ✨ Interactive Feature Tour
-
-Click on any feature below to expand its technical highlights and interactive details:
 
 <details open>
 <summary><h3>📐 1. Smart Mathematical Layout Engine</h3></summary>
@@ -128,23 +128,20 @@ Export formats ready for professional lab printing or digital client delivery:
 
 ---
 
-<a name="-new-in-v124-marquee-selection--batch-drag"></a>
+<a name="en-v124"></a>
 ## 🚀 What's New in v1.2.4
-
-> [!NOTE]
-> OpenSmartAlbum v1.2.4 brings complete end-to-end stability to the macOS WebKit layer and adds marquee selection.
 
 | Feature / Fix | Description | Status |
 | :--- | :--- | :---: |
 | **Rubberband Marquee** | Real-time 2D AABB bounding-box selection in filmstrip library | ✅ Complete |
 | **WebKit Drag Fix** | Replaced in-memory canvas with DOM ghost badge to prevent drag drops dropping out | ✅ Complete |
 | **Draggable Batch Handle** | `[::: Drag All]` bar directly drops multi-photo batches onto spreads | ✅ Complete |
-| **Format Safety** | Eliminated `toUpperCase` crash when importing photos missing MIME headers | ✅ Complete |
+| **Format Safety** | Eliminated crash when importing photos missing MIME headers | ✅ Complete |
 | **Automated E2E Suite** | 42/42 Playwright headless tests verified across all 11 presets & shapes | ✅ Verified |
 
 ---
 
-<a name="-album-presets--carousel-formats"></a>
+<a name="en-presets"></a>
 ## 📐 Presets & Dimensions Matrix
 
 <details>
@@ -174,7 +171,7 @@ Export formats ready for professional lab printing or digital client delivery:
 
 ---
 
-<a name="-macos-keyboard-shortcuts"></a>
+<a name="en-shortcuts"></a>
 ## ⌨️ macOS Keyboard Shortcuts
 
 <details open>
@@ -223,7 +220,7 @@ Export formats ready for professional lab printing or digital client delivery:
 
 ---
 
-<a name="-faq--troubleshooting"></a>
+<a name="en-faq"></a>
 ## ❓ FAQ & Troubleshooting
 
 <details>
@@ -251,37 +248,251 @@ Projects are saved as self-contained `.afsn` files. They contain an embedded SQL
 
 ---
 
-<a name="-building-from-source"></a>
+<a name="en-build"></a>
 ## 🛠️ Building from Source
 
-### Prerequisites
-- macOS 13+ (Ventura, Sonoma, or Sequoia)
-- Apple Silicon (arm64) or Intel (x86_64) Mac
-- [Node.js](https://nodejs.org/) 20+ & npm
-- [Rust](https://www.rust-lang.org/) 1.77+ (`rustup default stable`)
-- Apple Command Line Tools (`xcode-select --install`)
-
-### 1. Clone & Install
 ```bash
+# Prerequisites: Node 20+, Rust 1.77+, Xcode CLI Tools
 git clone https://github.com/ryandxter/OpenSmartAlbum-MacOS.git
 cd OpenSmartAlbum-MacOS
 npm install
-```
 
-### 2. Development Server
-```bash
+# Run development mode:
 npm run tauri dev
-```
 
-### 3. Production DMG Bundle
-```bash
-# Build Apple Silicon installer:
+# Package macOS DMG installer:
 npm run tauri build -- --target aarch64-apple-darwin
-
-# Build Intel installer (if needed):
-npm run tauri build -- --target x86_64-apple-darwin
 ```
-The output `.dmg` package will be placed in `src-tauri/target/release/bundle/dmg/`.
+
+---
+
+<br/>
+
+<a name="-bahasa-indonesia"></a>
+# 🇮🇩 Bahasa Indonesia
+
+<p align="center">
+  <a href="#id-ringkasan">Ringkasan</a> •
+  <a href="#id-fitur">Fitur Unggulan</a> •
+  <a href="#id-v124">Pembaruan v1.2.4</a> •
+  <a href="#id-format">Format & Preset</a> •
+  <a href="#id-pintasan">Pintasan Keyboard</a> •
+  <a href="#id-faq">Tanya Jawab</a> •
+  <a href="#id-build">Panduan Build</a>
+</p>
+
+<a name="id-ringkasan"></a>
+## 🎯 Ringkasan Aplikasi
+
+Banyak perangkat lunak desain album foto mengharuskan biaya langganan bulanan mahal, lemot saat mengolah ratusan file RAW 50MP, atau hanya tersedia di Windows.
+
+**OpenSmartAlbum macOS** adalah aplikasi desktop native berkecepatan tinggi yang dirancang untuk kecepatan, privasi data klien 100%, dan integrasi mendalam dengan perangkat keras Mac:
+
+* 🛡️ **100% Offline & Privat** — Foto RAW dan resolusi penuh tidak pernah keluar dari SSD lokal Anda. Tanpa telemetri cloud, tanpa perlu registrasi akun.
+* ⚡ **Pipeline Gambar Pure Rust** — Pemrosesan multithread paralel via `rayon` & `image-rs`. Sangat hemat memori tanpa dependensi eksternal C/C++ yang berat.
+* 🖥️ **Tampilan Native macOS** — Overlay titlebar elegan, tombol traffic light macOS, gesture pinch-to-zoom trackpad, dan pintasan keyboard standar `⌘`.
+* 📱 **Instagram Carousel Mode** — Pemotong panorama multislide mulus (1:1, 4:5, 9:16) dilengkapi simulasi geser layar ponsel langsung di aplikasi.
+* 📦 **Installer .DMG Praktis** — Cukup unduh dan geser ke folder Aplikasi, mendukung penuh Apple Silicon (M1/M2/M3/M4) dan Intel Mac.
+
+---
+
+<a name="id-fitur"></a>
+## ✨ Tur Fitur Unggulan
+
+<details open>
+<summary><h3>📐 1. Engine Tata Letak Cerdas Berbasis Matematika</h3></summary>
+
+Tarik 1 hingga 12 foto ke spread mana saja. Bukan template kaku — algoritma **2D bin-packing** secara dinamis menghitung variasi komposisi yang proporsional:
+- **Perlindungan Aspek Rasio:** Mempertahankan proporsi sensor foto asli (3:2, 4:3, 16:9, 1:1) agar komposisi wajah atau detail penting tidak terpotong.
+- **Skor Crop Otomatis:** Variasi tata letak diurutkan otomatis berdasarkan nilai crop terendah.
+- **Acak Cepat (Shuffle):** Ganti variasi tata letak dalam sekejap dengan tombol pintas.
+</details>
+
+<details>
+<summary><h3>🧲 2. Magnetic Snapping HUD & Garis Lipatan Spine Presisi</h3></summary>
+
+Perataan sub-milimeter tanpa tebak-tebakan:
+- **Snap Magnetik:** Menempel otomatis ke garis tengah buku (spine), batas area cetak aman (safe margin), dan garis potong bleed.
+- **Pemandu HUD Real-Time:** Garis panduan cyan menampilkan jarak presisi dalam milimeter saat bingkai digeser.
+- **Jarak Antar-Bingkai Otomatis:** Mendeteksi dan mengunci jarak yang identik antara 3 atau lebih foto bersebelahan.
+</details>
+
+<details>
+<summary><h3>🖱️ 3. Seleksi Marquee Karet & Handle Geser Batch (Fitur Baru v1.2.4)</h3></summary>
+
+Mengatur ratusan foto wedding kini jauh lebih gesit:
+- **Seleksi Kotak Marquee:** Klik dan seret di tray foto untuk membuat kotak seleksi cyan instan (deteksi tabrakan 2D AABB).
+- **Shift Tambah Pilihan:** Tahan `Shift` untuk menambah atau mengurangi foto dalam seleksi.
+- **Handle Tarik Batch:** Cukup seret tombol `[::: Drag All (X)]` pada bar batch mengambang dan letakkan seluruh foto sekaligus ke spread target.
+- **Stabilitas Drag WebKit:** Memperbaiki bug pembatalan seret file pada WebKit bawaan macOS.
+</details>
+
+<details>
+<summary><h3>📱 4. Mode Instagram Carousel Mulus & Simulator Ponsel</h3></summary>
+
+Ubah foto lanskap lebar dan cerita beruntun menjadi postingan Instagram bersambung tanpa garis putus:
+- **Format Didukung:** 1:1 Persegi, 4:5 Potret (format optimal feed IG), dan 9:16 Story/Reels.
+- **Bentangan Multislide:** Membentangkan foto panorama melintasi 2 hingga 10 slide tanpa jeda visual.
+- **Simulator Ponsel:** Rasakan pengalaman geser layar smartphone langsung di dalam aplikasi sebelum diekspor.
+- **Penomoran Otomatis:** Diekspor sebagai file terurut rapi (`slide_01.jpg`, `slide_02.jpg`, ...) siap dikirim via AirDrop.
+</details>
+
+<details>
+<summary><h3>🔄 5. Ubah Ukuran Banyak Bingkai Tanpa Merusak Jarak (Spatial Resize)</h3></summary>
+
+Ubah ukuran beberapa bingkai foto sekaligus tanpa merusak jarak margin:
+- **2D Spatial Neighbor Graph:** Menjaga jarak celah antar bingkai tetap konsisten saat diperbesar atau diperkecil.
+- **Kontrol Reset Ganda:**
+  - `↺ Reset Ratio`: Mengembalikan ukuran bingkai ke aspek rasio asli sensor foto.
+  - `↺ Reset Crop`: Menormalkan posisi tengah dan zoom foto ke 1.0× tanpa mengubah batas bingkai.
+</details>
+
+<details>
+<summary><h3>🖨️ 6. Paket Ekspor Standar Percetakan & Digital</h3></summary>
+
+Format hasil akhir siap kirim ke lab percetakan profesional:
+- **Layered Photoshop (.PSD):** Layer foto terpisah lengkap dengan vector clipping mask untuk 8 bentuk bingkai.
+- **PDF/X Siap Cetak:** Dilengkapi tanda potong (*crop marks*), area bleed (3mm–5mm), dan informasi slug.
+- **Raster Kualitas Ultra:** JPEG (sRGB), Lossless PNG, dan 1200 DPI TIFF untuk cetakan pameran museum.
+</details>
+
+---
+
+<a name="id-v124"></a>
+## 🚀 Pembaruan v1.2.4
+
+| Fitur / Perbaikan | Keterangan | Status |
+| :--- | :--- | :---: |
+| **Rubberband Marquee** | Seleksi drag area kotak 2D AABB langsung di galeri filmstrip | ✅ Selesai |
+| **Perbaikan WebKit Drag** | Mengganti canvas memory dengan badge DOM untuk mencegah drop terputus | ✅ Selesai |
+| **Handle Tarik Batch** | Tombol `[::: Drag All]` untuk melepas banyak foto sekaligus | ✅ Selesai |
+| **Keamanan Format** | Menghilangkan crash saat foto yang diimpor tidak memiliki header MIME | ✅ Selesai |
+| **Uji Otomatis E2E** | 42/42 pengujian Playwright headless lulus 100% pada seluruh 11 preset | ✅ Terverifikasi |
+
+---
+
+<a name="id-format"></a>
+## 📐 Matriks Format Cetak & Carousel
+
+<details>
+<summary><b>Klik untuk melihat daftar lengkap ukuran album cetak & rasio carousel</b></summary>
+
+<br/>
+
+### 📖 Ukuran Album Fisik (Spreads Terbuka)
+| Preset | Dimensi Terbuka | Rekomendasi Penggunaan |
+| :--- | :--- | :--- |
+| **Persegi 20×20** | 400 × 200 mm | Album potret keluarga & prewedding modern |
+| **Persegi 30×30** | 600 × 300 mm | Album pernikahan premium & fine-art |
+| **Lanskap 30×20** | 600 × 200 mm | Dokumentasi pernikahan alam terbuka / panorama |
+| **Potret 20×30** | 400 × 300 mm | Buku foto vertikal editorial & fashion |
+| **A4 Lanskap** | 594 × 210 mm | Katalog fotografi komersial standar |
+| **A4 Potret** | 420 × 297 mm | Lookbook vertikal |
+| **Standar 8×8" / 10×8" / 12×12"** | Ekuivalen Inci Imperial | Standar percetakan foto internasional |
+
+### 📱 Format Media Sosial Digital
+| Format | Aspek Rasio | Jumlah Slide | Resolusi Ekspor |
+| :--- | :---: | :---: | :--- |
+| **Carousel Persegi** | 1:1 | 2 – 10 Slide | 1080 × 1080 px per slide |
+| **Carousel Potret** | 4:5 | 2 – 10 Slide | 1080 × 1350 px per slide |
+| **Bentangan Story/Reels** | 9:16 | 2 – 10 Slide | 1080 × 1920 px per slide |
+
+</details>
+
+---
+
+<a name="id-pintasan"></a>
+## ⌨️ Pintasan Keyboard macOS
+
+<details open>
+<summary><b>Klik untuk menyembunyikan / menampilkan daftar pintasan keyboard</b></summary>
+
+<br/>
+
+### Navigasi Kanvas
+| Tombol Pintas | Aksi |
+| :--- | :--- |
+| <kbd>Spasi</kbd> + Geser Mouse | Menggeser kanvas (*Pan*) |
+| <kbd>⌘</kbd> + Gulir Roda Mouse | Zoom in / out kanvas |
+| <kbd>⌘</kbd> + <kbd>0</kbd> | Sesuaikan spread penuh ke jendela (*Fit*) |
+| <kbd>←</kbd> / <kbd>→</kbd> | Berpindah ke spread sebelumnya / berikutnya |
+| `Gesture Cubit (Pinch)` | Zoom halus dengan trackpad Mac |
+
+### Manipulasi Bingkai & Layout
+| Tombol Pintas | Aksi |
+| :--- | :--- |
+| `Klik` / <kbd>⇧</kbd> + `Klik` | Pilih satu bingkai / Tambah ke seleksi |
+| <kbd>⌘</kbd> + <kbd>A</kbd> | Pilih seluruh bingkai di spread aktif |
+| <kbd>⇧</kbd> + Geser | Kunci pergeseran searah sumbu horizontal/vertikal |
+| `Tombol Panah` | Geser presisi sejauh 1 mm |
+| <kbd>⇧</kbd> + `Tombol Panah` | Geser presisi sejauh 10 mm |
+| <kbd>⌘</kbd> + <kbd>C</kbd> / <kbd>⌘</kbd> + <kbd>V</kbd> | Salin / Tempel bingkai |
+| <kbd>⌘</kbd> + <kbd>⇧</kbd> + <kbd>V</kbd> | Tempel tepat di posisi koordinat yang sama (*Paste in Place*) |
+| <kbd>⌘</kbd> + <kbd>⌥</kbd> + <kbd>V</kbd> | Tempel bingkai ke seluruh spread dalam proyek |
+| <kbd>⌘</kbd> + <kbd>D</kbd> | Duplikasi cepat |
+| <kbd>⌫</kbd> (Delete) | Hapus bingkai |
+| <kbd>⌘</kbd> + <kbd>L</kbd> / <kbd>⌥</kbd> + <kbd>L</kbd> | Kunci / Buka kunci posisi bingkai |
+| <kbd>⌘</kbd> + <kbd>G</kbd> / <kbd>⌘</kbd> + <kbd>⇧</kbd> + <kbd>G</kbd> | Gabung (*Group*) / Pisah grup (*Ungroup*) |
+| <kbd>R</kbd> / <kbd>⇧</kbd> + <kbd>R</kbd> | Putar 90° Searah / Berlawanan jarum jam |
+| <kbd>S</kbd> | Tukar posisi foto antara dua bingkai yang dipilih |
+| <kbd>T</kbd> | Tambahkan bingkai teks tipografi baru |
+
+### Mode Potong / Crop Internal *(Klik ganda bingkai apa saja)*
+| Tindakan | Keterangan |
+| :--- | :--- |
+| `Geser mouse di dalam bingkai` | Geser posisi fokus foto di dalam bingkai |
+| `Gulir roda mouse` | Atur tingkat pembesaran / zoom foto di bingkai |
+| `↺ Reset Ratio` | Kembalikan bingkai ke aspek rasio foto asli |
+| `↺ Reset Crop` | Atur ulang posisi tengah dan zoom ke 1.0× |
+| <kbd>Enter</kbd> / <kbd>Esc</kbd> | Simpan posisi dan keluar dari mode crop |
+
+</details>
+
+---
+
+<a name="id-faq"></a>
+## ❓ Tanya Jawab & Pemecahan Masalah (FAQ)
+
+<details>
+<summary><b>1. Muncul pesan "OpenSmartAlbum is damaged and can't be opened"?</b></summary>
+<br/>
+Karena versi rilis komunitas dibagikan di luar Mac App Store tanpa sertifikat berbayar Apple Developer ID, fitur Gatekeeper macOS dapat mengkarantina aplikasi. Untuk membukanya, jalankan satu baris perintah ini di aplikasi Terminal:
+
+```bash
+xattr -cr /Applications/OpenSmartAlbum.app
+```
+Setelah itu, klik kanan aplikasi dan pilih **Open**.
+</details>
+
+<details>
+<summary><b>2. Format file RAW kamera apa saja yang didukung?</b></summary>
+<br/>
+OpenSmartAlbum mendukung langsung format RAW kamera populer mencakup `.cr2`, `.nef`, `.arw`, `.dng`, `.raf`, `.orf`, `.rw2`, serta format standar `.jpg`, `.png`, `.tiff`, dan `.webp`.
+</details>
+
+<details>
+<summary><b>3. Di mana file proyek disimpan?</b></summary>
+<br/>
+Proyek disimpan sebagai file mandiri berformat `.afsn`. Di dalamnya terdapat database SQLite lokal yang menyimpan koordinat presisi, riwayat tata letak, crop, dan thumbnail cache untuk penyuntingan cepat tanpa koneksi internet.
+</details>
+
+---
+
+<a name="id-build"></a>
+## 🛠️ Panduan Build dari Source Code
+
+```bash
+# Prasyarat: Node 20+, Rust 1.77+, Xcode CLI Tools
+git clone https://github.com/ryandxter/OpenSmartAlbum-MacOS.git
+cd OpenSmartAlbum-MacOS
+npm install
+
+# Jalankan mode pengembangan lokal:
+npm run tauri dev
+
+# Paketkan ke format installer .DMG:
+npm run tauri build -- --target aarch64-apple-darwin
+```
 
 ---
 
@@ -299,19 +510,19 @@ The output `.dmg` package will be placed in `src-tauri/target/release/bundle/dmg
 └────────────────────────────────────────────────────────┘
 ```
 
-- **Frontend Canvas:** Hardware-accelerated 60fps rendering via [Konva.js](https://konvajs.org/) and React 18.
-- **App Shell:** [Tauri 2](https://tauri.app/) — Native macOS webview host with minimal RAM overhead.
-- **Image Engine:** Pure Rust multithreaded processing with [Rayon](https://github.com/rayon-rs/rayon) and [image-rs](https://github.com/image-rs/image).
-- **Storage:** Embedded SQLite engine via `rusqlite`.
+- **Frontend Canvas:** Hardware-accelerated 60fps rendering via [Konva.js](https://konvajs.org/) & React 18.
+- **App Shell:** [Tauri 2](https://tauri.app/) — Native macOS webview host dengan konsumsi memori minimal.
+- **Image Engine:** Pure Rust multithreaded processing dengan [Rayon](https://github.com/rayon-rs/rayon) & [image-rs](https://github.com/image-rs/image).
+- **Penyimpanan:** Embedded SQLite database melalui `rusqlite`.
 
 ---
 
 ## 🤝 Credits & Acknowledgements
 
-* **Original Creator:** [Asrofims](https://github.com/asrofims) / Afsunmedia — Creator of the original *AFSNSmartAlbum* engine, mathematics, and album domain models.
-* **macOS Port & Enhancements:** [@ryandxter](https://github.com/ryandxter) — Complete Win32 extraction, macOS platform wiring, Instagram Carousel system, Layered PSD generator, and DMG bundling.
+* **Original Creator:** [Asrofims](https://github.com/asrofims) / Afsunmedia — Pencipta arsitektur awal AFSNSmartAlbum, sistem kalkulasi matematika tata letak, dan domain album.
+* **macOS Port & Enhancements:** [@ryandxter](https://github.com/ryandxter) — Porting penuh ke ekosistem native macOS, ekstraksi Win32, Instagram Carousel slicer, eksportir Layered PSD, dan installer DMG.
 
-### Open Source Foundations
+### Fondasi Open Source
 - [Tauri](https://tauri.app/) (MIT / Apache-2.0) • [React](https://reactjs.org/) (MIT) • [Konva](https://konvajs.org/) (MIT) • [SQLite](https://www.sqlite.org/) (Public Domain) • [Rayon](https://github.com/rayon-rs/rayon) (MIT / Apache-2.0) • [image crate](https://github.com/image-rs/image) (MIT)
 
 ---

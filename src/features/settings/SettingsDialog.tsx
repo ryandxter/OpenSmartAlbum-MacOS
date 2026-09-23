@@ -844,7 +844,7 @@ export function SettingsDialog() {
           {/* Sidebar Footer */}
           <div className={styles.sidebarFooter}>
             <div className={styles.versionBadge}>
-              <span>AFSNSmartAlbum</span>
+              <span>OpenSmartAlbum</span>
               <span className={styles.versionPill}>{appInfo.version}</span>
             </div>
           </div>
@@ -870,7 +870,7 @@ export function SettingsDialog() {
                   <div>
                     <div className={styles.cardTitle}>Startup &amp; Projects</div>
                     <div className={styles.cardSubtitle}>
-                      Choose what appears when AFSNSmartAlbum starts and manage project history.
+                      Choose what appears when OpenSmartAlbum starts and manage project history.
                     </div>
                   </div>
                 </div>

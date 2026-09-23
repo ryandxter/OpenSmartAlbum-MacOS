@@ -27,7 +27,7 @@ export function SupportDonationModal() {
         <div className={styles.title}>☕ Dukung Pengembangan</div>
 
         <div className={styles.description}>
-          Pindai dengan aplikasi mobile banking atau e-wallet apa saja untuk kontribusi sukarela pengembangan AFSNSmartAlbum.
+          Pindai dengan aplikasi mobile banking atau e-wallet apa saja untuk kontribusi sukarela pengembangan OpenSmartAlbum.
         </div>
 
         <div className={styles.qrisBadge}>

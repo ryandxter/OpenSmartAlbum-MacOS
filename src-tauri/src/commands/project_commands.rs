@@ -371,9 +371,9 @@ pub async fn export_afsn_with_dialog(
     let default_name = suggested_name.unwrap_or_else(|| "Album-Project".to_string());
     let file_path = tauri::async_runtime::spawn_blocking(move || {
         rfd::FileDialog::new()
-            .set_title("Save AFSNSmartAlbum Project (.afsn)")
+            .set_title("Save OpenSmartAlbum Project (.afsn)")
             .set_file_name(&format!("{}.afsn", default_name))
-            .add_filter("AFSNSmartAlbum Package (*.afsn)", &["afsn"])
+            .add_filter("OpenSmartAlbum Package (*.afsn)", &["afsn"])
             .save_file()
             .and_then(normalize_save_destination)
     })
@@ -407,9 +407,9 @@ pub async fn save_project_as_with_dialog(
     let default_name = suggested_name.unwrap_or_else(|| "Album-Project".to_string());
     let file_path = tauri::async_runtime::spawn_blocking(move || {
         rfd::FileDialog::new()
-            .set_title("Save AFSNSmartAlbum Project As (.afsn)")
+            .set_title("Save OpenSmartAlbum Project As (.afsn)")
             .set_file_name(&format!("{}.afsn", default_name))
-            .add_filter("AFSNSmartAlbum Package (*.afsn)", &["afsn"])
+            .add_filter("OpenSmartAlbum Package (*.afsn)", &["afsn"])
             .save_file()
             .and_then(normalize_save_destination)
     })
@@ -534,8 +534,8 @@ pub async fn import_afsn_with_dialog(
 ) -> Result<Option<ProjectPackagePayload>, String> {
     let file_path = tauri::async_runtime::spawn_blocking(move || {
         rfd::FileDialog::new()
-            .set_title("Open AFSNSmartAlbum Project (.afsn)")
-            .add_filter("AFSNSmartAlbum Project (*.afsn)", &["afsn"])
+            .set_title("Open OpenSmartAlbum Project (.afsn)")
+            .add_filter("OpenSmartAlbum Project (*.afsn)", &["afsn"])
             .pick_file()
     })
     .await

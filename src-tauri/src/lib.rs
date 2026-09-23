@@ -102,7 +102,7 @@ pub fn run() {
             app.manage(commands::export_commands::ExportState::default());
             app.manage(commands::app_commands::AppExitState::default());
 
-            log::info!("AFSNSmartAlbum started successfully");
+            log::info!("OpenSmartAlbum started successfully");
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

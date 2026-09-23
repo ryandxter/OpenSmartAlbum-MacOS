@@ -129,13 +129,13 @@ export function UpdateModal() {
               <p className={styles.subtitleText}>
                 {status === 'checking' && 'Looking for the latest software version...'}
                 {status === 'available' &&
-                  `A new version of AFSNSmartAlbum is ready to install.`}
+                  `A new version of OpenSmartAlbum is ready to install.`}
                 {status === 'downloading' &&
                   'Downloading and verifying signed update package...'}
                 {status === 'ready' &&
-                  'The update is installed. Restart AFSNSmartAlbum to apply changes.'}
+                  'The update is installed. Restart OpenSmartAlbum to apply changes.'}
                 {status === 'uptodate' &&
-                  `AFSNSmartAlbum ${appInfo.version} is currently the newest version.`}
+                  `OpenSmartAlbum ${appInfo.version} is currently the newest version.`}
                 {status === 'error' && 'Unable to complete the update automatically.'}
               </p>
             </div>
@@ -166,7 +166,7 @@ export function UpdateModal() {
             <div className={styles.statusCard}>
               <div className={styles.statusTitle}>You're Up to Date</div>
               <div className={styles.statusDesc}>
-                You have the latest version (<strong>{appInfo.version}</strong>) of AFSNSmartAlbum installed.
+                You have the latest version (<strong>{appInfo.version}</strong>) of OpenSmartAlbum installed.
               </div>
             </div>
           )}
@@ -177,7 +177,7 @@ export function UpdateModal() {
                 {totalBytes > 0 ? `Downloading... ${percent}%` : 'Downloading update...'}
               </div>
               <div className={styles.statusDesc}>
-                Please keep AFSNSmartAlbum open while the update downloads.
+                Please keep OpenSmartAlbum open while the update downloads.
               </div>
 
               <div className={styles.progressContainer}>
@@ -207,7 +207,7 @@ export function UpdateModal() {
                 ✓ Update Installed Successfully
               </div>
               <div className={styles.statusDesc}>
-                AFSNSmartAlbum has downloaded and verified the update. Click <strong>Restart Now</strong> to launch the new version.
+                OpenSmartAlbum has downloaded and verified the update. Click <strong>Restart Now</strong> to launch the new version.
               </div>
             </div>
           )}

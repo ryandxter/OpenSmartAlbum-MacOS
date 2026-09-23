@@ -1,5 +1,5 @@
 export const APP_CONFIG = {
-  name: 'AFSNSmartAlbum',
+  name: 'OpenSmartAlbum',
   description: 'Professional Photo Album Layout Software',
   projectExtension: '.afsn',
   website: 'https://app.afsun.my.id',

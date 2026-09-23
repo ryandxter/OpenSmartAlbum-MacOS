@@ -1,8 +1,8 @@
 /**
- * AFSNSmartAlbum — Update Service
+ * OpenSmartAlbum — Update Service
  * Dual-flow update engine:
  * 1. Primary: Tauri v2 official signed updater (secure, in-app download and installation).
- * 2. Fallback: Direct GitHub Releases REST API check with manual .exe download link.
+ * 2. Fallback: Direct GitHub Releases REST API check with manual .dmg download link.
  */
 
 import { isTauri } from '../utils/platform';
@@ -42,8 +42,8 @@ export interface UpdateCheckResult {
   errorMessage?: string;
 }
 
-const GITHUB_REPO_OWNER = 'asrofims';
-const GITHUB_REPO_NAME = 'AFSNSmartAlbum';
+const GITHUB_REPO_OWNER = 'ryandxter';
+const GITHUB_REPO_NAME = 'OpenSmartAlbum-MacOS';
 const GITHUB_LATEST_RELEASE_URL = `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/latest`;
 const GITHUB_ALL_RELEASES_URL = `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases`;
 
@@ -104,8 +104,8 @@ export async function checkForAppUpdates(currentVersion: string): Promise<Update
           hasUpdate: true,
           currentVersion,
           latestVersion: update.version.startsWith('v') ? update.version : `v${update.version}`,
-          releaseName: `AFSNSmartAlbum v${update.version}`,
-          releaseNotes: update.body || 'A new update of AFSNSmartAlbum is available.',
+          releaseName: `OpenSmartAlbum v${update.version}`,
+          releaseNotes: update.body || 'A new update of OpenSmartAlbum is available.',
           publishedAt: formatStandardDate(update.date),
           downloadUrl: `https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/latest`,
           releaseUrl: `https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/latest`,

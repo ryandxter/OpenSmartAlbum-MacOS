@@ -91,7 +91,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </div>
 
             <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: 1.5, margin: '0 0 16px' }}>
-              AFSNSmartAlbum encountered an unexpected condition. Your album data is protected by auto-save snapshot storage.
+              OpenSmartAlbum encountered an unexpected condition. Your album data is protected by auto-save snapshot storage.
             </p>
 
             {this.state.error && (
