@@ -58,11 +58,12 @@
   3. Photos maintain proportional aspect-fill cover fit with zero geometric distortion or stretching across all aspect variations.
   4. Equal-height row normalization and equal-width column normalization eliminate sub-pixel gaps between adjacent photos.
   5. Single-tap `Spacebar` (cycle layout) is cleanly disambiguated from `Space + Drag` (canvas hand pan).
-**Plans**: 2 plans
+**Plans**: 3 plans (Completed)
 
 Plans:
-- [ ] 10-01: Implement pure TypeScript R-BSP partitioning, row/column normalizers, and bipartite aspect-matching solver in `src/domain/layout/`.
-- [ ] 10-02: Integrate dynamic layout generator and non-destructive `Spacebar` / `Shift+Space` keyboard cycling into `editorStore`, `carouselStore`, `TemplatesPanel`, and `WorkspaceLayout`.
+- [x] 10-01: Implement pure TypeScript R-BSP partitioning, row/column normalizers, and bipartite aspect-matching solver in `src/domain/layout/`.
+- [x] 10-02: Eliminate destructive template application in Social Carousel mode; implement non-destructive `cycleSlideLayout` in `carouselStore.ts` and dynamic variation cards in `TemplatesPanel.tsx`.
+- [x] 10-03: Implement non-destructive layout cycling in `editorStore.ts` and `albumStore.ts`, remove competing keydown listeners in `LayoutCycleHUD.tsx`, and establish authoritative Spacebar tap-vs-pan disambiguation in `WorkspaceLayout.tsx`.
 
 #### Phase 11: Auto-Flow Multi-Spread Storytelling Engine
 **Goal**: Ingest 10–50+ photos in a single batch, automatically cluster them into narrative chapters using EXIF timestamp bursts, and flow them across sequential spreads or slides with balanced visual cadence.
