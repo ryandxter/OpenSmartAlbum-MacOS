@@ -9,6 +9,7 @@ import {
   AdaptivePhoto,
   AdaptiveLayoutVariation,
 } from '../../domain/adaptiveLayout';
+import { generateDynamicVariations } from '../../domain/layout/generator';
 import { PhotoFrameElement } from '../../domain/editor';
 import {
   CAROUSEL_LAYOUT_PRESETS,
@@ -38,8 +39,11 @@ export const AdaptiveVariationCardItem = React.memo(function AdaptiveVariationCa
   spineX,
   onSelect,
 }: AdaptiveVariationCardProps) {
-  const scaleX = 140 / totalW;
-  const scaleY = 70 / totalH;
+  const aspect = totalW > 0 && totalH > 0 ? totalW / totalH : 2.0;
+  const cardW = 140;
+  const cardH = Math.round(Math.max(50, Math.min(100, 140 / aspect)));
+  const scaleX = cardW / totalW;
+  const scaleY = cardH / totalH;
 
   const svgRects = variation.rects
     .map(
@@ -48,9 +52,12 @@ export const AdaptiveVariationCardItem = React.memo(function AdaptiveVariationCa
     )
     .join('');
 
-  const spine = `<line x1="${(spineX * scaleX).toFixed(1)}" y1="4" x2="${(spineX * scaleX).toFixed(1)}" y2="66" stroke="rgba(255, 255, 255, 0.18)" stroke-dasharray="2 2" stroke-width="1"/>`;
+  const spine =
+    spineX > 0
+      ? `<line x1="${(spineX * scaleX).toFixed(1)}" y1="4" x2="${(spineX * scaleX).toFixed(1)}" y2="${cardH - 4}" stroke="rgba(255, 255, 255, 0.18)" stroke-dasharray="2 2" stroke-width="1"/>`
+      : '';
 
-  const svg = `<svg width="140" height="70" viewBox="0 0 140 70" xmlns="http://www.w3.org/2000/svg"><rect width="140" height="70" rx="4" fill="#18181b"/>${spine}${svgRects}</svg>`;
+  const svg = `<svg width="${cardW}" height="${cardH}" viewBox="0 0 ${cardW} ${cardH}" xmlns="http://www.w3.org/2000/svg"><rect width="${cardW}" height="${cardH}" rx="4" fill="#18181b"/>${spine}${svgRects}</svg>`;
 
   const scoreClass =
     variation.score !== undefined
@@ -108,10 +115,13 @@ export function TemplatesPanel({ onApplyToast, activeMode = 'print' }: Templates
   // Carousel Mode Hooks
   const currentCarousel = useCarouselStore((s) => s.currentCarousel);
   const activeSlideIndex = useCarouselStore((s) => s.activeSlideIndex);
+  const slideLayoutIndices = useCarouselStore((s) => s.slideLayoutIndices);
   const applyCarouselLayout = useCarouselStore((s) => s.applyCarouselLayout);
   const shuffleSlidePhotos = useCarouselStore((s) => s.shuffleSlidePhotos);
+  const cycleSlideLayout = useCarouselStore((s) => s.cycleSlideLayout);
+  const applyDynamicSlideLayoutByIndex = useCarouselStore((s) => s.applyDynamicSlideLayoutByIndex);
 
-  const [carouselCategory, setCarouselCategory] = useState<'all' | 'per_slide' | 'panorama'>('all');
+  const [carouselCategory, setCarouselCategory] = useState<'dynamic' | 'panorama'>('dynamic');
   const [selectedCarouselPresetId, setSelectedCarouselPresetId] = useState<string | null>(null);
 
   // Active Spread (Print Mode)
@@ -199,14 +209,24 @@ export function TemplatesPanel({ onApplyToast, activeMode = 'print' }: Templates
     );
   }, [currentProject, currentAlbum, activeSpread, printPhotos, lockedElements]);
 
-  // Carousel Presets Filtered by Category
-  const filteredCarouselPresets = useMemo(() => {
-    let presets = CAROUSEL_LAYOUT_PRESETS;
-    if (carouselCategory !== 'all') {
-      presets = presets.filter((p) => p.category === carouselCategory);
-    }
-    return presets;
-  }, [carouselCategory]);
+  // Dynamic Layout Variations (Carousel Mode)
+  const carouselVariations = useMemo(() => {
+    if (!currentCarousel || !activeSlide || carouselPhotos.length === 0) return [];
+    return generateDynamicVariations(
+      {
+        containerWidth: currentCarousel.slideWidthPx,
+        containerHeight: currentCarousel.slideHeightPx,
+        spacing: 16,
+        isSpread: false,
+      },
+      carouselPhotos
+    );
+  }, [currentCarousel, activeSlide, carouselPhotos]);
+
+  // Panorama Presets (Carousel Mode)
+  const panoramaCarouselPresets = useMemo(() => {
+    return CAROUSEL_LAYOUT_PRESETS.filter((p) => p.category === 'panorama');
+  }, []);
 
   const currentActiveIndex =
     activeSpread && spreadLayoutIndices[activeSpread.id] !== undefined
@@ -259,15 +279,21 @@ export function TemplatesPanel({ onApplyToast, activeMode = 'print' }: Templates
   };
 
   const handleCycleCarousel = (direction: 'next' | 'prev') => {
-    if (!currentCarousel || filteredCarouselPresets.length === 0) return;
-    const currentIdx = filteredCarouselPresets.findIndex((p) => p.id === selectedCarouselPresetId);
-    const nextIdx =
-      direction === 'next'
-        ? (currentIdx + 1) % filteredCarouselPresets.length
-        : (currentIdx - 1 + filteredCarouselPresets.length) % filteredCarouselPresets.length;
-    const nextPreset = filteredCarouselPresets[nextIdx];
-    if (nextPreset) {
-      handleApplyCarouselPreset(nextPreset);
+    if (carouselCategory === 'panorama') {
+      if (panoramaCarouselPresets.length === 0) return;
+      const currentIdx = panoramaCarouselPresets.findIndex((p) => p.id === selectedCarouselPresetId);
+      const nextIdx =
+        direction === 'next'
+          ? (currentIdx + 1) % panoramaCarouselPresets.length
+          : (currentIdx - 1 + panoramaCarouselPresets.length) % panoramaCarouselPresets.length;
+      const nextPreset = panoramaCarouselPresets[nextIdx];
+      if (nextPreset) {
+        handleApplyCarouselPreset(nextPreset);
+      }
+    } else {
+      if (carouselVariations.length === 0) return;
+      cycleSlideLayout(direction);
+      onApplyToast?.(`Layout variation cycled`);
     }
   };
 
@@ -276,6 +302,7 @@ export function TemplatesPanel({ onApplyToast, activeMode = 'print' }: Templates
     const totalSlides = currentCarousel?.totalSlides || 1;
     const slideW = currentCarousel?.slideWidthPx || 1080;
     const slideH = currentCarousel?.slideHeightPx || 1080;
+    const currentSlideVariationIndex = slideLayoutIndices[activeSlideIndex] ?? 0;
 
     return (
       <div className={styles.container}>
@@ -335,68 +362,98 @@ export function TemplatesPanel({ onApplyToast, activeMode = 'print' }: Templates
         <div className={styles.modeToggleRow}>
           <button
             type="button"
-            className={`${styles.modeBtn} ${carouselCategory === 'all' ? styles.modeBtnActive : ''}`}
-            onClick={() => setCarouselCategory('all')}
+            className={`${styles.modeBtn} ${carouselCategory === 'dynamic' ? styles.modeBtnActive : ''}`}
+            onClick={() => setCarouselCategory('dynamic')}
           >
-            All ({CAROUSEL_LAYOUT_PRESETS.length})
-          </button>
-          <button
-            type="button"
-            className={`${styles.modeBtn} ${carouselCategory === 'per_slide' ? styles.modeBtnActive : ''}`}
-            onClick={() => setCarouselCategory('per_slide')}
-          >
-            Per-Slide
+            Dynamic Layouts ({carouselPhotos.length > 0 ? carouselVariations.length : 0})
           </button>
           <button
             type="button"
             className={`${styles.modeBtn} ${carouselCategory === 'panorama' ? styles.modeBtnActive : ''}`}
             onClick={() => setCarouselCategory('panorama')}
           >
-            Seamless Panorama
+            Seamless Panorama ({panoramaCarouselPresets.length})
           </button>
         </div>
 
-        {/* Carousel Presets Grid */}
-        <div className={styles.gridList}>
-          {filteredCarouselPresets.map((preset) => {
-            const isSelected = selectedCarouselPresetId === preset.id;
-            const svg = preset.previewSvg(currentCarousel?.ratio || '1:1');
+        {/* Grid List */}
+        {carouselCategory === 'dynamic' ? (
+          carouselPhotos.length === 0 ? (
+            <div style={{ padding: '36px 16px', textAlign: 'center', color: '#94a3b8' }}>
+              <p style={{ margin: '0 0 8px', fontSize: 13, fontWeight: 600, color: '#f8fafc' }}>
+                No photos on active slide
+              </p>
+              <p style={{ margin: 0, fontSize: 12, lineHeight: 1.5 }}>
+                Drag photos from the filmstrip onto Slide {activeSlideIndex + 1} to generate dynamic studio layouts.
+              </p>
+            </div>
+          ) : (
+            <div className={styles.gridList}>
+              {carouselVariations.map((variation, idx) => {
+                const isCurrent = currentSlideVariationIndex === idx;
+                return (
+                  <AdaptiveVariationCardItem
+                    key={`carousel-dyn-${idx}-${variation.name}`}
+                    variation={variation}
+                    index={idx}
+                    totalCount={carouselVariations.length}
+                    isCurrent={isCurrent}
+                    totalW={slideW}
+                    totalH={slideH}
+                    spineX={-1}
+                    onSelect={(index, name) => {
+                      applyDynamicSlideLayoutByIndex(activeSlideIndex, index);
+                      if (onApplyToast) {
+                        onApplyToast(`Applied layout: ${name}`);
+                      }
+                    }}
+                  />
+                );
+              })}
+            </div>
+          )
+        ) : (
+          <div className={styles.gridList}>
+            {panoramaCarouselPresets.map((preset) => {
+              const isSelected = selectedCarouselPresetId === preset.id;
+              const svg = preset.previewSvg(currentCarousel?.ratio || '1:1');
 
-            return (
-              <div
-                key={preset.id}
-                className={`${styles.templateCard} ${isSelected ? styles.activeCard : ''}`}
-                onClick={() => handleApplyCarouselPreset(preset)}
-              >
+              return (
                 <div
-                  className={styles.svgWrapper}
-                  dangerouslySetInnerHTML={{ __html: svg }}
-                />
-                <div className={styles.cardMeta}>
-                  <span className={styles.templateTitle}>{preset.name}</span>
-                  <span className={styles.templateDesc}>{preset.description}</span>
-                  <div className={styles.tagRow}>
-                    <span className={styles.tagPill}>
-                      {preset.category === 'panorama' ? `Panorama (${preset.spanSlides} slides)` : 'Single Slide'}
-                    </span>
-                    <span
-                      className={styles.tagPill}
-                      style={{
-                        background: 'rgba(59, 130, 246, 0.15)',
-                        color: '#60a5fa',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {preset.minPhotos === preset.maxPhotos
-                        ? `${preset.minPhotos} ${preset.minPhotos === 1 ? 'photo' : 'photos'}`
-                        : `${preset.minPhotos}–${preset.maxPhotos} photos`}
-                    </span>
+                  key={preset.id}
+                  className={`${styles.templateCard} ${isSelected ? styles.activeCard : ''}`}
+                  onClick={() => handleApplyCarouselPreset(preset)}
+                >
+                  <div
+                    className={styles.svgWrapper}
+                    dangerouslySetInnerHTML={{ __html: svg }}
+                  />
+                  <div className={styles.cardMeta}>
+                    <span className={styles.templateTitle}>{preset.name}</span>
+                    <span className={styles.templateDesc}>{preset.description}</span>
+                    <div className={styles.tagRow}>
+                      <span className={styles.tagPill}>
+                        Panorama ({preset.spanSlides} slides)
+                      </span>
+                      <span
+                        className={styles.tagPill}
+                        style={{
+                          background: 'rgba(59, 130, 246, 0.15)',
+                          color: '#60a5fa',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {preset.minPhotos === preset.maxPhotos
+                          ? `${preset.minPhotos} ${preset.minPhotos === 1 ? 'photo' : 'photos'}`
+                          : `${preset.minPhotos}–${preset.maxPhotos} photos`}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   }

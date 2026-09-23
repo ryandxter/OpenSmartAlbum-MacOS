@@ -12,12 +12,15 @@ import {
   MIN_CAROUSEL_SLIDES,
 } from '../domain/carousel';
 import { CAROUSEL_LAYOUT_PRESETS, CarouselLayoutPhotoInput } from '../domain/carouselLayout';
+import { generateDynamicVariations } from '../domain/layout/generator';
+import { AdaptivePhoto } from '../domain/adaptiveLayout';
 
 export interface CarouselState {
   currentCarousel: Carousel | null;
   activeSlideIndex: number;
   showSliceGuides: boolean;
   selectedFrameId: string | null;
+  slideLayoutIndices: Record<number, number>;
 
   // Actions
   initializeCarousel: (projectId: string, ratio?: CarouselRatio, initialSlidesCount?: number) => void;
@@ -32,6 +35,8 @@ export interface CarouselState {
   addPhotoFrame: (slideIndex: number, frame: Omit<CarouselPhotoFrame, 'id'>) => void;
   updatePhotoFrame: (frameId: string, updates: Partial<CarouselPhotoFrame>) => void;
   removePhotoFrame: (frameId: string) => void;
+  cycleSlideLayout: (direction: 'next' | 'prev') => void;
+  applyDynamicSlideLayoutByIndex: (slideIndex: number, variationIndex: number) => void;
   applyCarouselLayout: (slideIndex: number, presetId: string, photos?: CarouselLayoutPhotoInput[]) => void;
   shuffleSlidePhotos: (slideIndex: number) => void;
   toggleSliceGuides: () => void;
@@ -43,6 +48,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
   activeSlideIndex: 0,
   showSliceGuides: true,
   selectedFrameId: null,
+  slideLayoutIndices: {},
 
   initializeCarousel: (projectId, ratio = '1:1', initialSlidesCount = 3) => {
     const carousel = createInitialCarousel(projectId, ratio, initialSlidesCount);
@@ -50,6 +56,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
       currentCarousel: carousel,
       activeSlideIndex: 0,
       selectedFrameId: null,
+      slideLayoutIndices: {},
     });
   },
 
@@ -255,6 +262,181 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     });
   },
 
+  cycleSlideLayout: (direction: 'next' | 'prev') => {
+    const { currentCarousel, activeSlideIndex, slideLayoutIndices } = get();
+    if (!currentCarousel) return;
+    const targetSlide = currentCarousel.slides[activeSlideIndex];
+    if (!targetSlide) return;
+
+    const activeFrames = targetSlide.elements.filter(
+      (el): el is CarouselPhotoFrame => el.type === 'photo' && Boolean(el.filePath)
+    );
+    if (activeFrames.length === 0) return;
+
+    const photos: AdaptivePhoto[] = activeFrames.map((f) => ({
+      id: f.id,
+      photoId: f.photoId,
+      filePath: f.filePath,
+      fileName: f.fileName,
+      previewPath: f.previewPath,
+      thumbnailPath: f.thumbnailPath,
+      photoAspect: f.photoAspect || (f.height > 0 ? f.width / f.height : 1.0),
+    }));
+
+    const variations = generateDynamicVariations(
+      {
+        containerWidth: currentCarousel.slideWidthPx,
+        containerHeight: currentCarousel.slideHeightPx,
+        spacing: 16,
+        isSpread: false,
+      },
+      photos
+    );
+
+    if (variations.length === 0) return;
+
+    const currentIndex = slideLayoutIndices[activeSlideIndex] ?? 0;
+    const nextIndex =
+      direction === 'next'
+        ? (currentIndex + 1) % variations.length
+        : (currentIndex - 1 + variations.length) % variations.length;
+
+    const chosen = variations[nextIndex] || variations[0];
+    if (!chosen) return;
+
+    const newPhotoElements: CarouselPhotoFrame[] = chosen.rects.map((rect, i) => {
+      const photoIdx =
+        chosen.photoAssignments && chosen.photoAssignments[i] !== undefined
+          ? chosen.photoAssignments[i]
+          : i;
+      const photo = photos[photoIdx] || photos[i] || photos[0];
+      return {
+        type: 'photo',
+        id: `frame-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 7)}`,
+        photoId: (photo && (photo.photoId || photo.id)) || `photo-${i}`,
+        filePath: (photo && photo.filePath) || '',
+        fileName: photo ? photo.fileName : undefined,
+        previewPath: photo ? photo.previewPath : undefined,
+        thumbnailPath: photo ? photo.thumbnailPath : undefined,
+        photoAspect: (photo && photo.photoAspect) || 1.0,
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+        cropX: 0,
+        cropY: 0,
+        cropScale: 1.0,
+      };
+    });
+
+    const nonPhotoElements = targetSlide.elements.filter((el) => el.type !== 'photo');
+
+    const updatedSlides = currentCarousel.slides.map((s, idx) =>
+      idx === activeSlideIndex
+        ? {
+            ...s,
+            elements: [...newPhotoElements, ...nonPhotoElements],
+          }
+        : s
+    );
+
+    set({
+      currentCarousel: {
+        ...currentCarousel,
+        slides: updatedSlides,
+      },
+      slideLayoutIndices: {
+        ...slideLayoutIndices,
+        [activeSlideIndex]: nextIndex,
+      },
+    });
+  },
+
+  applyDynamicSlideLayoutByIndex: (slideIndex: number, variationIndex: number) => {
+    const { currentCarousel, slideLayoutIndices } = get();
+    if (!currentCarousel) return;
+    const targetSlide = currentCarousel.slides[slideIndex];
+    if (!targetSlide) return;
+
+    const activeFrames = targetSlide.elements.filter(
+      (el): el is CarouselPhotoFrame => el.type === 'photo' && Boolean(el.filePath)
+    );
+    if (activeFrames.length === 0) return;
+
+    const photos: AdaptivePhoto[] = activeFrames.map((f) => ({
+      id: f.id,
+      photoId: f.photoId,
+      filePath: f.filePath,
+      fileName: f.fileName,
+      previewPath: f.previewPath,
+      thumbnailPath: f.thumbnailPath,
+      photoAspect: f.photoAspect || (f.height > 0 ? f.width / f.height : 1.0),
+    }));
+
+    const variations = generateDynamicVariations(
+      {
+        containerWidth: currentCarousel.slideWidthPx,
+        containerHeight: currentCarousel.slideHeightPx,
+        spacing: 16,
+        isSpread: false,
+      },
+      photos
+    );
+
+    if (variations.length === 0) return;
+    const clampedIndex = Math.max(0, Math.min(variations.length - 1, variationIndex));
+    const chosen = variations[clampedIndex] || variations[0];
+    if (!chosen) return;
+
+    const newPhotoElements: CarouselPhotoFrame[] = chosen.rects.map((rect, i) => {
+      const photoIdx =
+        chosen.photoAssignments && chosen.photoAssignments[i] !== undefined
+          ? chosen.photoAssignments[i]
+          : i;
+      const photo = photos[photoIdx] || photos[i] || photos[0];
+      return {
+        type: 'photo',
+        id: `frame-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 7)}`,
+        photoId: (photo && (photo.photoId || photo.id)) || `photo-${i}`,
+        filePath: (photo && photo.filePath) || '',
+        fileName: photo ? photo.fileName : undefined,
+        previewPath: photo ? photo.previewPath : undefined,
+        thumbnailPath: photo ? photo.thumbnailPath : undefined,
+        photoAspect: (photo && photo.photoAspect) || 1.0,
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+        cropX: 0,
+        cropY: 0,
+        cropScale: 1.0,
+      };
+    });
+
+    const nonPhotoElements = targetSlide.elements.filter((el) => el.type !== 'photo');
+
+    const updatedSlides = currentCarousel.slides.map((s, idx) =>
+      idx === slideIndex
+        ? {
+            ...s,
+            elements: [...newPhotoElements, ...nonPhotoElements],
+          }
+        : s
+    );
+
+    set({
+      currentCarousel: {
+        ...currentCarousel,
+        slides: updatedSlides,
+      },
+      slideLayoutIndices: {
+        ...slideLayoutIndices,
+        [slideIndex]: clampedIndex,
+      },
+      activeSlideIndex: slideIndex,
+    });
+  },
+
   applyCarouselLayout: (slideIndex, presetId, inputPhotos) => {
     const { currentCarousel } = get();
     if (!currentCarousel) return;
@@ -274,7 +456,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         const s = currentCarousel.slides[idx];
         if (s) {
           s.elements.forEach((el) => {
-            if (el.type === 'photo') {
+            if (el.type === 'photo' && el.filePath) {
               collected.push({
                 id: el.id,
                 photoId: el.photoId,
@@ -291,6 +473,14 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
       photosToUse = collected;
     }
 
+    if (photosToUse.length === 0) return;
+
+    // If preset is per_slide and photos exceed preset slots, dynamically layout all photos to prevent photo loss
+    if (preset.category === 'per_slide' && photosToUse.length > preset.maxPhotos) {
+      get().applyDynamicSlideLayoutByIndex(slideIndex, 0);
+      return;
+    }
+
     const generatedFrames = preset.generate({
       slideWidth: currentCarousel.slideWidthPx,
       slideHeight: currentCarousel.slideHeightPx,
@@ -301,7 +491,10 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
       margin: 40,
     });
 
-    const framesWithIds: CarouselPhotoFrame[] = generatedFrames.map((f, i) => ({
+    // Zero-Blank Guarantee: strictly filter out any frame lacking valid filePath
+    const validFrames = generatedFrames.filter((f) => Boolean(f.filePath));
+
+    const framesWithIds: CarouselPhotoFrame[] = validFrames.map((f, i) => ({
       ...f,
       id: `frame-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 7)}`,
     }));
@@ -313,11 +506,13 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
       spannedIndices.add(idx);
     }
 
+    const nonPhotoElements = targetSlide.elements.filter((el) => el.type !== 'photo');
+
     const updatedSlides = currentCarousel.slides.map((s, idx) => {
       if (idx === slideIndex) {
         return {
           ...s,
-          elements: framesWithIds,
+          elements: [...framesWithIds, ...nonPhotoElements],
         };
       }
       if (spannedIndices.has(idx)) {
