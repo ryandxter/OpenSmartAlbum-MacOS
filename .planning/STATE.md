@@ -2,47 +2,41 @@
 gsd_state_version: "1.0"
 milestone: v1.2.0
 milestone_name: Unlimited Studio Layout & Storytelling Engine
-status: planning
-last_updated: "2026-09-23T02:50:25.483Z"
+status: ready_to_plan
+last_updated: "2026-09-23T10:13:45.000Z"
 last_activity: 2026-09-23
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
-  total_plans: 0
+  total_plans: 8
   completed_plans: 0
   percent: 0
 ---
 
-# Project State: OpenSmartAlbum-MacOS Milestone v1.1.0
+# Project State: OpenSmartAlbum-MacOS Milestone v1.2.0
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` & `.planning/ROADMAP.md`
+See: `.planning/PROJECT.md`, `.planning/REQUIREMENTS.md` & `.planning/ROADMAP.md`
 
-**Core value:** High-performance, offline-first desktop photo layout and layered export with native macOS studio ergonomics, seamlessly supporting both physical print albums and modern social media carousels.
-**Current status:** Milestone v1.1.0 Completed (100% verification pass rate across all 4 phases)
+**Core value:** Unlimited generative studio layouting, non-destructive cycling, auto-flow multi-spread storytelling, and fluid in-canvas divider manipulation without photo loss or distortion.
+**Current status:** Research complete (4 dimensions + SUMMARY.md synthesized), REQUIREMENTS.md and ROADMAP.md defined. Ready to plan Phase 10.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-09-23 — Milestone v1.2.0 started
+Phase: Phase 10 (Dynamic Generative Layout Core & Non-Destructive Studio Cycling)
+Plan: Ready to plan (`/gsd-plan-phase 10`)
+Status: Ready to plan
+Last activity: 2026-09-23 — 4-dimension research synthesized and roadmap created.
 
-## Milestone v1.1.0 Phases Summary
+## Milestone v1.2.0 Phases
 
-| Phase | Status | Context | Plans | Deliverables | Verification |
-|---|---|---|---|---|---|
-| OSAM-06 Finder Drag-and-Drop Dual Ingestion | Complete | Done | 1/1 | Tauri dragDropEnabled, DropZoneHUD, Dual Ingestion routing | 100% PASS |
-| OSAM-07 Social Carousel Hybrid Layout & Photo Placement | Complete | Done | 1/1 | Carousel drag/drop, Double-click place, Panorama hybrid layouts | 100% PASS |
-| OSAM-08 Studio Layout Preview Contrast & Zero-Lag Shuffling | Complete | Done | 1/1 | High-contrast silhouette cards, Memoized aspect fingerprint | 100% PASS |
-| OSAM-09 Vector Shape Masking & In-Shape Crop Engine | Complete | Done | 1/1 | Context clipping, In-shape pan/zoom, Outline borders | 100% PASS |
-
-## Session Continuity
-
-Last session: 2026-09-23 05:20
-Stopped at: Completed forensics investigation FOR-20260923-01 (Filmstrip Ingestion Hang & Drag-and-Drop Placement Failure).
-Resume file: .planning/forensics/report-2026-09-23-0520.md
+| Phase | Status | Requirements | Plans | Target Deliverables |
+|---|---|---|---|---|
+| Phase 10: Dynamic Generative Layout Core | Not started | GEN-01..GEN-06 | 0/2 | Pure TS R-BSP engine, row/col normalizers, non-destructive Spacebar cycling, zero blanks |
+| Phase 11: Auto-Flow Storytelling Engine | Not started | FLOW-01..FLOW-05 | 0/2 | EXIF burst clustering, narrative pacing, Web Worker off-thread batch streaming, atomic undo |
+| Phase 12: Contextual Actions & Panorama Spans | Not started | CTX-01..CTX-04 | 0/2 | Right-click Full Bleed Spread, Seamless Carousel Span, Hero anchor rebalancing, spine clearance |
+| Phase 13: Interactive Divider Dragging & Swapping | Not started | DIV-01..DIV-05 | 0/2 | 60fps Konva divider dragging with RAF coalescing, direct photo swap, single undo entry |
 
 ## Accumulated Context
 
