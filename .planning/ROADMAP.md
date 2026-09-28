@@ -73,7 +73,9 @@
   2. The drag ghost badge remains within visible viewport bounds with non-interfering opacity (`opacity: 0.01`, `pointer-events: none`), preventing macOS WebKit snapshot clipping.
   3. Dropping $N$ photos onto a slide batches frame creation into a single state update with a single atomic undo/redo history entry (`Cmd+Z` undoes the entire placement).
   4. Filmstrip context menu (`PhotoContextMenu`) and card double-click actions detect `activeMode`, routing photo placement to the active slide in Carousel mode and to the active spread in Print Album mode with mode-appropriate labels.
-**Plans**: 0 plans
+**Plans**: 2 plans
+  - [x] 14-01: Canvas & WebKit Drag Interception, In-Bounds Ghost Badge & Slide Auto-Glide
+  - [x] 14-02: Atomic Store Batch Placement with R-BSP Reflow & Mode-Aware Context Routing
 
 #### Phase 15: Social Carousel Full SQLite & Package Persistence
 **Goal**: Implement SQLite schema tables and `.afsn` archive serialization for Social Carousel projects, dirty state tracking, and window close safeguards to eliminate carousel data loss.
@@ -122,7 +124,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17
 | 11. Auto-Flow Storytelling Engine | v1.2.0 | 2/2 | COMPLETED | 2026-09-28 |
 | 12. Contextual Actions & Panorama Spans | v1.2.0 | 2/2 | COMPLETED | 2026-09-28 |
 | 13. Interactive Divider Dragging & Swapping | v1.2.0 | 2/2 | COMPLETED | 2026-09-28 |
-| 14. Carousel Multi-Photo Drag & Context Routing | v1.3.0 | 0/0 | READY | — |
+| 14. Carousel Multi-Photo Drag & Context Routing | v1.3.0 | 0/2 | READY | — |
 | 15. Social Carousel SQLite & Package Persistence | v1.3.0 | 0/0 | PENDING | — |
 | 16. Workspace Isolation & Mode State Sync | v1.3.0 | 0/0 | PENDING | — |
 | 17. Vector Shape Mask Corner Radii & Fillets | v1.3.0 | 0/0 | PENDING | — |
