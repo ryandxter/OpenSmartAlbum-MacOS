@@ -1,45 +1,42 @@
-# Requirements: OpenSmartAlbum-MacOS (Milestone v1.2.0)
+# Requirements: OpenSmartAlbum-MacOS (Milestone v1.3.0)
 
-**Defined:** 2026-09-23
-**Core Value:** Unlimited generative studio layouting, non-destructive cycling, auto-flow multi-spread storytelling, and fluid in-canvas divider manipulation without photo loss or distortion.
+**Defined:** 2026-09-28
+**Core Value:** Solid workspace mode isolation, complete SQLite and package persistence for Social Carousel, resilient multi-photo drag-and-drop, and Figma-grade polygon corner radius fillets.
 
 ---
 
-## v1.2.0 Requirements
+## v1.3.0 Requirements
 
-Requirements for Milestone v1.2.0 release, derived from STACK, FEATURES, ARCHITECTURE, and PITFALLS research.
+Requirements for Milestone v1.3.0 release, derived from Forensics Post-Mortem, 6-Pillar UI Review, and Comprehensive Code Review.
 
-### Generative Geometric Layout Engine & Non-Destructive Cycling (GEN)
+### Carousel Canvas Drag-and-Drop & Filmstrip UX (CAR)
 
-- [x] **GEN-01**: Layout engine dynamically generates valid aspect-preserving partitions for any $N \in [1..15]$ photos without using static fixed-slot templates.
-- [x] **GEN-02**: Switching layout variations via `Spacebar` (next) and `Shift+Space` (previous) preserves all $N$ active photos (Zero-Loss Photo Pool Invariant).
-- [x] **GEN-03**: No empty or unpopulated placeholder frames (`filePath: ''`) are ever created during layout cycling (Zero-Blank Frame Guarantee).
-- [x] **GEN-04**: Optimal bipartite aspect-matching energy minimization ensures landscape photos match horizontal slots and portrait photos match vertical slots.
-- [x] **GEN-05**: Equal-height row normalization and equal-width column normalization align multi-photo strips with 0px rounding seams and proportional aspect-fill cover.
-- [x] **GEN-06**: Input disambiguation cleanly distinguishes single-tap `Spacebar` (cycle layout) from `Space + Drag` (canvas hand pan).
+- [ ] **CAR-01**: User can drag multiple selected photos (or batch handle) from Filmstrip onto `CarouselCanvas` (`.stageWrapper`) and have them reliably placed on the target slide without canvas blanking or WebKit drag cancellation.
+- [ ] **CAR-02**: Drag ghost badge (`#afsn-drag-ghost-badge`) is positioned within visible bounds with non-interfering opacity (`opacity: 0.01`, `pointer-events: none`), preventing macOS WebKit drag session cancellations.
+- [ ] **CAR-03**: Dropping $N$ photos onto a slide batches frame creation into a single state update with a single atomic undo/redo history entry.
+- [ ] **CAR-04**: Filmstrip context menu (`PhotoContextMenu`) and double-click actions detect `activeMode`, routing photo placement to the active slide in Carousel mode and to the active spread in Print Album mode.
 
-### Auto-Flow Multi-Spread/Slide Storytelling Engine (FLOW)
+### Social Carousel Persistence & Database Storage (PERS)
 
-- [x] **FLOW-01**: Dropping 10–50+ photos automatically groups and flows them across sequential spreads (Print Album) or slides (Social Carousel).
-- [x] **FLOW-02**: Photos are clustered into chronological narrative chapters using EXIF timestamp bursts (>5 min, >30 min gaps).
-- [x] **FLOW-03**: Narrative pacing heuristics balance visual cadence across spreads (mixing hero breathing moments with detailed multi-photo grids).
-- [x] **FLOW-04**: Heavy combinatorial layout calculations run off-the-main-thread asynchronously with chunked progress streaming to prevent UI freezes.
-- [x] **FLOW-05**: Multi-spread auto-flow mutations are wrapped in an atomic history transaction so the entire flow can be undone with a single `Cmd+Z`.
+- [ ] **PERS-01**: SQLite schema introduces tables/columns for carousel projects, persisting slides, photo frames, aspect ratios, slide order, and background colors.
+- [ ] **PERS-02**: Project save (`Cmd+S`, menu item, and autosave) saves both Print Album and Carousel state seamlessly without data loss.
+- [ ] **PERS-03**: Reopening an `.afsn` project or SQLite database fully restores all carousel slides, frame geometries, and customizations.
+- [ ] **PERS-04**: Carousel store tracks `isDirty` state, displaying correct save indicator status in the title bar and warning on unsaved window close.
 
-### Contextual Right-Click Studio Actions (CTX)
+### Workspace Isolation & Mode State Synchronization (ISO)
 
-- [ ] **CTX-01**: Right-clicking any photo in Print Album mode provides `Set as Full Bleed Spread (2-Page Panorama)`, expanding it across both pages while automatically reflowing remaining photos.
-- [ ] **CTX-02**: Right-clicking any photo in Social Carousel mode provides `Set as Seamless Panorama Span` (spanning 2 or 3 slides) with virtual split-line guides.
-- [ ] **CTX-03**: Right-clicking any photo provides `Set as Hero / Anchor Photo`, assigning it the dominant partition slot while recalculating remaining slots.
-- [ ] **CTX-04**: Spanning panorama photos enforce print lab spine clearance zones ($X_{\text{spine}} \pm 0.75\text{ in}$) to protect faces from gutter binding.
+- [ ] **ISO-01**: Elevate `activeMode` (`'print' | 'carousel'`) to global `appStore` with auto-detection on project open based on canvas unit (`px` vs `mm/in`).
+- [ ] **ISO-02**: Viewport zoom and pan state are cleanly isolated (`printZoom` vs `carouselZoom`), preventing accidental scale jumps when switching modes.
+- [ ] **ISO-03**: Title bar controls (Undo/Redo, "Add Text", Export) and keyboard shortcuts dispatch strictly to the active mode's store.
+- [ ] **ISO-04**: Reordering, deleting, or duplicating slides in `carouselStore` automatically recalculates and shifts contained frames' absolute `x` coordinates, preventing frame detachment.
+- [ ] **ISO-05**: Dynamic layout cycling and auto-flow in Carousel mode preserve frame border styling and shape masks instead of stripping them.
 
-### Interactive In-Canvas Divider Dragging & Direct Swapping (DIV)
+### Vector Shape Mask Corner Radii & Polygon Tangent Fillets (VEC)
 
-- [ ] **DIV-01**: Konva canvas renders interactive divider guideline hit-areas between adjacent photo frames on hover/selection.
-- [ ] **DIV-02**: Dragging a divider line recalculates adjacent slot dimensions smoothly in real-time at 60fps using imperative Konva node manipulation and RAF coalescing (zero React state updates during drag).
-- [ ] **DIV-03**: Dragging clamps partition split ratios between 0.15 and 0.85 with minimum dimension enforcement ($W_{\min}, H_{\min} \ge 1.0\text{ in}$) to prevent aspect collapse.
-- [ ] **DIV-04**: In-canvas drag-and-drop of one photo onto another swaps their slot assignments while preserving proportional aspect-fill framing and normalized focal points.
-- [ ] **DIV-05**: Releasing the divider commits final geometry to store and records exactly one undo/redo history entry.
+- [ ] **VEC-01**: Inspector's `ShapesBordersSection` displays Corner Radius slider and individual corner inputs for all polygon shapes (Hexagon, Octagon, Star, Scallop, Heart), removing the artificial rectangle-only restriction.
+- [ ] **VEC-02**: Implement mathematical vertex tangent fillet arc algorithm (`c.arcTo` in Canvas 2D and quadratic bezier/arc in SVG) in `src/domain/shapes.ts` to smoothly round polygon and star vertices.
+- [ ] **VEC-03**: Custom SVG shape upload normalizes viewBox dimensions and handles multi-path clipping groups properly.
+- [ ] **VEC-04**: Oval shape preset is added to the UI button presets in `ShapesBordersSection.tsx` with full contour and crop support.
 
 ---
 
@@ -66,32 +63,29 @@ Requirements for Milestone v1.2.0 release, derived from STACK, FEATURES, ARCHITE
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| GEN-01 | Phase 10 | Pending |
-| GEN-02 | Phase 10 | Pending |
-| GEN-03 | Phase 10 | Pending |
-| GEN-04 | Phase 10 | Pending |
-| GEN-05 | Phase 10 | Pending |
-| GEN-06 | Phase 10 | Pending |
-| FLOW-01 | Phase 11 | Pending |
-| FLOW-02 | Phase 11 | Pending |
-| FLOW-03 | Phase 11 | Pending |
-| FLOW-04 | Phase 11 | Pending |
-| FLOW-05 | Phase 11 | Pending |
-| CTX-01 | Phase 12 | Pending |
-| CTX-02 | Phase 12 | Pending |
-| CTX-03 | Phase 12 | Pending |
-| CTX-04 | Phase 12 | Pending |
-| DIV-01 | Phase 13 | Pending |
-| DIV-02 | Phase 13 | Pending |
-| DIV-03 | Phase 13 | Pending |
-| DIV-04 | Phase 13 | Pending |
-| DIV-05 | Phase 13 | Pending |
+| CAR-01 | Phase 14 | Pending |
+| CAR-02 | Phase 14 | Pending |
+| CAR-03 | Phase 14 | Pending |
+| CAR-04 | Phase 14 | Pending |
+| PERS-01 | Phase 15 | Pending |
+| PERS-02 | Phase 15 | Pending |
+| PERS-03 | Phase 15 | Pending |
+| PERS-04 | Phase 15 | Pending |
+| ISO-01 | Phase 16 | Pending |
+| ISO-02 | Phase 16 | Pending |
+| ISO-03 | Phase 16 | Pending |
+| ISO-04 | Phase 16 | Pending |
+| ISO-05 | Phase 16 | Pending |
+| VEC-01 | Phase 17 | Pending |
+| VEC-02 | Phase 17 | Pending |
+| VEC-03 | Phase 17 | Pending |
+| VEC-04 | Phase 17 | Pending |
 
 **Coverage:**
-- v1.2.0 requirements: 20 total
-- Mapped to phases: 20
+- v1.3.0 requirements: 17 total
+- Mapped to phases: 17
 - Unmapped: 0 ✓
 
 ---
-*Requirements defined: 2026-09-23*
+*Requirements defined: 2026-09-28*
 *Ready for roadmap generation*
