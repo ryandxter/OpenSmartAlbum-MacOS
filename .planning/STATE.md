@@ -1,16 +1,16 @@
 ---
 gsd_state_version: "1.0"
-milestone: v1.2.0
-milestone_name: Unlimited Studio Layout & Storytelling Engine
-status: completed
-last_updated: "2026-09-23T13:20:00.000Z"
-last_activity: 2026-09-23
+milestone: v1.3.0
+milestone_name: Workspace Isolation, Carousel Persistence & Vector Shape Polish
+status: planning
+last_updated: "2026-09-28T15:40:18.735Z"
+last_activity: 2026-09-28
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 10
-  completed_plans: 10
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State: OpenSmartAlbum-MacOS Milestone v1.2.0
@@ -24,10 +24,10 @@ See: `.planning/PROJECT.md`, `.planning/REQUIREMENTS.md` & `.planning/ROADMAP.md
 
 ## Current Position
 
-Phase: COMPLETE — All 4 phases of v1.2.0 done
-Plan: 10/10 plans executed and verified
-Status: Milestone complete — awaiting `/gsd-audit-fix` sweep
-Last activity: 2026-09-23 — Phase 13 complete: interactive divider dragging (60fps RAF), cyan swap ring, DividerOverlayLayer in both canvases.
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-09-28 — Milestone v1.3.0 started
 
 ## Milestone v1.2.0 Phases
 
