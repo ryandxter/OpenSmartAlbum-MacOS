@@ -18,7 +18,6 @@ import { useAlbumStore } from '../../stores/albumStore';
 import { useEditorStore } from '../../stores/editorStore';
 import { useCarouselStore } from '../../stores/carouselStore';
 import { getAllAlbumSpreads } from '../../domain/album';
-import { getSlideXOffset } from '../../domain/carousel';
 import { filterPhotos, sortPhotos, formatFileSize, PhotoSortBy, Photo } from '../../domain/photo';
 import { FolderTabs } from './FolderTabs';
 import { BatchActionBar } from './BatchActionBar';
@@ -743,40 +742,21 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
                     onClick={(e) => handleCardClick(e, photo)}
                     onDoubleClick={() => {
                       if (activeMode === 'carousel') {
-                        const { currentCarousel, activeSlideIndex, addPhotoFrame } = useCarouselStore.getState();
+                        const { currentCarousel, activeSlideIndex, selectedFrameId, addPhotoFrames } = useCarouselStore.getState();
                         if (!currentCarousel) return;
                         const targetSlide = currentCarousel.slides[activeSlideIndex] || currentCarousel.slides[0];
                         if (!targetSlide) return;
                         const slideIdx = targetSlide.slideIndex;
-                        const slideW = currentCarousel.slideWidthPx;
-                        const slideH = currentCarousel.slideHeightPx;
-                        const slideStartX = getSlideXOffset(currentCarousel, slideIdx);
 
-                        const aspect = photo.width && photo.height ? photo.width / photo.height : 1.0;
-                        const maxW = slideW * 0.8;
-                        const maxH = slideH * 0.8;
-                        let frameW = maxW;
-                        let frameH = maxW / aspect;
-                        if (frameH > maxH) {
-                          frameH = maxH;
-                          frameW = maxH * aspect;
+                        const isSelectedFrameOnSlide = selectedFrameId
+                          ? targetSlide.elements.some((el) => el.id === selectedFrameId && el.type === 'photo')
+                          : false;
+
+                        if (isSelectedFrameOnSlide && selectedFrameId) {
+                          addPhotoFrames(slideIdx, [photo], { targetFrameId: selectedFrameId, isReplace: true });
+                        } else {
+                          addPhotoFrames(slideIdx, [photo]);
                         }
-                        const posX = slideStartX + (slideW - frameW) / 2;
-                        const posY = (slideH - frameH) / 2;
-
-                        addPhotoFrame(slideIdx, {
-                          type: 'photo',
-                          photoId: photo.id,
-                          filePath: photo.filePath,
-                          fileName: photo.fileName,
-                          previewPath: photo.previewPath || undefined,
-                          thumbnailPath: photo.thumbnailPath || undefined,
-                          photoAspect: aspect,
-                          x: Math.round(posX),
-                          y: Math.round(posY),
-                          width: Math.round(frameW),
-                          height: Math.round(frameH),
-                        });
 
                         usePhotoStore.setState((s) => ({
                           photos: s.photos.map((p) => (p.id === photo.id ? { ...p, usedCount: (p.usedCount || 0) + 1 } : p)),
