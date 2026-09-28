@@ -1,12 +1,33 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v1.2.0",
-  "phases": [],
+  "milestone": "v1.3.0",
+  "phases": [
+    {
+      "number": "10",
+      "name": "Dynamic Generative Layout Core",
+      "status": "pending"
+    },
+    {
+      "number": "11",
+      "name": "Auto-Flow Storytelling Engine",
+      "status": "pending"
+    },
+    {
+      "number": "12",
+      "name": "Contextual Actions & Panorama Spans",
+      "status": "pending"
+    },
+    {
+      "number": "13",
+      "name": "Interactive Divider Dragging & Swapping",
+      "status": "pending"
+    }
+  ],
   "next": {
     "command": "/gsd-discuss-phase",
     "label": "Discuss the first phase",
     "reason": "Project initialized — plan your first phase"
   },
-  "updated_at": "2026-09-23T02:50:25.486Z"
+  "updated_at": "2026-09-28T15:40:18.738Z"
 }
