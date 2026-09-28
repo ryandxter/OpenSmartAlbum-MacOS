@@ -4,14 +4,15 @@
 
 - ✅ **v1.0 MVP** - Foundation & Studio Canvas Core (Phases 01-05, Shipped)
 - ✅ **v1.1 Core Workflow Hardening** - Ingestion, Hybrid Carousel & Vector Shapes (Phases 06-09, Shipped 2026-09-23)
-- 🚧 **v1.2.0 Unlimited Studio Layout & Storytelling Engine** - Phases 10-13 (Active)
+- ✅ **v1.2.0 Unlimited Studio Layout & Storytelling Engine** - Phases 10-13 (Shipped 2026-09-28)
+- 🚧 **v1.3.0 Workspace Isolation, Carousel Persistence & Vector Shape Polish** - Phases 14-17 (Active)
 
 ---
 
 ## Phases
 
 <details>
-<summary>✅ v1.0 & v1.1 Completed Milestones (Phases 01-09) - SHIPPED</summary>
+<summary>✅ Shipped Milestones (Phases 01-13) - COMPLETED</summary>
 
 ### Phase 01: Core Architecture & Canvas Foundation
 - [x] 01-01: Tauri + Vite + React 18 Canvas Foundation
@@ -40,92 +41,92 @@
 ### Phase 09: Vector Shape Masking & In-Shape Crop Engine
 - [x] 09-01: Pure Canvas 2D path clipping, 1:1 centering, and contour vector borders
 
+### Phase 10: Dynamic Generative Layout Core & Non-Destructive Studio Cycling
+- [x] 10-01: Pure TS R-BSP engine, row/col normalizers, non-destructive Spacebar cycling, zero blanks
+
+### Phase 11: Auto-Flow Multi-Spread Storytelling Engine
+- [x] 11-01: Chronological EXIF burst clustering, narrative pacing heuristics, and asynchronous streaming
+- [x] 11-02: Canvas drop ingestion handler, batch action toolbar, atomic history transaction wrapper
+
+### Phase 12: Contextual Right-Click Studio Actions & Panorama Span Engine
+- [x] 12-01: Right-click studio actions menu, photo prominence rebalancing, spine exclusion
+- [x] 12-02: Seamless carousel panorama span engine, virtual cut lines, export slicing
+
+### Phase 13: Interactive In-Canvas Divider Dragging & Direct Photo Swapping
+- [x] 13-01: Konva divider guideline layer, 60fps RAF dragging, min/max split clamping
+- [x] 13-02: In-canvas direct photo swapping with visual hover rings, single-undo history commit
+
 </details>
 
 ---
 
-### 🚧 Milestone v1.2.0: Unlimited Studio Layout & Storytelling Engine (In Progress)
+### 🚧 Milestone v1.3.0: Workspace Isolation, Carousel Persistence & Vector Shape Polish (In Progress)
 
-**Milestone Goal:** Transform OpenSmartAlbum into an intelligent, generative studio layout and storytelling platform inspired by Pixellu SmartAlbums and Fundy Designer. Eliminates all static preset photo loss and phantom blanks, introduces automatic multi-spread batch ingestion, contextual panorama spans, and 60fps in-canvas divider dragging.
+**Milestone Goal:** Menghadirkan isolasi workspace Print Album vs Social Carousel yang solid, persistensi penuh Carousel ke SQLite dan `.afsn`, keandalan drag-and-drop batch multi-foto tanpa blank frame, perbaikan perutean context menu/double-click, serta fillet corner radius pada seluruh vector shape masks.
 
-#### Phase 10: Dynamic Generative Layout Core & Non-Destructive Studio Cycling
-**Goal**: Implement a pure TypeScript geometric partitioner and aspect-matching engine. Generate valid, aspect-preserving layouts for any $N \in [1..15]$ photos without static templates; provide non-destructive `Spacebar` / `Shift+Space` layout cycling with zero photo dropping and zero blank frames.
-**Depends on**: Phase 08, Phase 09
-**Requirements**: GEN-01, GEN-02, GEN-03, GEN-04, GEN-05, GEN-06
+#### Phase 14: Carousel Canvas Multi-Photo Drag-and-Drop & Filmstrip Context Routing
+**Goal**: Resolve WebKit drag session cancellations and coordinate desync during Filmstrip drags to Carousel Canvas; ensure atomic single-step history commits for batch drops and mode-aware context menu/double-click routing.
+**Depends on**: Phase 13
+**Requirements**: CAR-01, CAR-02, CAR-03, CAR-04
 **Success Criteria** (what must be TRUE):
-  1. Pressing `Spacebar` or clicking "Next Layout" cycles through dozens of mathematically valid aspect-preserving layouts for the exact $N$ active photos without dropping any photos.
-  2. Switching layout variations never renders an unpopulated or blank/black placeholder frame (`filePath: ''`).
-  3. Photos maintain proportional aspect-fill cover fit with zero geometric distortion or stretching across all aspect variations.
-  4. Equal-height row normalization and equal-width column normalization eliminate sub-pixel gaps between adjacent photos.
-  5. Single-tap `Spacebar` (cycle layout) is cleanly disambiguated from `Space + Drag` (canvas hand pan).
-**Plans**: 3 plans (Completed)
+  1. Dragging 1 to 10+ selected photos (or using the batch drag handle) from Filmstrip Tray onto Carousel Canvas reliably places all photos onto the targeted slide without canvas blanking or WebKit drag cancellation.
+  2. The drag ghost badge remains within visible viewport bounds with non-interfering opacity (`opacity: 0.01`, `pointer-events: none`), preventing macOS WebKit snapshot clipping.
+  3. Dropping $N$ photos onto a slide batches frame creation into a single state update with a single atomic undo/redo history entry (`Cmd+Z` undoes the entire placement).
+  4. Filmstrip context menu (`PhotoContextMenu`) and card double-click actions detect `activeMode`, routing photo placement to the active slide in Carousel mode and to the active spread in Print Album mode with mode-appropriate labels.
+**Plans**: 0 plans
 
-Plans:
-- [x] 10-01: Implement pure TypeScript R-BSP partitioning, row/column normalizers, and bipartite aspect-matching solver in `src/domain/layout/`.
-- [x] 10-02: Eliminate destructive template application in Social Carousel mode; implement non-destructive `cycleSlideLayout` in `carouselStore.ts` and dynamic variation cards in `TemplatesPanel.tsx`.
-- [x] 10-03: Implement non-destructive layout cycling in `editorStore.ts` and `albumStore.ts`, remove competing keydown listeners in `LayoutCycleHUD.tsx`, and establish authoritative Spacebar tap-vs-pan disambiguation in `WorkspaceLayout.tsx`.
-
-#### Phase 11: Auto-Flow Multi-Spread Storytelling Engine
-**Goal**: Ingest 10–50+ photos in a single batch, automatically cluster them into narrative chapters using EXIF timestamp bursts, and flow them across sequential spreads or slides with balanced visual cadence.
-**Depends on**: Phase 10
-**Requirements**: FLOW-01, FLOW-02, FLOW-03, FLOW-04, FLOW-05
+#### Phase 15: Social Carousel Full SQLite & Package Persistence
+**Goal**: Implement SQLite schema tables and `.afsn` archive serialization for Social Carousel projects, dirty state tracking, and window close safeguards to eliminate carousel data loss.
+**Depends on**: Phase 14
+**Requirements**: PERS-01, PERS-02, PERS-03, PERS-04
 **Success Criteria** (what must be TRUE):
-  1. Dropping 10–50 photos onto the canvas auto-generates multiple sequential spreads (Print Album) or slides (Carousel) with optimal photo distribution (2–5 photos per spread).
-  2. Photos taken closely in time (>5 min, >30 min gaps) cluster together in the same spread/chapter without unnatural fragmentation.
-  3. Visual cadence alternates between breathing hero moments (1–2 photos) and detailed action moments (3–5 photos).
-  4. Off-thread Web Worker (`layoutEngine.worker.ts`) processes batch combinatorial optimization without dropping frames or freezing the macOS UI.
-  5. An entire 10-spread auto-flow action can be undone with a single `Cmd+Z` atomic transaction.
-**Plans**: 2 plans (Completed)
+  1. Triggering `Cmd+S`, "File > Save", or background autosave persists all carousel slides, photo frames, aspect ratio, custom backgrounds, and slide order into SQLite and the `.afsn` project archive.
+  2. Closing and reopening an `.afsn` project or restarting the application fully restores the complete carousel layout, frame positions, crop geometry, and customizations without data loss.
+  3. Modifying any carousel slide or frame marks the project as dirty, updating the title bar status indicator to amber ("Unsaved Changes"), and clearing back to green upon saving.
+  4. Attempting to close the window or quit the app with unsaved carousel modifications displays the native macOS unsaved changes confirmation dialog.
+**Plans**: 0 plans
 
-Plans:
-- [x] 11-01: Implement chronological EXIF burst clustering, narrative pacing heuristics, and asynchronous streaming pipeline.
-- [x] 11-02: Implement multi-spread auto-flow canvas drop handler, batch action toolbar integration, and atomic history transaction wrapper.
-
-#### Phase 12: Contextual Right-Click Studio Actions & Panorama Span Engine
-**Goal**: Enable contextual right-click studio commands on any photo to promote it as a full-bleed spread, seamless panorama span, or hero anchor, dynamically rebalancing remaining photos while honoring spine gutters.
-**Depends on**: Phase 10
-**Requirements**: CTX-01, CTX-02, CTX-03, CTX-04
+#### Phase 16: Workspace Isolation & Mode State Synchronization
+**Goal**: Establish clean workspace isolation between Print Album and Social Carousel environments by hoisting `activeMode` to global state, isolating zoom levels, mode-guarding title bar controls and keyboard shortcuts, and preventing frame coordinate detachment during slide reordering or layout cycling.
+**Depends on**: Phase 15
+**Requirements**: ISO-01, ISO-02, ISO-03, ISO-04, ISO-05
 **Success Criteria** (what must be TRUE):
-  1. Right-clicking any photo in Print Album mode provides `Set as Full Bleed Spread (2-Page Panorama)`, expanding it across both pages and automatically reflowing other photos to adjacent spreads.
-  2. Right-clicking any photo in Social Carousel mode provides `Set as Seamless Panorama Span` across 2 or 3 slides with virtual split cut guides.
-  3. Right-clicking any photo provides `Set as Hero / Anchor Photo`, giving it dominant layout weighting while re-partitioning remaining slots.
-  4. Print album panoramas respect print lab safe spine exclusion zones ($X_{\text{spine}} \pm 0.75\text{ in}$) to protect faces from the binding seam.
-**Plans**: 2 plans
+  1. Opening a project auto-selects the appropriate workspace mode based on project configuration (`canvas.unit === 'px'` activates Carousel mode, physical units activate Print mode), with `activeMode` globally available across all components.
+  2. Switching back and forth between Print Album and Social Carousel preserves each mode's individual viewport zoom level and pan coordinates without scaling jumps (`printZoom` vs `carouselZoom`).
+  3. Title bar controls (Undo/Redo, "Add Text", Export) and single-key shortcuts (`T`, `L`, `G`, `P`) dispatch strictly to the active mode's store, preventing silent mutations on background spreads.
+  4. Reordering, duplicating, or deleting slides in `carouselStore` automatically recalculates and shifts contained frames' absolute `x` coordinates, keeping photo frames attached to their respective slides.
+  5. Cycling layouts (`Spacebar`) or applying auto-flow on carousel slides preserves custom frame borders, corner radii, and vector shape masks.
+**Plans**: 0 plans
 
-Plans:
-- [x] 12-01: Implement contextual right-click studio menu and photo prominence rebalancing engine in `src/domain/layout/` and canvas components.
-- [x] 12-02: Implement multi-slide seamless panorama spanning with virtual cut lines, spine gutter clearance, and export slicing support.
-
-#### Phase 13: Interactive In-Canvas Divider Dragging & Direct Photo Swapping
-**Goal**: Allow real-time dragging of partition divider lines between photos at 60fps using imperative Konva node manipulation, and enable direct drag-and-drop photo swapping between frames.
-**Depends on**: Phase 10, Phase 12
-**Requirements**: DIV-01, DIV-02, DIV-03, DIV-04, DIV-05
+#### Phase 17: Vector Shape Mask Corner Radii & Polygon Tangent Fillets
+**Goal**: Implement mathematical vertex tangent fillet arcs for smooth corner rounding on all polygon and star shapes in Canvas 2D and SVG, unlock Inspector corner radius controls for all shapes, normalize custom SVG viewBox dimensions, and expose the Oval shape preset.
+**Depends on**: Phase 16
+**Requirements**: VEC-01, VEC-02, VEC-03, VEC-04
 **Success Criteria** (what must be TRUE):
-  1. Hovering between adjacent photo frames highlights interactive divider guide lines with appropriate cursor feedback (`col-resize` / `row-resize`).
-  2. Dragging a divider line recalculates adjacent frame dimensions smoothly at 60fps without React virtual DOM lag or frame drops.
-  3. Drag gestures enforce min/max split clamping (0.15–0.85, $\ge 1.0\text{ in}$) to prevent layout collapse.
-  4. Dragging a photo directly onto another frame in the canvas swaps their positions while preserving aspect-fill cover and normalized focal points.
-  5. Divider release commits final geometry to store as exactly one undo/redo history entry.
-**Plans**: 2 plans
-
-Plans:
-- [ ] 13-01: Implement Konva divider guideline layer, hit-testing, imperative ref dragging with RAF coalescing, and split-ratio clamping.
-- [ ] 13-02: Implement in-canvas direct photo swapping with visual hover rings, focal point preservation, and atomic history integration.
+  1. Selecting any polygon shape preset (Hexagon, Octagon, Star, Scallop, Heart) in the Inspector displays active Corner Radius slider and numeric input controls, removing the rectangle-only restriction.
+  2. Adjusting corner radius on polygons and stars computes smooth mathematical vertex fillet curves (`c.arcTo` in Canvas 2D and quadratic bezier/arc in SVG) in `src/domain/shapes.ts` rather than sharp, unrounded vertices.
+  3. Uploading a custom SVG vector mask automatically normalizes `viewBox` coordinates and dimensions, fitting the mask properly to the photo frame aspect ratio without clipping groups failing.
+  4. The Inspector's shape preset grid provides an "Oval" button alongside Circle that applies an elliptical vector mask with full contour border and pan/zoom crop support.
+**Plans**: 0 plans
 
 ---
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 10 → 11 → 12 → 13
+Phases execute in numeric order: 14 → 15 → 16 → 17
 
 | Phase | Milestone | Plans Complete | Status | Completed |
-|-------|-----------|----------------|--------|-----------|
-| 10. Dynamic Generative Layout Core | v1.2.0 | 2/2 | COMPLETED | 2026-09-23 |
-| 11. Auto-Flow Storytelling Engine | v1.2.0 | 2/2 | COMPLETED | 2026-09-23 |
-| 12. Contextual Actions & Panorama Spans | v1.2.0 | 2/2 | COMPLETED | 2026-09-23 |
-| 13. Interactive Divider Dragging & Swapping | v1.2.0 | 2/2 | COMPLETED | 2026-09-23 |
+|---|---|---|---|---|
+| 10. Dynamic Generative Layout Core | v1.2.0 | 3/3 | COMPLETED | 2026-09-28 |
+| 11. Auto-Flow Storytelling Engine | v1.2.0 | 2/2 | COMPLETED | 2026-09-28 |
+| 12. Contextual Actions & Panorama Spans | v1.2.0 | 2/2 | COMPLETED | 2026-09-28 |
+| 13. Interactive Divider Dragging & Swapping | v1.2.0 | 2/2 | COMPLETED | 2026-09-28 |
+| 14. Carousel Multi-Photo Drag & Context Routing | v1.3.0 | 0/0 | READY | — |
+| 15. Social Carousel SQLite & Package Persistence | v1.3.0 | 0/0 | PENDING | — |
+| 16. Workspace Isolation & Mode State Sync | v1.3.0 | 0/0 | PENDING | — |
+| 17. Vector Shape Mask Corner Radii & Fillets | v1.3.0 | 0/0 | PENDING | — |
 
 ---
-*Roadmap generated: 2026-09-23*
-*Milestone: v1.2.0 Unlimited Studio Layout & Storytelling Engine*
+*Roadmap generated: 2026-09-28*
+*Milestone: v1.3.0 Workspace Isolation, Carousel Persistence & Vector Shape Polish*
