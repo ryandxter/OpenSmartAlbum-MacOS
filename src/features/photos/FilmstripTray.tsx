@@ -24,6 +24,7 @@ import { FolderTabs } from './FolderTabs';
 import { BatchActionBar } from './BatchActionBar';
 import { FolderDialog } from './FolderDialog';
 import { PhotoContextMenu } from './PhotoContextMenu';
+import { setInBoundsDragGhostBadge, cleanupDragGhostBadge } from './dragGhostBadge';
 import styles from './FilmstripTray.module.css';
 
 export interface FilmstripTrayProps {
@@ -366,30 +367,9 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
     e.dataTransfer.setData('text/plain', ids.join(','));
     e.dataTransfer.effectAllowed = 'copyMove';
 
-    // Safe WebKit Drag Image: Must use DOM-attached element to prevent drag session cancellation
-    try {
-      let badge = document.getElementById('afsn-drag-ghost-badge');
-      if (!badge) {
-        badge = document.createElement('div');
-        badge.id = 'afsn-drag-ghost-badge';
-        badge.style.position = 'fixed';
-        badge.style.top = '-1000px';
-        badge.style.left = '-1000px';
-        badge.style.padding = '6px 12px';
-        badge.style.background = '#0f172a';
-        badge.style.color = '#38bdf8';
-        badge.style.border = '1px solid #38bdf8';
-        badge.style.borderRadius = '6px';
-        badge.style.fontWeight = 'bold';
-        badge.style.fontSize = '12px';
-        badge.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5)';
-        badge.style.pointerEvents = 'none';
-        badge.style.zIndex = '999999';
-        document.body.appendChild(badge);
-      }
-      badge.textContent = ids.length > 1 ? `📁 ${ids.length} Photos Selected` : photo.fileName;
-      e.dataTransfer.setDragImage(badge, 20, 16);
-    } catch {}
+    // Safe WebKit Drag Image: Must use DOM-attached in-bounds element to prevent drag session cancellation
+    const badgeLabel = ids.length > 1 ? `📁 ${ids.length} Photos Selected` : photo.fileName;
+    setInBoundsDragGhostBadge(badgeLabel, e);
   };
 
   // Execute Photo Deletion after ConfirmDialog
@@ -822,9 +802,7 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
                       handleCardDragStart(e, photo);
                     }}
                     onDragEnd={() => {
-                      setTimeout(() => {
-                        usePhotoStore.setState({ draggedPhotoIds: [] });
-                      }, 400);
+                      cleanupDragGhostBadge();
                     }}
                     title={
                       isUsed

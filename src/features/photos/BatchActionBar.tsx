@@ -16,6 +16,7 @@ import { usePhotoStore } from '../../stores/photoStore';
 import { useProjectStore } from '../../stores/projectStore';
 import { useAlbumStore } from '../../stores/albumStore';
 import { useCarouselStore } from '../../stores/carouselStore';
+import { setInBoundsDragGhostBadge, cleanupDragGhostBadge } from './dragGhostBadge';
 import styles from './BatchActionBar.module.css';
 
 export interface BatchActionBarProps {
@@ -106,34 +107,10 @@ export function BatchActionBar({ onRequestDelete, activeMode = 'print' }: BatchA
               e.dataTransfer.setData('application/json', JSON.stringify(ids));
               e.dataTransfer.setData('text/plain', ids.join(','));
               e.dataTransfer.effectAllowed = 'copyMove';
-              try {
-                let badge = document.getElementById('afsn-drag-ghost-badge');
-                if (!badge) {
-                  badge = document.createElement('div');
-                  badge.id = 'afsn-drag-ghost-badge';
-                  badge.style.position = 'fixed';
-                  badge.style.top = '-1000px';
-                  badge.style.left = '-1000px';
-                  badge.style.padding = '6px 12px';
-                  badge.style.background = '#0f172a';
-                  badge.style.color = '#38bdf8';
-                  badge.style.border = '1px solid #38bdf8';
-                  badge.style.borderRadius = '6px';
-                  badge.style.fontWeight = 'bold';
-                  badge.style.fontSize = '12px';
-                  badge.style.boxShadow = '0 4px 12px rgba(0,0,0,0.5)';
-                  badge.style.pointerEvents = 'none';
-                  badge.style.zIndex = '999999';
-                  document.body.appendChild(badge);
-                }
-                badge.textContent = `📁 ${ids.length} Photos Selected`;
-                e.dataTransfer.setDragImage(badge, 20, 16);
-              } catch {}
+              setInBoundsDragGhostBadge(`📁 ${ids.length} Photos Selected`, e);
             }}
             onDragEnd={() => {
-              setTimeout(() => {
-                usePhotoStore.setState({ draggedPhotoIds: [] });
-              }, 400);
+              cleanupDragGhostBadge();
             }}
             title="Click and drag to drop all selected photos onto slide or spread"
           >
