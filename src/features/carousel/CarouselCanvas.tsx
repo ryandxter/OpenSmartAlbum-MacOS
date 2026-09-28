@@ -304,17 +304,88 @@ export function CarouselCanvas({
   }>({ isOpen: false, x: 0, y: 0, frameId: null });
 
   const [hoveredDropSlideIndex, setHoveredDropSlideIndex] = useState<number | null>(null);
+  const [hoveredDropReplaceFrameId, setHoveredDropReplaceFrameId] = useState<string | null>(null);
   const [containerSize, setContainerSize] = useState({ width: 1200, height: 800 });
   const [stagePos, setStagePos] = useState({ x: 40, y: 40 });
+  const stagePosRef = useRef(stagePos);
+  stagePosRef.current = stagePos;
+  const panAnimationRef = useRef<number | null>(null);
   const [isSpacePanning, setIsSpacePanning] = useState(false);
   const [isMouseDown, setIsMouseDown] = useState(false);
   const dragStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  const cancelSmoothPan = useCallback(() => {
+    if (panAnimationRef.current !== null) {
+      cancelAnimationFrame(panAnimationRef.current);
+      panAnimationRef.current = null;
+    }
+  }, []);
+
+  // Cleanup smooth pan RAF on unmount
+  useEffect(() => {
+    return () => {
+      cancelSmoothPan();
+    };
+  }, [cancelSmoothPan]);
 
   const totalWidth = currentCarousel ? getCarouselTotalWidth(currentCarousel) : 1080;
   const totalHeight = currentCarousel?.slideHeightPx ?? 1080;
   const slideWidth = currentCarousel?.slideWidthPx ?? 1080;
 
   const scale = zoomLevel / 100;
+
+  /**
+   * Cancelable 60fps RAF smooth panning using easeOutCubic curve.
+   * Viewport centering math:
+   * X_target = round(Wc / 2 - (Xs + Ws / 2) * S)
+   * Y_target = round(Hc / 2 - (Hs / 2) * S)
+   */
+  const smoothPanToSlide = useCallback(
+    (slideIdx: number, duration = 280, _force = false) => {
+      cancelSmoothPan();
+      if (!currentCarousel || !containerRef.current) return;
+
+      const cw = containerSize.width || containerRef.current.clientWidth;
+      const ch = containerSize.height || containerRef.current.clientHeight;
+      if (cw <= 0 || ch <= 0) return;
+
+      const currentScale = zoomLevel / 100;
+      const ws = currentCarousel.slideWidthPx;
+      const hs = currentCarousel.slideHeightPx;
+      const xs = slideIdx * ws;
+
+      const targetX = Math.round(cw / 2 - (xs + ws / 2) * currentScale);
+      const targetY = Math.round(ch / 2 - (hs / 2) * currentScale);
+
+      const startX = stagePosRef.current.x;
+      const startY = stagePosRef.current.y;
+
+      if (startX === targetX && startY === targetY) return;
+
+      prevActiveSlideRef.current = slideIdx;
+      const startTime = performance.now();
+
+      const step = (now: number) => {
+        const elapsed = now - startTime;
+        const progress = Math.min(1, elapsed / duration);
+        const ease = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+
+        const currentX = Math.round(startX + (targetX - startX) * ease);
+        const currentY = Math.round(startY + (targetY - startY) * ease);
+
+        setStagePos({ x: currentX, y: currentY });
+
+        if (progress < 1) {
+          panAnimationRef.current = requestAnimationFrame(step);
+        } else {
+          panAnimationRef.current = null;
+        }
+      };
+
+      panAnimationRef.current = requestAnimationFrame(step);
+    },
+    [cancelSmoothPan, currentCarousel, containerSize, zoomLevel]
+  );
 
   // Track container sizing with ResizeObserver
   useEffect(() => {
@@ -347,6 +418,7 @@ export function CarouselCanvas({
 
   // Center / Fit to screen
   const fitToScreen = useCallback(() => {
+    cancelSmoothPan();
     if (!containerRef.current || !currentCarousel) return;
     const cw = containerSize.width || containerRef.current.clientWidth;
     const ch = containerSize.height || containerRef.current.clientHeight;
@@ -369,7 +441,7 @@ export function CarouselCanvas({
       x: Math.round((cw - stageW) / 2),
       y: Math.round((ch - stageH) / 2),
     });
-  }, [containerSize, currentCarousel, totalWidth, totalHeight, onZoomChange]);
+  }, [cancelSmoothPan, containerSize, currentCarousel, totalWidth, totalHeight, onZoomChange]);
 
   useEffect(() => {
     fitToScreen();
@@ -381,6 +453,9 @@ export function CarouselCanvas({
     if (!currentCarousel) return;
     if (prevActiveSlideRef.current === activeSlideIndex) return;
     prevActiveSlideRef.current = activeSlideIndex;
+
+    // Do not conflict with active RAF smooth pan
+    if (panAnimationRef.current !== null) return;
 
     const cw = containerSize.width;
     if (cw <= 0) return;
@@ -516,6 +591,7 @@ export function CarouselCanvas({
     if (!container) return;
 
     const handleWheel = (e: WheelEvent) => {
+      cancelSmoothPan();
       e.preventDefault();
       e.stopPropagation();
 
@@ -559,7 +635,7 @@ export function CarouselCanvas({
 
     container.addEventListener('wheel', handleWheel, { passive: false });
     return () => container.removeEventListener('wheel', handleWheel);
-  }, [zoomLevel, onZoomChange]);
+  }, [zoomLevel, onZoomChange, cancelSmoothPan]);
 
   // Collect all elements from all slides
   const allFrames: CarouselPhotoFrame[] = currentCarousel
@@ -592,6 +668,11 @@ export function CarouselCanvas({
     if (!hoveredSwapTargetFrameId) return null;
     return allFrames.find((f) => f.id === hoveredSwapTargetFrameId) || null;
   }, [allFrames, hoveredSwapTargetFrameId]);
+
+  const hoveredDropReplaceFrame = useMemo(() => {
+    if (!hoveredDropReplaceFrameId) return null;
+    return allFrames.find((f) => f.id === hoveredDropReplaceFrameId) || null;
+  }, [allFrames, hoveredDropReplaceFrameId]);
 
   // Update Transformer selection (supports multi-selection)
   useEffect(() => {
@@ -669,27 +750,39 @@ export function CarouselCanvas({
     return items;
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = 'copy';
     if (!currentCarousel) return;
-    const box = stageRef.current?.container().getBoundingClientRect() || containerRef.current?.getBoundingClientRect();
-    if (!box) return;
+    const box = e.currentTarget.getBoundingClientRect();
     const canvasX = (e.clientX - box.left - stagePos.x) / scale;
+    const canvasY = (e.clientY - box.top - stagePos.y) / scale;
     const targetIdx = getSlideIndexAtX(currentCarousel, canvasX);
     setHoveredDropSlideIndex(targetIdx);
+
+    const hitFrame = allFrames.find(
+      (f) =>
+        !f.locked &&
+        canvasX >= f.x &&
+        canvasX <= f.x + f.width &&
+        canvasY >= f.y &&
+        canvasY <= f.y + f.height
+    );
+    setHoveredDropReplaceFrameId(hitFrame?.id || null);
   };
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    if (!containerRef.current?.contains(e.relatedTarget as Node)) {
-      setHoveredDropSlideIndex(null);
-    }
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+    setHoveredDropSlideIndex(null);
+    setHoveredDropReplaceFrameId(null);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setHoveredDropSlideIndex(null);
+    setHoveredDropReplaceFrameId(null);
     if (!currentCarousel) return;
 
     // Extract photo IDs from drag payload with WebKit pasteboard fallbacks
@@ -733,9 +826,9 @@ export function CarouselCanvas({
     if (photosToPlace.length === 0) return;
 
     // Translate viewport coords to canvas continuous space
-    const box = stageRef.current?.container().getBoundingClientRect() || containerRef.current?.getBoundingClientRect();
-    const canvasX = (e.clientX - (box?.left ?? 0) - stagePos.x) / scale;
-    const canvasY = (e.clientY - (box?.top ?? 0) - stagePos.y) / scale;
+    const box = e.currentTarget.getBoundingClientRect();
+    const canvasX = (e.clientX - box.left - stagePos.x) / scale;
+    const canvasY = (e.clientY - box.top - stagePos.y) / scale;
     const targetSlideIdx = getSlideIndexAtX(currentCarousel, canvasX);
     const slideW = currentCarousel.slideWidthPx;
     const slideH = currentCarousel.slideHeightPx;
@@ -773,6 +866,7 @@ export function CarouselCanvas({
         const hitSlideIdx = getSlideIndexAtX(currentCarousel, hitFrame.x + hitFrame.width / 2);
         setSlide(hitSlideIdx);
         setSel(hitFrame.id);
+        smoothPanToSlide(hitSlideIdx, 280, true);
 
         usePhotoStore.setState((s) => ({
           photos: s.photos.map((p) => (p.id === photo.id ? { ...p, usedCount: (p.usedCount || 0) + 1 } : p)),
@@ -841,6 +935,7 @@ export function CarouselCanvas({
     }
 
     setActiveSlide(targetSlideIdx);
+    smoothPanToSlide(targetSlideIdx, 280, true);
     // Update usedCount in photoStore
     const placedIdSet = new Set(photosToPlace.map((p) => p.id));
     usePhotoStore.setState((s) => ({
@@ -853,10 +948,8 @@ export function CarouselCanvas({
     <div
       ref={containerRef}
       className={`${styles.canvasContainer} ${isSpacePanning ? styles.panningMode : ''}`}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
       onMouseDown={(e) => {
+        cancelSmoothPan();
         if (isSpacePanning || e.button === 1) {
           setIsMouseDown(true);
           dragStartRef.current = { x: e.clientX - stagePos.x, y: e.clientY - stagePos.y };
@@ -875,7 +968,12 @@ export function CarouselCanvas({
         dragStartRef.current = null;
       }}
     >
-      <div className={styles.stageWrapper}>
+      <div
+        className={styles.stageWrapper}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <Stage
           ref={stageRef}
           width={containerSize.width}
@@ -1125,6 +1223,24 @@ export function CarouselCanvas({
                 shadowOpacity={0.7}
                 listening={false}
                 cornerRadius={4}
+              />
+            )}
+
+            {/* Cyan Drop Replacement Ring — glows when dragging photo over an existing frame to replace it */}
+            {hoveredDropReplaceFrame && (
+              <Rect
+                x={hoveredDropReplaceFrame.x}
+                y={hoveredDropReplaceFrame.y}
+                width={hoveredDropReplaceFrame.width}
+                height={hoveredDropReplaceFrame.height}
+                stroke="#38bdf8"
+                strokeWidth={2}
+                dash={[6, 4]}
+                shadowColor="#38bdf8"
+                shadowBlur={10}
+                shadowOpacity={0.8}
+                listening={false}
+                cornerRadius={hoveredDropReplaceFrame.cornerRadius || 0}
               />
             )}
 
