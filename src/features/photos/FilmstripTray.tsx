@@ -965,6 +965,7 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
           selectedPhotos={contextMenuState.selectedPhotos}
           folders={folders}
           activeFolderId={activeFolderId}
+          activeMode={activeMode}
           onClose={() => setContextMenuState((s) => ({ ...s, isOpen: false }))}
           onToggleFavorite={toggleFavorite}
           onBatchToggleFavorite={batchToggleFavoritesSelected}

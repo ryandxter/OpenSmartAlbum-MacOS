@@ -17,6 +17,8 @@ import { isMac } from '../../utils/platform';
 import { Photo, PhotoFolder, formatFileSize } from '../../domain/photo';
 import { useAlbumStore } from '../../stores/albumStore';
 import { useEditorStore } from '../../stores/editorStore';
+import { useCarouselStore } from '../../stores/carouselStore';
+import { usePhotoStore } from '../../stores/photoStore';
 import { getAllAlbumSpreads } from '../../domain/album';
 import styles from './PhotoContextMenu.module.css';
 
@@ -28,6 +30,7 @@ export interface PhotoContextMenuProps {
   selectedPhotos: Photo[];
   folders: PhotoFolder[];
   activeFolderId: string | null;
+  activeMode?: 'print' | 'carousel';
   onClose: () => void;
   onToggleFavorite: (photoId: string) => void;
   onBatchToggleFavorite: (isFavorite: boolean) => void;
@@ -48,6 +51,7 @@ export const PhotoContextMenu: React.FC<PhotoContextMenuProps> = ({
   selectedPhotos,
   folders,
   activeFolderId,
+  activeMode,
   onClose,
   onToggleFavorite,
   onBatchToggleFavorite,
@@ -124,19 +128,40 @@ export const PhotoContextMenu: React.FC<PhotoContextMenuProps> = ({
         style={{ color: 'var(--color-accent)', fontWeight: 600 }}
         onClick={() => {
           onClose();
+          const toPlace = isMulti ? selectedPhotos : [targetPhoto];
+
+          if (activeMode === 'carousel') {
+            const { currentCarousel, activeSlideIndex, addPhotoFrames } = useCarouselStore.getState();
+            if (currentCarousel) {
+              addPhotoFrames(activeSlideIndex, toPlace);
+              const placedIds = new Set(toPlace.map((p) => p.id));
+              usePhotoStore.setState((s) => ({
+                photos: s.photos.map((p) => (placedIds.has(p.id) ? { ...p, usedCount: (p.usedCount || 0) + 1 } : p)),
+              }));
+            }
+            return;
+          }
+
           const { currentAlbum, activeSpreadId } = useAlbumStore.getState();
           if (currentAlbum) {
             const allSpreads = getAllAlbumSpreads(currentAlbum);
             const activeSpread = allSpreads.find((s) => s.id === activeSpreadId) || allSpreads[0];
             if (activeSpread) {
-              const toPlace = isMulti ? selectedPhotos : [targetPhoto];
               useEditorStore.getState().addPhotosToSpread(activeSpread.id, toPlace);
             }
           }
         }}
       >
         <span className={styles.menuIcon}><Image size={14} strokeWidth={1.5} /></span>
-        <span>{isMulti ? `Place ${count} Photos on Spread` : 'Place on Spread Canvas'}</span>
+        <span>
+          {activeMode === 'carousel'
+            ? isMulti
+              ? `Place ${count} Photos on Slide`
+              : 'Place on Active Slide'
+            : isMulti
+              ? `Place ${count} Photos on Spread`
+              : 'Place on Spread Canvas'}
+        </span>
       </button>
 
       <button
