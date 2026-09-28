@@ -50,6 +50,11 @@ export interface CarouselState {
   reorderSlide: (fromIndex: number, toIndex: number) => void;
   updateSlideBackground: (slideIndex: number, color: string) => void;
   addPhotoFrame: (slideIndex: number, frame: Omit<CarouselPhotoFrame, 'id'>) => void;
+  addPhotoFrames: (
+    slideIndex: number,
+    photos: Photo[],
+    options?: { targetFrameId?: string; isReplace?: boolean }
+  ) => string[];
   updatePhotoFrame: (frameId: string, updates: Partial<CarouselPhotoFrame>) => void;
   removePhotoFrame: (frameId: string) => void;
   cycleSlideLayout: (direction: 'next' | 'prev') => void;
@@ -383,6 +388,215 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         slides: updatedSlides,
       },
     });
+  },
+
+  addPhotoFrames: (slideIndex, photos, options) => {
+    const { currentCarousel, slideLayoutIndices, pushHistory } = get();
+    if (!currentCarousel || photos.length === 0) return [];
+    if (slideIndex < 0 || slideIndex >= currentCarousel.slides.length) return [];
+
+    const targetSlide = currentCarousel.slides[slideIndex];
+    if (!targetSlide) return [];
+
+    const existingPhotoFrames = targetSlide.elements.filter(
+      (el): el is CarouselPhotoFrame => el.type === 'photo'
+    );
+    const nonPhotoElements = targetSlide.elements.filter((el) => el.type !== 'photo');
+
+    // Case A: Single-Photo Frame Replacement
+    if (photos.length === 1 && (options?.isReplace || options?.targetFrameId)) {
+      const targetId = options.targetFrameId || get().selectedFrameId;
+      let actualSlideIdx = slideIndex;
+      let targetFrame = targetId ? existingPhotoFrames.find((f) => f.id === targetId) : undefined;
+
+      // Fallback search across other slides if targetId was specified but not on targetSlide
+      if (!targetFrame && targetId) {
+        for (let sIdx = 0; sIdx < currentCarousel.slides.length; sIdx++) {
+          const f = currentCarousel.slides[sIdx]?.elements.find((el) => el.id === targetId && el.type === 'photo');
+          if (f) {
+            targetFrame = f as CarouselPhotoFrame;
+            actualSlideIdx = sIdx;
+            break;
+          }
+        }
+      }
+
+      if (targetFrame) {
+        pushHistory();
+        const photo = photos[0]!;
+        const aspect = photo.width && photo.height ? photo.width / photo.height : 1.0;
+        const updatedFrame: CarouselPhotoFrame = {
+          ...targetFrame,
+          photoId: photo.id,
+          filePath: photo.filePath,
+          fileName: photo.fileName,
+          previewPath: photo.previewPath ?? undefined,
+          thumbnailPath: photo.thumbnailPath ?? undefined,
+          photoAspect: aspect,
+          cropX: 0,
+          cropY: 0,
+          cropScale: 1.0,
+        };
+
+        const updatedSlides = currentCarousel.slides.map((s, idx) =>
+          idx === actualSlideIdx
+            ? {
+                ...s,
+                elements: s.elements.map((el) => (el.id === targetFrame!.id ? updatedFrame : el)),
+              }
+            : s
+        );
+
+        set({
+          currentCarousel: {
+            ...currentCarousel,
+            slides: updatedSlides,
+          },
+          activeSlideIndex: actualSlideIdx,
+          selectedFrameId: targetFrame.id,
+          selectedFrameIds: [targetFrame.id],
+        });
+        return [targetFrame.id];
+      }
+    }
+
+    // Case B: Fresh Batch Drop or Smart Reflow
+    pushHistory();
+
+    const existingAdaptive: Array<AdaptivePhoto & { _origFrame?: CarouselPhotoFrame }> = existingPhotoFrames
+      .filter((f) => Boolean(f.filePath))
+      .map((f) => ({
+        id: f.id,
+        photoId: f.photoId || f.id,
+        filePath: f.filePath!,
+        fileName: f.fileName,
+        previewPath: f.previewPath,
+        thumbnailPath: f.thumbnailPath,
+        photoAspect: f.photoAspect || (f.height > 0 ? f.width / f.height : 1.0),
+        _origFrame: f,
+      }));
+
+    const incomingAdaptive: Array<AdaptivePhoto & { _origFrame?: CarouselPhotoFrame }> = photos.map((p, idx) => ({
+      id: `photo-in-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 7)}`,
+      photoId: p.id,
+      filePath: p.filePath,
+      fileName: p.fileName,
+      previewPath: p.previewPath ?? undefined,
+      thumbnailPath: p.thumbnailPath ?? undefined,
+      photoAspect: p.width > 0 && p.height > 0 ? p.width / p.height : 1.0,
+      isFavorite: p.isFavorite,
+    }));
+
+    const combinedPhotos = [...existingAdaptive, ...incomingAdaptive];
+    if (combinedPhotos.length === 0) return [];
+
+    const variations = generateDynamicVariations(
+      {
+        containerWidth: currentCarousel.slideWidthPx,
+        containerHeight: currentCarousel.slideHeightPx,
+        spacing: 16,
+        isSpread: false,
+      },
+      combinedPhotos
+    );
+
+    if (variations.length === 0) return [];
+
+    const chosen = variations[0]!;
+    const slideStartX = slideIndex * currentCarousel.slideWidthPx;
+    const newlyPlacedIds: string[] = [];
+
+    const newPhotoElements: CarouselPhotoFrame[] = chosen.rects.map((rect, i) => {
+      const photoIdx =
+        chosen.photoAssignments && chosen.photoAssignments[i] !== undefined
+          ? chosen.photoAssignments[i]!
+          : i;
+      const item = combinedPhotos[photoIdx] || combinedPhotos[i] || combinedPhotos[0]!;
+      const orig = item._origFrame;
+
+      if (orig) {
+        // Preserve original frame id and styling attributes (fixing WARN-03)
+        return {
+          type: 'photo',
+          id: orig.id,
+          photoId: item.photoId || orig.photoId || orig.id,
+          filePath: item.filePath || orig.filePath || '',
+          fileName: item.fileName || orig.fileName,
+          previewPath: item.previewPath ?? orig.previewPath,
+          thumbnailPath: item.thumbnailPath ?? orig.thumbnailPath,
+          photoAspect: item.photoAspect || orig.photoAspect || 1.0,
+          x: Math.round(slideStartX + rect.x),
+          y: Math.round(rect.y),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+          cropX: 0,
+          cropY: 0,
+          cropScale: 1.0,
+          rotation: orig.rotation,
+          locked: orig.locked,
+          cornerRadius: orig.cornerRadius,
+          cornerRadiusTl: orig.cornerRadiusTl,
+          cornerRadiusTr: orig.cornerRadiusTr,
+          cornerRadiusBr: orig.cornerRadiusBr,
+          cornerRadiusBl: orig.cornerRadiusBl,
+          shapeType: orig.shapeType,
+          customSvgPath: orig.customSvgPath,
+          borderEnabled: orig.borderEnabled,
+          borderWidth: orig.borderWidth,
+          borderColor: orig.borderColor,
+          borderStyle: orig.borderStyle,
+          isMissing: orig.isMissing,
+        };
+      }
+
+      // Freshly placed photo frame
+      const frameId = `frame-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 7)}`;
+      newlyPlacedIds.push(frameId);
+      return {
+        type: 'photo',
+        id: frameId,
+        photoId: item.photoId || item.id,
+        filePath: item.filePath || '',
+        fileName: item.fileName,
+        previewPath: item.previewPath,
+        thumbnailPath: item.thumbnailPath,
+        photoAspect: item.photoAspect || 1.0,
+        x: Math.round(slideStartX + rect.x),
+        y: Math.round(rect.y),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
+        cropX: 0,
+        cropY: 0,
+        cropScale: 1.0,
+      };
+    });
+
+    const updatedSlides = currentCarousel.slides.map((s, idx) =>
+      idx === slideIndex
+        ? {
+            ...s,
+            elements: [...newPhotoElements, ...nonPhotoElements],
+          }
+        : s
+    );
+
+    const activeFrameIds = newlyPlacedIds.length > 0 ? newlyPlacedIds : newPhotoElements.map((f) => f.id);
+
+    set({
+      currentCarousel: {
+        ...currentCarousel,
+        slides: updatedSlides,
+      },
+      activeSlideIndex: slideIndex,
+      selectedFrameIds: activeFrameIds,
+      selectedFrameId: activeFrameIds[0] || null,
+      slideLayoutIndices: {
+        ...slideLayoutIndices,
+        [slideIndex]: 0,
+      },
+    });
+
+    return activeFrameIds;
   },
 
   updatePhotoFrame: (frameId, updates) => {

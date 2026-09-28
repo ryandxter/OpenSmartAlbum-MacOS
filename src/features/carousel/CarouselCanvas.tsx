@@ -830,15 +830,11 @@ export function CarouselCanvas({
     const canvasX = (e.clientX - box.left - stagePos.x) / scale;
     const canvasY = (e.clientY - box.top - stagePos.y) / scale;
     const targetSlideIdx = getSlideIndexAtX(currentCarousel, canvasX);
-    const slideW = currentCarousel.slideWidthPx;
-    const slideH = currentCarousel.slideHeightPx;
-    const slideStartX = getSlideXOffset(currentCarousel, targetSlideIdx);
 
-    const { addPhotoFrame, setActiveSlide } = useCarouselStore.getState();
+    const { addPhotoFrames, setActiveSlide } = useCarouselStore.getState();
 
     if (photosToPlace.length === 1) {
       const photo = photosToPlace[0]!;
-      const aspect = photo.width && photo.height ? photo.width / photo.height : 1.0;
 
       // Check if dropped directly over an existing frame to REPLACE its photo
       const hitFrame = allFrames.find(
@@ -851,21 +847,9 @@ export function CarouselCanvas({
       );
 
       if (hitFrame) {
-        const { updatePhotoFrame, setActiveSlide: setSlide, setSelectedFrameId: setSel } = useCarouselStore.getState();
-        updatePhotoFrame(hitFrame.id, {
-          photoId: photo.id,
-          filePath: photo.filePath,
-          fileName: photo.fileName,
-          previewPath: photo.previewPath || undefined,
-          thumbnailPath: photo.thumbnailPath || undefined,
-          photoAspect: aspect,
-          cropX: 0,
-          cropY: 0,
-          cropScale: 1.0,
-        });
         const hitSlideIdx = getSlideIndexAtX(currentCarousel, hitFrame.x + hitFrame.width / 2);
-        setSlide(hitSlideIdx);
-        setSel(hitFrame.id);
+        addPhotoFrames(hitSlideIdx, photosToPlace, { targetFrameId: hitFrame.id, isReplace: true });
+        setActiveSlide(hitSlideIdx);
         smoothPanToSlide(hitSlideIdx, 280, true);
 
         usePhotoStore.setState((s) => ({
@@ -874,68 +858,13 @@ export function CarouselCanvas({
         onToast?.(`Replaced photo in frame with ${photo.fileName}`);
         return;
       }
-
-      const maxW = slideW * 0.8;
-      const maxH = slideH * 0.8;
-      let frameW = maxW;
-      let frameH = maxW / aspect;
-      if (frameH > maxH) {
-        frameH = maxH;
-        frameW = maxH * aspect;
-      }
-      const dropRelX = canvasX - slideStartX;
-      const posX = slideStartX + Math.max(20, Math.min(slideW - frameW - 20, dropRelX - frameW / 2));
-      const posY = Math.max(20, Math.min(slideH - frameH - 20, canvasY - frameH / 2));
-
-      addPhotoFrame(targetSlideIdx, {
-        type: 'photo',
-        photoId: photo.id,
-        filePath: photo.filePath,
-        fileName: photo.fileName,
-        previewPath: photo.previewPath || undefined,
-        thumbnailPath: photo.thumbnailPath || undefined,
-        photoAspect: aspect,
-        x: Math.round(posX),
-        y: Math.round(posY),
-        width: Math.round(frameW),
-        height: Math.round(frameH),
-      });
-    } else {
-      // Multi-photo drop: partition onto slide with uniform spacing
-      const margin = 40;
-      const spacing = 16;
-      const usableW = slideW - margin * 2;
-      const usableH = slideH - margin * 2;
-      const count = photosToPlace.length;
-      const cols = count <= 2 ? 1 : 2;
-      const rows = Math.ceil(count / cols);
-      const cellW = (usableW - spacing * (cols - 1)) / cols;
-      const cellH = (usableH - spacing * (rows - 1)) / rows;
-
-      photosToPlace.forEach((photo, idx) => {
-        const col = idx % cols;
-        const row = Math.floor(idx / cols);
-        const posX = slideStartX + margin + col * (cellW + spacing);
-        const posY = margin + row * (cellH + spacing);
-        const aspect = photo.width && photo.height ? photo.width / photo.height : 1.0;
-        addPhotoFrame(targetSlideIdx, {
-          type: 'photo',
-          photoId: photo.id,
-          filePath: photo.filePath,
-          fileName: photo.fileName,
-          previewPath: photo.previewPath || undefined,
-          thumbnailPath: photo.thumbnailPath || undefined,
-          photoAspect: aspect,
-          x: Math.round(posX),
-          y: Math.round(posY),
-          width: Math.round(cellW),
-          height: Math.round(cellH),
-        });
-      });
     }
 
+    // Single or multi-photo drop: place using atomic addPhotoFrames with R-BSP generative reflow
+    addPhotoFrames(targetSlideIdx, photosToPlace);
     setActiveSlide(targetSlideIdx);
     smoothPanToSlide(targetSlideIdx, 280, true);
+
     // Update usedCount in photoStore
     const placedIdSet = new Set(photosToPlace.map((p) => p.id));
     usePhotoStore.setState((s) => ({
