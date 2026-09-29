@@ -101,7 +101,10 @@
   3. Title bar controls (Undo/Redo, "Add Text", Export) and single-key shortcuts (`T`, `L`, `G`, `P`) dispatch strictly to the active mode's store, preventing silent mutations on background spreads.
   4. Reordering, duplicating, or deleting slides in `carouselStore` automatically recalculates and shifts contained frames' absolute `x` coordinates, keeping photo frames attached to their respective slides.
   5. Cycling layouts (`Spacebar`) or applying auto-flow on carousel slides preserves custom frame borders, corner radii, and vector shape masks.
-**Plans**: 0 plans
+**Plans**: 3 plans
+  - [ ] 16-01: `appStore` Mode & Viewport Hoisting + `projectStore` Auto-Mode Detection (ISO-01, ISO-02)
+  - [ ] 16-02: AppTitleBar Mode-Guarding & Keyboard Shortcut Isolation (ISO-03)
+  - [ ] 16-03: Slide Coordinate Preservation & Layout Style Retention (ISO-04, ISO-05)
 
 #### Phase 17: Vector Shape Mask Corner Radii & Polygon Tangent Fillets
 **Goal**: Implement mathematical vertex tangent fillet arcs for smooth corner rounding on all polygon and star shapes in Canvas 2D and SVG, unlock Inspector corner radius controls for all shapes, normalize custom SVG viewBox dimensions, and expose the Oval shape preset.
@@ -129,7 +132,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17
 | 13. Interactive Divider Dragging & Swapping | v1.2.0 | 2/2 | COMPLETED | 2026-09-28 |
 | 14. Carousel Multi-Photo Drag & Context Routing | v1.3.0 | 2/2 | COMPLETED | 2026-09-28 |
 | 15. Social Carousel SQLite & Package Persistence | v1.3.0 | 0/0 | READY | — |
-| 16. Workspace Isolation & Mode State Sync | v1.3.0 | 0/0 | PENDING | — |
+| 16. Workspace Isolation & Mode State Sync | v1.3.0 | 0/3 | PLANNING | — |
 | 17. Vector Shape Mask Corner Radii & Fillets | v1.3.0 | 0/0 | PENDING | — |
 
 ---
