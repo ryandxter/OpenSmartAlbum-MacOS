@@ -19,6 +19,7 @@ import { ColorPicker } from '../../../components/ui/ColorPicker';
 import { Switch } from '../../../components/ui/Switch';
 import { NumberInput } from '../../../components/ui/NumberInput';
 import { getCornerRadii, ShapeType } from '../../../domain/editor';
+import { normalizeCustomSvgMask } from '../../../domain/shapes';
 import { getAllAlbumSpreads } from '../../../domain/album';
 import styles from '../InspectorShared.module.css';
 
@@ -173,16 +174,17 @@ export function ShapesBordersSection({ onToast, activeMode = 'print' }: ShapesBo
       const text = event.target?.result as string;
       if (!text) return;
 
-      // Extract path d attribute
-      const match = text.match(/<path[^>]*d=["']([^"']+)["']/i);
-      if (match && match[1]) {
+      const targetW = Number(activeTarget?.width) || undefined;
+      const targetH = Number(activeTarget?.height) || undefined;
+      const normalized = normalizeCustomSvgMask(text, targetW, targetH);
+      if (normalized && normalized.pathData) {
         updateSelectedBorders({
           shapeType: 'custom_svg',
-          customSvgPath: match[1],
+          customSvgPath: normalized.pathData,
         });
-        onToast?.('Loaded custom SVG mask vector');
+        onToast?.('Loaded compound SVG mask vector');
       } else {
-        onToast?.('Could not find vector <path> in SVG file');
+        onToast?.('Could not find valid vector shapes in SVG file');
       }
     };
     reader.readAsText(file);
