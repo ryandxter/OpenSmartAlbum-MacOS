@@ -90,17 +90,45 @@ export function WorkspaceLayout() {
   const addTextToSpread = useEditorStore((s) => s.addTextToSpread);
   const setEditingTextElementId = useEditorStore((s) => s.setEditingTextElementId);
 
-  const [zoomLevel, setZoomLevel] = useState<number>(100);
-  const [fitTrigger, setFitTrigger] = useState<number>(0);
-
-  const handleFitToScreen = useCallback(() => {
-    setFitTrigger((prev) => prev + 1);
-  }, []);
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
   const [isFilmstripOpen, setIsFilmstripOpen] = useState(true);
-  const [activeMode, setActiveMode] = useState<'print' | 'carousel'>('print');
+  // ISO-01: Read activeMode from appStore (global, not local state)
+  const activeMode = useAppStore((s) => s.activeMode);
   const activeModeRef = useRef(activeMode);
   activeModeRef.current = activeMode;
+
+  // ISO-02: Per-mode isolated zoom / fit from appStore
+  const printZoom = useAppStore((s) => s.printZoom);
+  const carouselZoom = useAppStore((s) => s.carouselZoom);
+  const printFitTrigger = useAppStore((s) => s.printFitTrigger);
+  const carouselFitTrigger = useAppStore((s) => s.carouselFitTrigger);
+
+  const zoomLevel = activeMode === 'carousel' ? carouselZoom : printZoom;
+  const fitTrigger = activeMode === 'carousel' ? carouselFitTrigger : printFitTrigger;
+
+  const handleFitToScreen = useCallback(() => {
+    if (activeMode === 'carousel') {
+      useAppStore.getState().triggerCarouselFit();
+    } else {
+      useAppStore.getState().triggerPrintFit();
+    }
+  }, [activeMode]);
+
+  // ISO-02: Mode-aware zoom setter — routes to the correct appStore setter
+  const setZoomLevel = useCallback(
+    (updater: number | ((prev: number) => number)) => {
+      const store = useAppStore.getState();
+      const currentZoom = activeMode === 'carousel' ? store.carouselZoom : store.printZoom;
+      const next = typeof updater === 'function' ? updater(currentZoom) : updater;
+      if (activeMode === 'carousel') {
+        store.setCarouselZoom(next);
+      } else {
+        store.setPrintZoom(next);
+      }
+    },
+    [activeMode]
+  );
+
   const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
 
   // External Finder Drag-and-Drop Ingestion state
@@ -695,24 +723,25 @@ export function WorkspaceLayout() {
 
   useTauriInfo();
 
-  // Initialize or load album structure and photos from SQLite DB on project load
+  // ISO-01 race fix: Do NOT call loadAlbumFromDb for carousel projects.
+  // Carousel loading is handled inside projectStore.openProjectById.
+  // Without this guard, this effect fires immediately on currentProject set,
+  // before the async carousel load completes, and redundantly calls album logic.
   useEffect(() => {
     if (currentProject) {
-      const albumStore = useAlbumStore.getState();
-      const existingAlbum = albumStore.currentAlbum;
+      const isCarousel =
+        currentProject.canvasUnit === 'px' || currentProject.projectType === 'carousel';
 
-      // Ensure photos & folders for this project are loaded in photoStore
-      import('../../stores/photoStore').then(({ usePhotoStore }) => {
-        usePhotoStore.getState().loadPhotos(currentProject.id);
-        usePhotoStore.getState().loadFolders(currentProject.id);
-      });
-
-      if (!existingAlbum || existingAlbum.projectId !== currentProject.id) {
-        albumStore.loadAlbumFromDb(currentProject.id).then((loaded) => {
-          if (!loaded) {
-            albumStore.initializeAlbum(currentProject);
-          }
-        });
+      if (!isCarousel) {
+        const albumStore = useAlbumStore.getState();
+        const existingAlbum = albumStore.currentAlbum;
+        if (!existingAlbum || existingAlbum.projectId !== currentProject.id) {
+          albumStore.loadAlbumFromDb(currentProject.id).then((loaded) => {
+            if (!loaded) {
+              albumStore.initializeAlbum(currentProject);
+            }
+          });
+        }
       }
     }
   }, [currentProject]);
@@ -941,7 +970,7 @@ export function WorkspaceLayout() {
         setZoomLevel((z) => Math.max(5, z - 15));
       }
     },
-    [activeMode, undo, redo, saveProject, exportProjectAsAfsn, importProjectFromAfsn, openNewProject, confirmSafeAction, showToast, activeSpreadId, activeSpread, selectedFrameIds, toggleLockSelectedFrames, addTextToSpread, setEditingTextElementId, currentProject, handleFitToScreen]
+    [activeMode, undo, redo, saveProject, exportProjectAsAfsn, importProjectFromAfsn, openNewProject, confirmSafeAction, showToast, activeSpreadId, activeSpread, selectedFrameIds, toggleLockSelectedFrames, addTextToSpread, setEditingTextElementId, currentProject, handleFitToScreen, setZoomLevel]
   );
 
   useEffect(() => {
@@ -1038,15 +1067,6 @@ export function WorkspaceLayout() {
         onZoomChange={setZoomLevel}
         onFitToScreen={handleFitToScreen}
         activeMode={activeMode}
-        onModeSelect={(mode) => {
-          setActiveMode(mode);
-          if (mode === 'carousel' && currentProject) {
-            const cs = useCarouselStore.getState();
-            if (!cs.currentCarousel || cs.currentCarousel.projectId !== currentProject.id) {
-              cs.initializeCarousel(currentProject.id);
-            }
-          }
-        }}
       />
 
       {/* Center Editor Area (contains Canvas + Bottom Full-Width PageNavigator) */}
