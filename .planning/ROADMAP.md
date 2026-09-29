@@ -124,8 +124,8 @@ Phases execute in numeric order: 14 → 15 → 16 → 17
 | 11. Auto-Flow Storytelling Engine | v1.2.0 | 2/2 | COMPLETED | 2026-09-28 |
 | 12. Contextual Actions & Panorama Spans | v1.2.0 | 2/2 | COMPLETED | 2026-09-28 |
 | 13. Interactive Divider Dragging & Swapping | v1.2.0 | 2/2 | COMPLETED | 2026-09-28 |
-| 14. Carousel Multi-Photo Drag & Context Routing | v1.3.0 | 0/2 | READY | — |
-| 15. Social Carousel SQLite & Package Persistence | v1.3.0 | 0/0 | PENDING | — |
+| 14. Carousel Multi-Photo Drag & Context Routing | v1.3.0 | 2/2 | COMPLETED | 2026-09-28 |
+| 15. Social Carousel SQLite & Package Persistence | v1.3.0 | 0/0 | READY | — |
 | 16. Workspace Isolation & Mode State Sync | v1.3.0 | 0/0 | PENDING | — |
 | 17. Vector Shape Mask Corner Radii & Fillets | v1.3.0 | 0/0 | PENDING | — |
 
