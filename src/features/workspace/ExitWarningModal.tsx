@@ -5,6 +5,7 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { isTauri } from '../../utils/platform';
 import { useProjectStore } from '../../stores/projectStore';
 import { useAlbumStore } from '../../stores/albumStore';
+import { useCarouselStore } from '../../stores/carouselStore';
 import { usePhotoStore } from '../../stores/photoStore';
 
 export function ExitWarningModal() {
@@ -12,6 +13,12 @@ export function ExitWarningModal() {
   const [isClosing, setIsClosing] = useState(false);
   const isSaving = useProjectStore((s) => s.isSaving);
   const isPhotoBusy = usePhotoStore((s) => s.isRemoving || s.isRelinking);
+  const currentProject = useProjectStore((s) => s.currentProject);
+
+  const isCarousel = currentProject?.canvasUnit === 'px' || (currentProject as any)?.projectType === 'carousel';
+  const detail = isCarousel
+    ? 'If you exit without saving, recent carousel slides and photo placements will be lost.'
+    : 'If you exit without saving, your recent photo placements and album changes will be lost.';
 
   const handleForceExit = async () => {
     if (isClosing || useProjectStore.getState().isSaving || isPhotoBusy) return;
@@ -36,6 +43,16 @@ export function ExitWarningModal() {
     }
   };
 
+  const handleExitWithoutSaving = async () => {
+    const current = useProjectStore.getState().currentProject;
+    if (current) {
+      try {
+        localStorage.removeItem(`afsn_dirty_${current.id}`);
+      } catch {}
+    }
+    await handleForceExit();
+  };
+
   if (!isExitWarningOpen) return null;
 
   return (
@@ -43,16 +60,21 @@ export function ExitWarningModal() {
       isOpen={isExitWarningOpen}
       title="Unsaved Changes"
       message="Save your changes before exiting?"
+      detail={detail}
+      variant="warning"
+      secondaryVariant="danger"
       onConfirm={async () => {
         const result = await useProjectStore.getState().saveProject();
         const current = useProjectStore.getState().currentProject;
-        const isCarousel = current?.canvasUnit === 'px' || current?.projectType === 'carousel';
-        const isSaved = isCarousel
-          ? (await import('../../stores/carouselStore')).useCarouselStore.getState().saveStatus === 'saved'
+        const isCarouselProj = current?.canvasUnit === 'px' || (current as any)?.projectType === 'carousel';
+        const isSaved = isCarouselProj
+          ? useCarouselStore.getState().saveStatus === 'saved'
           : useAlbumStore.getState().saveStatus === 'saved';
-        if (result.success && isSaved) await handleForceExit();
+        if (result.success && isSaved) {
+          await handleForceExit();
+        }
       }}
-      onSecondary={handleForceExit}
+      onSecondary={handleExitWithoutSaving}
       secondaryText="Exit Without Saving"
       isLoading={isSaving || isClosing || isPhotoBusy}
       loadingText={isPhotoBusy ? 'Finishing photo operation...' : 'Processing...'}
