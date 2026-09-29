@@ -63,7 +63,10 @@ export interface CarouselPhotoFrame {
   cropY?: number;
   cropScale?: number;
   rotation?: number;
+  zIndex?: number;
+  opacity?: number;
   locked?: boolean;
+  cropRotation?: number;
   cornerRadius?: number;
   shapeType?: ShapeType;
   customSvgPath?: string;
@@ -265,4 +268,11 @@ export function getSlideIntersectingFrames(
     }));
 }
 
-
+/**
+ * Checks deep structural equality between two carousel state objects.
+ */
+export function isCarouselEqual(a: Carousel | null, b: Carousel | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return JSON.stringify(a) === JSON.stringify(b);
+}

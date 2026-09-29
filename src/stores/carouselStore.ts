@@ -10,12 +10,20 @@ import {
   CAROUSEL_RATIO_PRESETS,
   MAX_CAROUSEL_SLIDES,
   MIN_CAROUSEL_SLIDES,
+  isCarouselEqual,
 } from '../domain/carousel';
 import { CAROUSEL_LAYOUT_PRESETS, CarouselLayoutPhotoInput } from '../domain/carouselLayout';
 import { generateDynamicVariations } from '../domain/layout/generator';
 import { AdaptivePhoto } from '../domain/adaptiveLayout';
 import { generateAutoFlowPlan } from '../domain/storytelling/autoFlowEngine';
 import type { Photo } from '../domain/photo';
+
+let carouselDbWriteQueue: Promise<unknown> = Promise.resolve();
+export function persistCarouselInOrder<T>(write: () => Promise<T>): Promise<T> {
+  const result = carouselDbWriteQueue.then(write, write);
+  carouselDbWriteQueue = result.catch(() => false);
+  return result;
+}
 
 export interface CarouselState {
   currentCarousel: Carousel | null;
@@ -24,6 +32,10 @@ export interface CarouselState {
   selectedFrameId: string | null;
   selectedFrameIds: string[];
   slideLayoutIndices: Record<number, number>;
+
+  // Persistence State
+  saveStatus: 'saved' | 'saving' | 'unsaved';
+  lastSavedAt: string | null;
 
   // History & Undo/Redo
   past: Carousel[];
@@ -34,6 +46,12 @@ export interface CarouselState {
   undo: () => void;
   redo: () => void;
   clearHistory: () => void;
+
+  // Persistence Actions
+  markDirty: () => void;
+  setSaveStatus: (status: 'saved' | 'saving' | 'unsaved') => void;
+  saveCarouselToDb: () => Promise<boolean>;
+  loadCarouselFromDb: (projectId: string) => Promise<boolean>;
 
   // Actions
   initializeCarousel: (projectId: string, ratio?: CarouselRatio, initialSlidesCount?: number) => void;
@@ -82,10 +100,226 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
   future: [],
   canUndo: false,
   canRedo: false,
+  saveStatus: 'saved',
+  lastSavedAt: null,
+
+  markDirty: () => {
+    if (get().saveStatus !== 'unsaved') {
+      set({ saveStatus: 'unsaved' });
+    }
+  },
+
+  setSaveStatus: (status) => {
+    const updates: Partial<CarouselState> = { saveStatus: status };
+    if (status === 'saved') {
+      updates.lastSavedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    set(updates);
+  },
+
+  saveCarouselToDb: () => persistCarouselInOrder(async () => {
+    const { currentCarousel } = get();
+    if (!currentCarousel) return false;
+
+    set({ saveStatus: 'saving' });
+
+    const sanitizeFrame = (frame: CarouselPhotoFrame): any => {
+      const cornerRadiusNum = typeof frame.cornerRadius === 'number' ? frame.cornerRadius : null;
+      return {
+        id: frame.id,
+        photoId: frame.photoId || null,
+        filePath: frame.filePath || '',
+        fileName: frame.fileName || '',
+        previewPath: frame.previewPath || null,
+        thumbnailPath: frame.thumbnailPath || null,
+        x: Number.isFinite(frame.x) ? frame.x : 0,
+        y: Number.isFinite(frame.y) ? frame.y : 0,
+        width: Number.isFinite(frame.width) ? frame.width : 100,
+        height: Number.isFinite(frame.height) ? frame.height : 100,
+        rotation: Number.isFinite(frame.rotation) ? frame.rotation : 0,
+        zIndex: Number.isFinite(frame.zIndex) ? frame.zIndex : 1,
+        photoAspect: typeof frame.photoAspect === 'number' && frame.photoAspect > 0 ? frame.photoAspect : 1.0,
+        cropX: Number.isFinite(frame.cropX) ? frame.cropX : 0,
+        cropY: Number.isFinite(frame.cropY) ? frame.cropY : 0,
+        cropScale: Number.isFinite(frame.cropScale) && (frame.cropScale ?? 0) > 0 ? frame.cropScale : 1.0,
+        cropRotation: Number.isFinite(frame.cropRotation) ? frame.cropRotation : 0,
+        borderEnabled: Boolean(frame.borderEnabled),
+        borderWidth: Number.isFinite(frame.borderWidth) ? frame.borderWidth : 0,
+        borderColor: frame.borderColor || '#FFFFFF',
+        borderStyle: frame.borderStyle || 'solid',
+        opacity: Number.isFinite(frame.opacity) ? Math.max(0, Math.min(1, frame.opacity!)) : 1.0,
+        locked: Boolean(frame.locked),
+        shapeType: frame.shapeType || null,
+        customSvgPath: frame.customSvgPath || null,
+        cornerRadiusTl: frame.cornerRadiusTl ?? cornerRadiusNum,
+        cornerRadiusTr: frame.cornerRadiusTr ?? cornerRadiusNum,
+        cornerRadiusBr: frame.cornerRadiusBr ?? cornerRadiusNum,
+        cornerRadiusBl: frame.cornerRadiusBl ?? cornerRadiusNum,
+      };
+    };
+
+    const sanitizedCarousel = {
+      id: currentCarousel.id,
+      projectId: currentCarousel.projectId,
+      ratio: currentCarousel.ratio,
+      slideWidthPx: currentCarousel.slideWidthPx,
+      slideHeightPx: currentCarousel.slideHeightPx,
+      totalSlides: currentCarousel.totalSlides,
+      slides: (currentCarousel.slides || []).map((slide, idx) => ({
+        id: slide.id,
+        slideIndex: typeof slide.slideIndex === 'number' ? slide.slideIndex : idx,
+        widthPx: slide.widthPx,
+        heightPx: slide.heightPx,
+        backgroundColor: slide.backgroundColor || '#FFFFFF',
+        elements: (slide.elements || []).map(sanitizeFrame),
+      })),
+    };
+
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('save_carousel_structure', { carousel: sanitizedCarousel });
+
+      // Crash recovery snapshot
+      try {
+        if (isCarouselEqual(get().currentCarousel, currentCarousel)) {
+          localStorage.setItem(`afsn_carousel_snapshot_${sanitizedCarousel.projectId}`, JSON.stringify({
+            projectId: sanitizedCarousel.projectId,
+            savedAt: new Date().toISOString(),
+            carousel: sanitizedCarousel,
+          }));
+          localStorage.removeItem(`afsn_dirty_${sanitizedCarousel.projectId}`);
+        }
+      } catch {}
+
+      if (isCarouselEqual(get().currentCarousel, currentCarousel)) {
+        set({
+          saveStatus: 'saved',
+          lastSavedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        });
+      }
+      return true;
+    } catch (err) {
+      console.warn('[AFSN] save_carousel_structure failed or non-Tauri environment:', err);
+      // Fallback: save to localStorage snapshot
+      try {
+        localStorage.setItem(`afsn_carousel_snapshot_${sanitizedCarousel.projectId}`, JSON.stringify({
+          projectId: sanitizedCarousel.projectId,
+          savedAt: new Date().toISOString(),
+          carousel: sanitizedCarousel,
+        }));
+      } catch {}
+
+      if (isCarouselEqual(get().currentCarousel, currentCarousel)) {
+        set({ saveStatus: 'unsaved' });
+      }
+      return false;
+    }
+  }),
+
+  loadCarouselFromDb: async (projectId: string) => {
+    try {
+      let payload: any = null;
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        payload = await invoke<any>('load_carousel_structure', { projectId });
+      } catch (invokeErr) {
+        console.warn('[AFSN] load_carousel_structure invoke failed, checking snapshot:', invokeErr);
+      }
+
+      if (!payload) {
+        // Fallback to localStorage snapshot
+        try {
+          const snapshotRaw = localStorage.getItem(`afsn_carousel_snapshot_${projectId}`);
+          if (snapshotRaw) {
+            const parsed = JSON.parse(snapshotRaw);
+            payload = parsed.carousel || parsed;
+          }
+        } catch {}
+      }
+
+      if (!payload || !payload.id) {
+        return false;
+      }
+
+      const ratio = (payload.ratio || '1:1') as CarouselRatio;
+      const preset = CAROUSEL_RATIO_PRESETS[ratio] || CAROUSEL_RATIO_PRESETS['1:1'];
+
+      const domainSlides: CarouselSlide[] = (payload.slides || []).map((slide: any, idx: number) => ({
+        id: slide.id || `slide-${projectId}-${idx + 1}`,
+        slideIndex: typeof slide.slideIndex === 'number' ? slide.slideIndex : idx,
+        widthPx: slide.widthPx || preset.width,
+        heightPx: slide.heightPx || preset.height,
+        backgroundColor: slide.backgroundColor || '#FFFFFF',
+        elements: (slide.elements || []).map((el: any): CarouselPhotoFrame => ({
+          type: 'photo',
+          id: el.id,
+          photoId: el.photoId || undefined,
+          filePath: el.filePath || '',
+          fileName: el.fileName || '',
+          previewPath: el.previewPath || undefined,
+          thumbnailPath: el.thumbnailPath || undefined,
+          x: Number(el.x ?? 0),
+          y: Number(el.y ?? 0),
+          width: Number(el.width ?? 100),
+          height: Number(el.height ?? 100),
+          rotation: Number(el.rotation ?? 0),
+          zIndex: el.zIndex !== undefined && el.zIndex !== null ? Number(el.zIndex) : 1,
+          photoAspect: el.photoAspect !== undefined && el.photoAspect !== null ? Number(el.photoAspect) : 1.0,
+          cropX: Number(el.cropX ?? 0),
+          cropY: Number(el.cropY ?? 0),
+          cropScale: Number(el.cropScale ?? 1.0),
+          cropRotation: Number(el.cropRotation ?? 0),
+          borderEnabled: Boolean(el.borderEnabled),
+          borderWidth: Number(el.borderWidth ?? 0),
+          borderColor: el.borderColor || '#FFFFFF',
+          borderStyle: el.borderStyle || 'solid',
+          opacity: Number(el.opacity ?? 1.0),
+          locked: Boolean(el.locked),
+          shapeType: el.shapeType || undefined,
+          customSvgPath: el.customSvgPath || undefined,
+          cornerRadius: el.cornerRadius !== undefined ? Number(el.cornerRadius) : (el.cornerRadiusTl ?? undefined),
+          cornerRadiusTl: el.cornerRadiusTl !== undefined && el.cornerRadiusTl !== null ? Number(el.cornerRadiusTl) : undefined,
+          cornerRadiusTr: el.cornerRadiusTr !== undefined && el.cornerRadiusTr !== null ? Number(el.cornerRadiusTr) : undefined,
+          cornerRadiusBr: el.cornerRadiusBr !== undefined && el.cornerRadiusBr !== null ? Number(el.cornerRadiusBr) : undefined,
+          cornerRadiusBl: el.cornerRadiusBl !== undefined && el.cornerRadiusBl !== null ? Number(el.cornerRadiusBl) : undefined,
+        })),
+      }));
+
+      const loadedCarousel: Carousel = {
+        id: payload.id,
+        projectId: payload.projectId || projectId,
+        ratio,
+        slideWidthPx: payload.slideWidthPx || preset.width,
+        slideHeightPx: payload.slideHeightPx || preset.height,
+        slides: domainSlides,
+        totalSlides: payload.totalSlides || domainSlides.length,
+      };
+
+      set({
+        currentCarousel: loadedCarousel,
+        activeSlideIndex: 0,
+        selectedFrameId: null,
+        selectedFrameIds: [],
+        slideLayoutIndices: {},
+        past: [],
+        future: [],
+        canUndo: false,
+        canRedo: false,
+        saveStatus: 'saved',
+        lastSavedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      });
+
+      return true;
+    } catch (err) {
+      console.error('[AFSN] Error loading carousel structure:', err);
+      return false;
+    }
+  },
 
   pushHistory: () => {
     const { currentCarousel, past } = get();
     if (!currentCarousel) return;
+    get().markDirty();
     const snapshot: Carousel = JSON.parse(JSON.stringify(currentCarousel));
     const last = past[past.length - 1];
     if (last && JSON.stringify(last) === JSON.stringify(snapshot)) return;
@@ -96,6 +330,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
       future: [],
       canUndo: true,
       canRedo: false,
+      saveStatus: 'unsaved',
     });
   },
 
@@ -113,7 +348,9 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
       canRedo: true,
       selectedFrameIds: [],
       selectedFrameId: null,
+      saveStatus: 'unsaved',
     });
+    get().markDirty();
   },
 
   redo: () => {
@@ -130,7 +367,9 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
       canRedo: newFuture.length > 0,
       selectedFrameIds: [],
       selectedFrameId: null,
+      saveStatus: 'unsaved',
     });
+    get().markDirty();
   },
 
   clearHistory: () => {
@@ -149,6 +388,8 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
       future: [],
       canUndo: false,
       canRedo: false,
+      saveStatus: 'saved',
+      lastSavedAt: null,
     });
   },
 
@@ -970,8 +1211,10 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
   },
 
   autoFlowPhotosToSlides: async (photos: Photo[]) => {
-    const { currentCarousel } = get();
+    const { currentCarousel, pushHistory } = get();
     if (!currentCarousel || photos.length === 0) return;
+
+    pushHistory();
 
     const adaptivePhotos: AdaptivePhoto[] = photos.map((p) => ({
       id: p.id,
@@ -1090,6 +1333,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
       },
       activeSlideIndex: renumbered.length - 1,
     });
+    get().markDirty();
   },
 
   setPanoramaSpan: (arg1: any, arg2: any, arg3?: any) => {
