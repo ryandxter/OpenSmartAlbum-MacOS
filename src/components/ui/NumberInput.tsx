@@ -12,6 +12,7 @@ interface NumberInputProps {
   disabled?: boolean;
   suffix?: string;
   className?: string;
+  title?: string;
   onBlur?: () => void;
 }
 
@@ -35,6 +36,7 @@ export function NumberInput({
   disabled,
   suffix,
   className = '',
+  title,
   onBlur,
 }: NumberInputProps) {
   const [localValue, setLocalValue] = useState<string>(() => formatNumber(value, precision));
@@ -123,7 +125,7 @@ export function NumberInput({
   };
 
   return (
-    <div className={`${styles.wrapper} ${className} ${disabled ? styles.disabled : ''}`}>
+    <div className={`${styles.wrapper} ${className} ${disabled ? styles.disabled : ''}`} title={title}>
       {label && <label className={styles.label}>{label}</label>}
       <div className={styles.inputContainer}>
         <input

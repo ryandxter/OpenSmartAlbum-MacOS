@@ -336,19 +336,21 @@ export function ShapesBordersSection({ onToast, activeMode = 'print' }: ShapesBo
           <div className={styles.propGroup}>
             <div className={styles.groupHeader}>
               <span className={styles.label}>Corner Radius</span>
-              <button
-                type="button"
-                className={styles.iconBtn}
-                style={{ width: '22px', height: '22px' }}
-                onClick={() => setIsCornersLinked(!isCornersLinked)}
-                title={isCornersLinked ? 'Corners Linked (Uniform)' : 'Corners Independent'}
-              >
-                {isCornersLinked ? (
-                  <Link size={12} strokeWidth={1.5} />
-                ) : (
-                  <Unlink size={12} strokeWidth={1.5} />
-                )}
-              </button>
+              {(currentShape === 'rectangle' || currentShape === 'rounded' || currentShape === 'star') && (
+                <button
+                  type="button"
+                  className={styles.iconBtn}
+                  style={{ width: '22px', height: '22px' }}
+                  onClick={() => setIsCornersLinked(!isCornersLinked)}
+                  title={isCornersLinked ? 'Corners Linked (Uniform)' : 'Corners Independent'}
+                >
+                  {isCornersLinked ? (
+                    <Link size={12} strokeWidth={1.5} />
+                  ) : (
+                    <Unlink size={12} strokeWidth={1.5} />
+                  )}
+                </button>
+              )}
             </div>
 
             <div className={styles.sliderContainer}>
@@ -364,40 +366,63 @@ export function ShapesBordersSection({ onToast, activeMode = 'print' }: ShapesBo
             </div>
 
             {!isCornersLinked && (
-              <div className={styles.propGrid4} style={{ marginTop: '8px' }}>
-                <NumberInput
-                  label="TL"
-                  value={tl}
-                  suffix="px"
-                  min={0}
-                  max={200}
-                  onChange={(v) => updateSelectedBorders({ cornerRadiusTl: v, cornerRadius: undefined })}
-                />
-                <NumberInput
-                  label="TR"
-                  value={tr}
-                  suffix="px"
-                  min={0}
-                  max={200}
-                  onChange={(v) => updateSelectedBorders({ cornerRadiusTr: v, cornerRadius: undefined })}
-                />
-                <NumberInput
-                  label="BR"
-                  value={br}
-                  suffix="px"
-                  min={0}
-                  max={200}
-                  onChange={(v) => updateSelectedBorders({ cornerRadiusBr: v, cornerRadius: undefined })}
-                />
-                <NumberInput
-                  label="BL"
-                  value={bl}
-                  suffix="px"
-                  min={0}
-                  max={200}
-                  onChange={(v) => updateSelectedBorders({ cornerRadiusBl: v, cornerRadius: undefined })}
-                />
-              </div>
+              currentShape === 'star' ? (
+                <div className={styles.propGrid2} style={{ marginTop: '8px' }}>
+                  <NumberInput
+                    label="Tips"
+                    value={tl}
+                    suffix="px"
+                    min={0}
+                    max={200}
+                    title="Corner radius for outer star tips"
+                    onChange={(v) => updateSelectedBorders({ cornerRadiusTl: v, cornerRadius: undefined })}
+                  />
+                  <NumberInput
+                    label="Valleys"
+                    value={tr}
+                    suffix="px"
+                    min={0}
+                    max={200}
+                    title="Corner radius for inner star valleys"
+                    onChange={(v) => updateSelectedBorders({ cornerRadiusTr: v, cornerRadius: undefined })}
+                  />
+                </div>
+              ) : (currentShape === 'rectangle' || currentShape === 'rounded') ? (
+                <div className={styles.propGrid4} style={{ marginTop: '8px' }}>
+                  <NumberInput
+                    label="TL"
+                    value={tl}
+                    suffix="px"
+                    min={0}
+                    max={200}
+                    onChange={(v) => updateSelectedBorders({ cornerRadiusTl: v, cornerRadius: undefined })}
+                  />
+                  <NumberInput
+                    label="TR"
+                    value={tr}
+                    suffix="px"
+                    min={0}
+                    max={200}
+                    onChange={(v) => updateSelectedBorders({ cornerRadiusTr: v, cornerRadius: undefined })}
+                  />
+                  <NumberInput
+                    label="BR"
+                    value={br}
+                    suffix="px"
+                    min={0}
+                    max={200}
+                    onChange={(v) => updateSelectedBorders({ cornerRadiusBr: v, cornerRadius: undefined })}
+                  />
+                  <NumberInput
+                    label="BL"
+                    value={bl}
+                    suffix="px"
+                    min={0}
+                    max={200}
+                    onChange={(v) => updateSelectedBorders({ cornerRadiusBl: v, cornerRadius: undefined })}
+                  />
+                </div>
+              ) : null
             )}
           </div>
         </>
