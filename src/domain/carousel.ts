@@ -294,3 +294,54 @@ export function isCarouselEqual(a: Carousel | null, b: Carousel | null): boolean
   if (!a || !b) return false;
   return JSON.stringify(a) === JSON.stringify(b);
 }
+
+/**
+ * Snapshot of visual style properties for a CarouselPhotoFrame.
+ * Used to carry styles through layout cycling and auto-flow operations,
+ * where geometry (x, y, width, height) changes but visual customizations must be preserved.
+ *
+ * ISO-05: Preserves shapeType, border, cornerRadius, opacity, rotation, and locked state.
+ */
+export type FrameStyleSnapshot = {
+  shapeType?: ShapeType;
+  customSvgPath?: string;
+  borderEnabled?: boolean;
+  borderWidth?: number;
+  borderColor?: string;
+  borderStyle?: 'solid' | 'dashed' | 'double';
+  opacity?: number;
+  rotation?: number;
+  locked?: boolean;
+  cornerRadius?: number;
+  cornerRadiusTl?: number;
+  cornerRadiusTr?: number;
+  cornerRadiusBr?: number;
+  cornerRadiusBl?: number;
+};
+
+/**
+ * Extracts the visual style snapshot from a CarouselPhotoFrame.
+ * Only includes fields that have been explicitly set (non-undefined).
+ *
+ * @param frame - The source photo frame to extract styles from.
+ * @returns A FrameStyleSnapshot containing all explicitly-set visual properties.
+ */
+export function extractFrameStyle(frame: CarouselPhotoFrame): FrameStyleSnapshot {
+  const snap: FrameStyleSnapshot = {};
+  if (frame.shapeType !== undefined) snap.shapeType = frame.shapeType;
+  if (frame.customSvgPath !== undefined) snap.customSvgPath = frame.customSvgPath;
+  if (frame.borderEnabled !== undefined) snap.borderEnabled = frame.borderEnabled;
+  if (frame.borderWidth !== undefined) snap.borderWidth = frame.borderWidth;
+  if (frame.borderColor !== undefined) snap.borderColor = frame.borderColor;
+  if (frame.borderStyle !== undefined) snap.borderStyle = frame.borderStyle;
+  if (frame.opacity !== undefined) snap.opacity = frame.opacity;
+  if (frame.rotation !== undefined) snap.rotation = frame.rotation;
+  if (frame.locked !== undefined) snap.locked = frame.locked;
+  if (frame.cornerRadius !== undefined) snap.cornerRadius = frame.cornerRadius;
+  if (frame.cornerRadiusTl !== undefined) snap.cornerRadiusTl = frame.cornerRadiusTl;
+  if (frame.cornerRadiusTr !== undefined) snap.cornerRadiusTr = frame.cornerRadiusTr;
+  if (frame.cornerRadiusBr !== undefined) snap.cornerRadiusBr = frame.cornerRadiusBr;
+  if (frame.cornerRadiusBl !== undefined) snap.cornerRadiusBl = frame.cornerRadiusBl;
+  return snap;
+}
+

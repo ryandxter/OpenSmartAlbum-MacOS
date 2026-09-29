@@ -6,6 +6,8 @@ import {
   CarouselPhotoFrame,
   CarouselTextFrame,
   CarouselElement,
+  FrameStyleSnapshot,
+  extractFrameStyle,
   createInitialCarousel,
   createCarouselSlide,
   scaleFramesForRatioSwitch,
@@ -540,23 +542,42 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     if (!target) return;
 
     pushHistory();
+    const { slideWidthPx } = currentCarousel;
+
+    // ISO-04: The duplicated slide is inserted at index + 1.
+    // Its elements are cloned from the source and shifted by +slideWidthPx.
     const duplicated: CarouselSlide = {
       ...target,
       id: `slide-${currentCarousel.projectId}-${Date.now()}-dup`,
       elements: target.elements.map((el) => ({
         ...el,
         id: `${el.id}-dup-${Date.now()}`,
+        x: Math.round(el.x + slideWidthPx),
       })),
     };
+
+    // Build original index map before building the new array
+    const originalIndexById = new Map(currentCarousel.slides.map((s, i) => [s.id, i]));
 
     const newSlides = [
       ...currentCarousel.slides.slice(0, index + 1),
       duplicated,
       ...currentCarousel.slides.slice(index + 1),
-    ].map((s, idx) => ({
-      ...s,
-      slideIndex: idx,
-    }));
+    ].map((slide, newIdx) => {
+      const originalIdx = originalIndexById.get(slide.id);
+      if (originalIdx === undefined) {
+        // This is the duplicated slide — elements already have correct shifted x coords
+        return { ...slide, slideIndex: newIdx };
+      }
+      const deltaX = (newIdx - originalIdx) * slideWidthPx;
+      return {
+        ...slide,
+        slideIndex: newIdx,
+        elements: deltaX === 0
+          ? slide.elements
+          : slide.elements.map((el) => ({ ...el, x: Math.round(el.x + deltaX) })),
+      };
+    });
 
     set({
       currentCarousel: {
@@ -573,12 +594,25 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     if (!currentCarousel || currentCarousel.slides.length <= MIN_CAROUSEL_SLIDES) return;
 
     pushHistory();
+    const { slideWidthPx } = currentCarousel;
+
+    // ISO-04: Slides after the deleted index shift left by one slideWidthPx.
+    // For slide at new index i:
+    //   - If i < index (was before deleted slide): originalIdx = i, deltaX = 0
+    //   - If i >= index (was after deleted slide): originalIdx = i + 1, deltaX = -slideWidthPx
     const newSlides = currentCarousel.slides
       .filter((_, idx) => idx !== index)
-      .map((s, idx) => ({
-        ...s,
-        slideIndex: idx,
-      }));
+      .map((slide, newIdx) => {
+        const originalIdx = newIdx >= index ? newIdx + 1 : newIdx;
+        const deltaX = (newIdx - originalIdx) * slideWidthPx; // 0 or -slideWidthPx
+        return {
+          ...slide,
+          slideIndex: newIdx,
+          elements: deltaX === 0
+            ? slide.elements
+            : slide.elements.map((el) => ({ ...el, x: Math.round(el.x + deltaX) })),
+        };
+      });
 
     set({
       currentCarousel: {
@@ -592,19 +626,31 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
 
   reorderSlide: (fromIndex, toIndex) => {
     const { currentCarousel, pushHistory } = get();
-    if (!currentCarousel) return;
-    if (fromIndex === toIndex) return;
+    if (!currentCarousel || fromIndex === toIndex) return;
 
     pushHistory();
+
+    // ISO-04: Capture pre-reorder indices by stable slide ID before mutation.
+    const oldIndexById = new Map(currentCarousel.slides.map((s, i) => [s.id, i]));
+
     const slides = [...currentCarousel.slides];
     const [moved] = slides.splice(fromIndex, 1);
     if (!moved) return;
     slides.splice(toIndex, 0, moved);
 
-    const updatedSlides = slides.map((s, idx) => ({
-      ...s,
-      slideIndex: idx,
-    }));
+    const { slideWidthPx } = currentCarousel;
+
+    const updatedSlides = slides.map((slide, newIdx) => {
+      const oldIdx = oldIndexById.get(slide.id) ?? newIdx;
+      const deltaX = (newIdx - oldIdx) * slideWidthPx;
+      return {
+        ...slide,
+        slideIndex: newIdx,
+        elements: deltaX === 0
+          ? slide.elements
+          : slide.elements.map((el) => ({ ...el, x: Math.round(el.x + deltaX) })),
+      };
+    });
 
     set({
       currentCarousel: {
@@ -912,6 +958,12 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     );
     if (activeFrames.length === 0) return;
 
+    // ISO-05: Build style map from existing frames keyed by photoId (stable key that follows the photo).
+    // When the layout cycles, geometry changes but visual styles must travel with the photo.
+    const styleByPhotoId = new Map<string, FrameStyleSnapshot>(
+      activeFrames.map((f) => [f.photoId || f.id, extractFrameStyle(f)])
+    );
+
     pushHistory();
 
     const photos: AdaptivePhoto[] = activeFrames.map((f) => ({
@@ -953,10 +1005,13 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
           ? chosen.photoAssignments[i]
           : i;
       const photo = photos[photoIdx] || photos[i] || photos[0];
+      const photoKey = (photo && (photo.photoId || photo.id)) || `photo-${i}`;
+      // ISO-05: Carry forward visual styles from the previous frame for this photo.
+      const existingStyle = styleByPhotoId.get(photoKey) ?? {};
       return {
         type: 'photo',
         id: `frame-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 7)}`,
-        photoId: (photo && (photo.photoId || photo.id)) || `photo-${i}`,
+        photoId: photoKey,
         filePath: (photo && photo.filePath) || '',
         fileName: photo ? photo.fileName : undefined,
         previewPath: photo ? photo.previewPath : undefined,
@@ -969,6 +1024,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         cropX: 0,
         cropY: 0,
         cropScale: 1.0,
+        ...existingStyle, // ISO-05: Spread style snapshot after geometry
       };
     });
 
@@ -1001,12 +1057,17 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     const targetSlide = currentCarousel.slides[slideIndex];
     if (!targetSlide) return;
 
-    pushHistory();
-
     const activeFrames = targetSlide.elements.filter(
       (el): el is CarouselPhotoFrame => el.type === 'photo' && Boolean(el.filePath)
     );
     if (activeFrames.length === 0) return;
+
+    // ISO-05: Build style map keyed by photoId before generating new layout.
+    const styleByPhotoId = new Map<string, FrameStyleSnapshot>(
+      activeFrames.map((f) => [f.photoId || f.id, extractFrameStyle(f)])
+    );
+
+    pushHistory();
 
     const photos: AdaptivePhoto[] = activeFrames.map((f) => ({
       id: f.id,
@@ -1041,10 +1102,12 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
           ? chosen.photoAssignments[i]
           : i;
       const photo = photos[photoIdx] || photos[i] || photos[0];
+      const photoKey = (photo && (photo.photoId || photo.id)) || `photo-${i}`;
+      const existingStyle = styleByPhotoId.get(photoKey) ?? {};
       return {
         type: 'photo',
         id: `frame-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 7)}`,
-        photoId: (photo && (photo.photoId || photo.id)) || `photo-${i}`,
+        photoId: photoKey,
         filePath: (photo && photo.filePath) || '',
         fileName: photo ? photo.fileName : undefined,
         previewPath: photo ? photo.previewPath : undefined,
@@ -1057,6 +1120,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         cropX: 0,
         cropY: 0,
         cropScale: 1.0,
+        ...existingStyle, // ISO-05: Spread style snapshot after geometry
       };
     });
 
