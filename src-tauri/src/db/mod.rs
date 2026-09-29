@@ -284,6 +284,8 @@ pub struct ProjectPackagePayload {
     pub album: Option<AlbumPayload>,
     #[serde(default)]
     pub folder_members: Vec<FolderMemberPayload>,
+    #[serde(default)]
+    pub carousel: Option<CarouselPayload>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -3130,6 +3132,283 @@ mod tests {
         assert_eq!(loaded_elem.corner_radius_bl, 0.0);
         assert_eq!(loaded_elem.corner_radii(), (8.0, 0.0, 8.0, 0.0));
 
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_migrate_v16_and_schema_version() {
+        let temp_dir = std::env::temp_dir().join(format!("afsn_test_v16_{}", uuid::Uuid::new_v4()));
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        let db = Database::init(temp_dir.join("test.db")).expect("Failed to init DB");
+
+        assert_eq!(db.get_schema_version().unwrap(), 16);
+        assert_eq!(Database::expected_version(), 16);
+
+        // Verify tables exist
+        let conn = db.conn.lock().unwrap();
+        let tables: Vec<String> = conn
+            .prepare("SELECT name FROM sqlite_master WHERE type='table'")
+            .unwrap()
+            .query_map([], |r| r.get(0))
+            .unwrap()
+            .filter_map(|r| r.ok())
+            .collect();
+
+        assert!(tables.contains(&"carousels".to_string()));
+        assert!(tables.contains(&"carousel_slides".to_string()));
+        assert!(tables.contains(&"carousel_frames".to_string()));
+
+        // Verify project_type column exists
+        let project_cols: Vec<String> = conn
+            .prepare("PRAGMA table_info(projects)")
+            .unwrap()
+            .query_map([], |r| r.get(1))
+            .unwrap()
+            .filter_map(|r| r.ok())
+            .collect();
+        assert!(project_cols.contains(&"project_type".to_string()));
+
+        drop(conn);
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_carousel_save_and_load_roundtrip() {
+        let temp_dir = std::env::temp_dir().join(format!("afsn_test_carousel_{}", uuid::Uuid::new_v4()));
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        let db = Database::init(temp_dir.join("test.db")).expect("Failed to init DB");
+
+        let project_id = "carousel-proj-1";
+        db.create_project(
+            project_id,
+            "Instagram Carousel",
+            1080.0,
+            1350.0,
+            "px",
+            72,
+            0.0,
+            "px",
+            false,
+            0.0,
+            "px",
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            false,
+            0.0,
+            "px",
+            "#000000",
+            "solid",
+            "#FFFFFF",
+        ).expect("Failed to create carousel project");
+
+        let project = db.get_project(project_id).unwrap().unwrap();
+        assert_eq!(project.project_type, "carousel");
+
+        let frame_1 = CarouselFramePayload {
+            id: "frame-1".to_string(),
+            photo_id: None,
+            file_path: "/tmp/sample1.jpg".to_string(),
+            file_name: "sample1.jpg".to_string(),
+            preview_path: None,
+            thumbnail_path: None,
+            x: 50.0,
+            y: 100.0,
+            width: 400.0,
+            height: 500.0,
+            rotation: 15.0,
+            z_index: Some(1),
+            photo_aspect: Some(1.33),
+            crop_x: Some(0.1),
+            crop_y: Some(0.2),
+            crop_scale: Some(1.2),
+            crop_rotation: Some(5.0),
+            border_enabled: Some(true),
+            border_width: Some(3.0),
+            border_color: Some("#FF0000".to_string()),
+            border_style: Some("solid".to_string()),
+            opacity: Some(0.9),
+            locked: Some(false),
+            shape_type: Some("rectangle".to_string()),
+            custom_svg_path: None,
+            corner_radius_tl: Some(12.0),
+            corner_radius_tr: Some(0.0),
+            corner_radius_br: Some(12.0),
+            corner_radius_bl: Some(0.0),
+        };
+
+        let frame_2 = CarouselFramePayload {
+            id: "frame-2".to_string(),
+            photo_id: None,
+            file_path: "/tmp/sample2.jpg".to_string(),
+            file_name: "sample2.jpg".to_string(),
+            preview_path: None,
+            thumbnail_path: None,
+            x: 200.0,
+            y: 300.0,
+            width: 600.0,
+            height: 600.0,
+            rotation: 0.0,
+            z_index: Some(2),
+            photo_aspect: Some(1.0),
+            crop_x: Some(0.0),
+            crop_y: Some(0.0),
+            crop_scale: Some(1.0),
+            crop_rotation: Some(0.0),
+            border_enabled: Some(false),
+            border_width: Some(0.0),
+            border_color: None,
+            border_style: None,
+            opacity: Some(1.0),
+            locked: Some(true),
+            shape_type: Some("circle".to_string()),
+            custom_svg_path: None,
+            corner_radius_tl: None,
+            corner_radius_tr: None,
+            corner_radius_br: None,
+            corner_radius_bl: None,
+        };
+
+        let slide_0 = CarouselSlidePayload {
+            id: "slide-0".to_string(),
+            slide_index: 0,
+            width_px: 1080,
+            height_px: 1350,
+            background_color: "#FFFFFF".to_string(),
+            elements: vec![frame_1, frame_2],
+        };
+
+        let slide_1 = CarouselSlidePayload {
+            id: "slide-1".to_string(),
+            slide_index: 1,
+            width_px: 1080,
+            height_px: 1350,
+            background_color: "#112233".to_string(),
+            elements: vec![],
+        };
+
+        let slide_2 = CarouselSlidePayload {
+            id: "slide-2".to_string(),
+            slide_index: 2,
+            width_px: 1080,
+            height_px: 1350,
+            background_color: "#445566".to_string(),
+            elements: vec![],
+        };
+
+        let carousel = CarouselPayload {
+            id: "carousel-1".to_string(),
+            project_id: project_id.to_string(),
+            ratio: "4:5".to_string(),
+            slide_width_px: 1080,
+            slide_height_px: 1350,
+            total_slides: 3,
+            slides: vec![slide_0, slide_1, slide_2],
+        };
+
+        db.save_carousel_structure(&carousel).expect("Failed to save carousel");
+
+        let loaded = db.load_carousel_structure(project_id).expect("Query failed").expect("Carousel not found");
+        assert_eq!(loaded.id, "carousel-1");
+        assert_eq!(loaded.ratio, "4:5");
+        assert_eq!(loaded.slide_width_px, 1080);
+        assert_eq!(loaded.slide_height_px, 1350);
+        assert_eq!(loaded.total_slides, 3);
+        assert_eq!(loaded.slides.len(), 3);
+
+        assert_eq!(loaded.slides[0].background_color, "#FFFFFF");
+        assert_eq!(loaded.slides[0].elements.len(), 2);
+        let f1 = &loaded.slides[0].elements[0];
+        assert_eq!(f1.id, "frame-1");
+        assert_eq!(f1.rotation, 15.0);
+        assert_eq!(f1.crop_scale, Some(1.2));
+        assert_eq!(f1.border_enabled, Some(true));
+        assert_eq!(f1.border_width, Some(3.0));
+        assert_eq!(f1.corner_radius_tl, Some(12.0));
+
+        let f2 = &loaded.slides[0].elements[1];
+        assert_eq!(f2.id, "frame-2");
+        assert_eq!(f2.locked, Some(true));
+        assert_eq!(f2.shape_type.as_deref(), Some("circle"));
+
+        assert_eq!(loaded.slides[1].background_color, "#112233");
+        assert_eq!(loaded.slides[2].background_color, "#445566");
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_carousel_cascading_delete() {
+        let temp_dir = std::env::temp_dir().join(format!("afsn_test_cascade_{}", uuid::Uuid::new_v4()));
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        let db = Database::init(temp_dir.join("test.db")).expect("Failed to init DB");
+
+        let project_id = "cascade-carousel-proj";
+        let carousel = CarouselPayload {
+            id: "cascade-c1".to_string(),
+            project_id: project_id.to_string(),
+            ratio: "1:1".to_string(),
+            slide_width_px: 1080,
+            slide_height_px: 1080,
+            total_slides: 1,
+            slides: vec![CarouselSlidePayload {
+                id: "cascade-s1".to_string(),
+                slide_index: 0,
+                width_px: 1080,
+                height_px: 1080,
+                background_color: "#000000".to_string(),
+                elements: vec![CarouselFramePayload {
+                    id: "cascade-f1".to_string(),
+                    photo_id: None,
+                    file_path: "/tmp/sample.jpg".to_string(),
+                    file_name: "sample.jpg".to_string(),
+                    preview_path: None,
+                    thumbnail_path: None,
+                    x: 0.0,
+                    y: 0.0,
+                    width: 1080.0,
+                    height: 1080.0,
+                    rotation: 0.0,
+                    z_index: Some(1),
+                    photo_aspect: Some(1.0),
+                    crop_x: None,
+                    crop_y: None,
+                    crop_scale: None,
+                    crop_rotation: None,
+                    border_enabled: None,
+                    border_width: None,
+                    border_color: None,
+                    border_style: None,
+                    opacity: None,
+                    locked: None,
+                    shape_type: None,
+                    custom_svg_path: None,
+                    corner_radius_tl: None,
+                    corner_radius_tr: None,
+                    corner_radius_br: None,
+                    corner_radius_bl: None,
+                }],
+            }],
+        };
+
+        db.save_carousel_structure(&carousel).expect("Save carousel");
+        assert!(db.load_carousel_structure(project_id).unwrap().is_some());
+
+        // Deleting project must cascade to carousels, carousel_slides, and carousel_frames
+        db.delete_project(project_id).expect("Delete project");
+        assert!(db.load_carousel_structure(project_id).unwrap().is_none());
+
+        let conn = db.conn.lock().unwrap();
+        let carousel_count: i64 = conn.query_row("SELECT count(*) FROM carousels WHERE project_id = ?1", [project_id], |r| r.get(0)).unwrap();
+        let slide_count: i64 = conn.query_row("SELECT count(*) FROM carousel_slides WHERE project_id = ?1", [project_id], |r| r.get(0)).unwrap();
+        let frame_count: i64 = conn.query_row("SELECT count(*) FROM carousel_frames WHERE slide_id = 'cascade-s1'", [], |r| r.get(0)).unwrap();
+
+        assert_eq!(carousel_count, 0);
+        assert_eq!(slide_count, 0);
+        assert_eq!(frame_count, 0);
+
+        drop(conn);
         let _ = std::fs::remove_dir_all(&temp_dir);
     }
 }

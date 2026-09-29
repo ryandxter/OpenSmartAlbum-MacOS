@@ -169,6 +169,21 @@ fn remap_identity(package: &mut ProjectPackagePayload, id: &str) {
             }
         }
     }
+    if let Some(carousel) = &mut package.carousel {
+        carousel.id = fresh();
+        carousel.project_id = id.to_string();
+        for slide in &mut carousel.slides {
+            slide.id = fresh();
+            for frame in &mut slide.elements {
+                frame.id = fresh();
+                if let Some(photo_id) = &frame.photo_id {
+                    if let Some(new_id) = photos.get(photo_id) {
+                        frame.photo_id = Some(new_id.clone());
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl Database {
@@ -206,6 +221,7 @@ impl Database {
         let photos = self.get_photos_for_project(project_id)?;
         let folders = self.get_folders_for_project(project_id)?;
         let album = self.load_album_structure(project_id)?;
+        let carousel = self.load_carousel_structure(project_id)?;
         let mut folder_members = Vec::new();
         for folder in &folders {
             for photo in self.get_photos_for_folder(&folder.id)? {
@@ -222,6 +238,7 @@ impl Database {
             folders,
             album,
             folder_members,
+            carousel,
         })
     }
 
@@ -290,6 +307,16 @@ impl Database {
             {
                 for element in &spread.elements {
                     if element.r#type != "text" && !known_photos.contains(&element.file_path) {
+                        known_photos.insert(element.file_path.clone());
+                        unreferenced_frame_paths.push(element.file_path.clone());
+                    }
+                }
+            }
+        }
+        if let Some(carousel) = &package.carousel {
+            for slide in &carousel.slides {
+                for element in &slide.elements {
+                    if !element.file_path.is_empty() && !known_photos.contains(&element.file_path) {
                         known_photos.insert(element.file_path.clone());
                         unreferenced_frame_paths.push(element.file_path.clone());
                     }
@@ -370,6 +397,44 @@ impl Database {
                 }
             }
 
+            if let Some(carousel) = &mut package.carousel {
+                for slide in &mut carousel.slides {
+                    for element in &mut slide.elements {
+                        if element.file_path.is_empty() {
+                            continue;
+                        }
+                        if !paths.contains_key(&element.file_path) {
+                            let safe_name = Path::new(&element.file_path)
+                                .file_name()
+                                .map(|s| s.to_string_lossy().to_string())
+                                .unwrap_or_else(|| "photo".into())
+                                .replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
+                            let relative =
+                                format!("photos/frame_{}_{}", uuid::Uuid::new_v4(), safe_name);
+
+                            let status_msg = format!("Compressing placed photo ({}/{}): {}", current_item + 1, total_items, safe_name);
+                            let pct = if total_items > 0 { (current_item * 100) / total_items } else { 0 };
+                            on_progress(current_item, total_items, pct, &status_msg);
+
+                            let mut original = File::open(&element.file_path).map_err(|e| {
+                                package_error(format!(
+                                    "Cannot package placed photo '{}': {}",
+                                    element.file_path, e
+                                ))
+                            })?;
+                            zip.start_file(&relative, options).map_err(package_error)?;
+                            std::io::copy(&mut original, &mut zip).map_err(package_error)?;
+                            paths.insert(element.file_path.clone(), relative);
+
+                            current_item += 1;
+                        }
+                        element.file_path = paths[&element.file_path].clone();
+                        element.preview_path = None;
+                        element.thumbnail_path = None;
+                    }
+                }
+            }
+
             let status_msg = format!("Writing project metadata ({}/{}): project.afsn", current_item + 1, total_items);
             let pct = if total_items > 0 { (current_item * 100) / total_items } else { 99 };
             on_progress(current_item, total_items, pct, &status_msg);
@@ -410,6 +475,10 @@ impl Database {
                 .album
                 .as_ref()
                 .is_some_and(|a| &a.project_id != project_id)
+            || package
+                .carousel
+                .as_ref()
+                .is_some_and(|c| &c.project_id != project_id)
         {
             return Err(package_error("Invalid project ownership in package."));
         }
@@ -444,6 +513,21 @@ impl Database {
                             .take()
                             .filter(|p| Path::new(p).is_file());
                     }
+                }
+            }
+        }
+        if let Some(carousel) = &mut package.carousel {
+            for slide in &mut carousel.slides {
+                for element in &mut slide.elements {
+                    element.file_path = resolve(&element.file_path);
+                    element.preview_path = element
+                        .preview_path
+                        .take()
+                        .filter(|p| Path::new(p).is_file());
+                    element.thumbnail_path = element
+                        .thumbnail_path
+                        .take()
+                        .filter(|p| Path::new(p).is_file());
                 }
             }
         }
@@ -494,6 +578,7 @@ impl Database {
                     margin_top, margin_bottom, margin_outside, margin_spine,
                     border_enabled, border_width, border_unit, border_color,
                     background_type, background_color, file_path,
+                    project_type,
                     created_at, updated_at
                 ) VALUES (
                     ?1, ?2, ?3, ?4, ?5, ?6,
@@ -502,6 +587,7 @@ impl Database {
                     ?12, ?13, ?14, ?15,
                     ?16, ?17, ?18, ?19,
                     ?20, ?21, ?22,
+                    ?23,
                     datetime('now'), datetime('now')
                 )
                 ON CONFLICT(id) DO UPDATE SET
@@ -526,6 +612,7 @@ impl Database {
                     background_type = excluded.background_type,
                     background_color = excluded.background_color,
                     file_path = excluded.file_path,
+                    project_type = excluded.project_type,
                     updated_at = datetime('now')",
             rusqlite::params![
                 p.id,
@@ -550,12 +637,15 @@ impl Database {
                 p.background_type,
                 p.background_color,
                 p.file_path,
+                p.project_type,
             ],
         )?;
         if let (Some(path), Some(identity)) = (&p.file_path, file_identity) {
             claim_file(&tx, &p.id, path, identity)?;
         }
         tx.execute("DELETE FROM album_spreads WHERE project_id = ?1", [&p.id])?;
+        tx.execute("DELETE FROM carousels WHERE project_id = ?1", [&p.id])?;
+        tx.execute("DELETE FROM carousel_slides WHERE project_id = ?1", [&p.id])?;
         tx.execute("DELETE FROM photo_folders WHERE project_id = ?1", [&p.id])?;
         tx.execute("DELETE FROM photos WHERE project_id = ?1", [&p.id])?;
         for photo in &package.photos {
@@ -576,6 +666,9 @@ impl Database {
         }
         if let Some(album) = &package.album {
             Self::save_album_in_transaction(&tx, album)?;
+        }
+        if let Some(carousel) = &package.carousel {
+            Self::save_carousel_in_transaction(&tx, carousel)?;
         }
         tx.commit()
     }
@@ -814,5 +907,152 @@ mod tests {
         );
         drop(db);
         fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn test_carousel_package_export_import_and_bundled_zip() {
+        let root = std::env::temp_dir().join(format!("afsn-carousel-pkg-{}", uuid::Uuid::new_v4()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+
+        let db = Database::init(root.join("source.db")).unwrap();
+        let project_id = "carousel-source";
+        db.create_project(
+            project_id,
+            "Carousel Source",
+            1080.0,
+            1080.0,
+            "px",
+            72,
+            0.0,
+            "px",
+            false,
+            0.0,
+            "px",
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            false,
+            0.0,
+            "px",
+            "#000000",
+            "solid",
+            "#FFFFFF",
+        ).unwrap();
+
+        let photo_file = root.join("slide_photo.jpg");
+        fs::write(&photo_file, b"sample image bytes for carousel").unwrap();
+
+        let photo: PhotoRow = serde_json::from_value(serde_json::json!({
+            "id": "photo-c1", "projectId": project_id, "filePath": photo_file.to_string_lossy(),
+            "fileName": "slide_photo.jpg", "fileSize": 32, "width": 800, "height": 800, "format": "jpg",
+            "isFavorite": true, "usedCount": 1, "isMissing": false, "createdAt": "now", "updatedAt": "now"
+        })).unwrap();
+        db.add_photo(&photo).unwrap();
+
+        let carousel = CarouselPayload {
+            id: "c-source".to_string(),
+            project_id: project_id.to_string(),
+            ratio: "1:1".to_string(),
+            slide_width_px: 1080,
+            slide_height_px: 1080,
+            total_slides: 2,
+            slides: vec![
+                CarouselSlidePayload {
+                    id: "slide-c1".to_string(),
+                    slide_index: 0,
+                    width_px: 1080,
+                    height_px: 1080,
+                    background_color: "#123456".to_string(),
+                    elements: vec![
+                        CarouselFramePayload {
+                            id: "frame-c1".to_string(),
+                            photo_id: Some("photo-c1".to_string()),
+                            file_path: photo_file.to_string_lossy().to_string(),
+                            file_name: "slide_photo.jpg".to_string(),
+                            preview_path: None,
+                            thumbnail_path: None,
+                            x: 0.0,
+                            y: 0.0,
+                            width: 1080.0,
+                            height: 1080.0,
+                            rotation: 0.0,
+                            z_index: Some(1),
+                            photo_aspect: Some(1.0),
+                            crop_x: Some(0.0),
+                            crop_y: Some(0.0),
+                            crop_scale: Some(1.0),
+                            crop_rotation: Some(0.0),
+                            border_enabled: Some(false),
+                            border_width: Some(0.0),
+                            border_color: None,
+                            border_style: None,
+                            opacity: Some(1.0),
+                            locked: Some(false),
+                            shape_type: Some("rectangle".to_string()),
+                            custom_svg_path: None,
+                            corner_radius_tl: None,
+                            corner_radius_tr: None,
+                            corner_radius_br: None,
+                            corner_radius_bl: None,
+                        }
+                    ],
+                },
+                CarouselSlidePayload {
+                    id: "slide-c2".to_string(),
+                    slide_index: 1,
+                    width_px: 1080,
+                    height_px: 1080,
+                    background_color: "#654321".to_string(),
+                    elements: vec![],
+                }
+            ],
+        };
+
+        db.save_carousel_structure(&carousel).unwrap();
+
+        // 1. Export .afsn package
+        let afsn_path = root.join("project.afsn");
+        db.export_project_package(project_id, afsn_path.to_str().unwrap()).unwrap();
+        assert!(afsn_path.exists());
+
+        // 2. Read .afsn contents directly and check carousel key is populated
+        let raw_afsn = fs::read_to_string(&afsn_path).unwrap();
+        assert!(raw_afsn.contains("\"carousel\""));
+        assert!(raw_afsn.contains("\"slide-c1\""));
+        assert!(raw_afsn.contains("\"#123456\""));
+
+        // 3. Import in a fresh database
+        let db2 = Database::init(root.join("target.db")).unwrap();
+        let imported = db2.import_project_package(afsn_path.to_str().unwrap()).unwrap();
+        assert!(imported.carousel.is_some());
+        let imported_c = imported.carousel.unwrap();
+        assert_eq!(imported_c.ratio, "1:1");
+        assert_eq!(imported_c.slides.len(), 2);
+        assert_eq!(imported_c.slides[0].background_color, "#123456");
+        assert_eq!(imported_c.slides[0].elements.len(), 1);
+
+        // Verify it was stored in db2's SQLite tables
+        let loaded_from_db2 = db2.load_carousel_structure(&imported.project.id).unwrap().unwrap();
+        assert_eq!(loaded_from_db2.slides.len(), 2);
+        assert_eq!(loaded_from_db2.slides[0].elements.len(), 1);
+
+        // 4. Test bundled ZIP export
+        let zip_path = root.join("carousel_bundle.zip");
+        db.export_bundled_project_package(project_id, zip_path.to_str().unwrap()).unwrap();
+        assert!(zip_path.exists());
+
+        // Inspect zip entries
+        let zip_file = File::open(&zip_path).unwrap();
+        let archive = zip::ZipArchive::new(zip_file).unwrap();
+        let entry_names: Vec<String> = archive.file_names().map(|s| s.to_string()).collect();
+        assert!(entry_names.contains(&"project.afsn".to_string()));
+        assert!(entry_names.iter().any(|name| name.starts_with("photos/")));
+
+        drop(archive);
+        drop(db);
+        drop(db2);
+        let _ = fs::remove_dir_all(root);
     }
 }
