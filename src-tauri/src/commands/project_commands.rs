@@ -3,7 +3,7 @@ use tauri::{AppHandle, Emitter, State, Manager};
 use uuid::Uuid;
 
 use crate::asset_cache::{PHOTO_ASSET_JOB, cleanup_removed_photo_assets};
-use crate::db::{AlbumPayload, Database, ProjectPackagePayload, ProjectRow};
+use crate::db::{AlbumPayload, CarouselPayload, Database, ProjectPackagePayload, ProjectRow};
 
 // Serialize file identity checks and publication across all windows in this process.
 static PROJECT_FILE_JOB: std::sync::Mutex<()> = std::sync::Mutex::new(());
@@ -327,6 +327,32 @@ pub fn load_album_structure(
     db.load_album_structure(&project_id)
         .map_err(|e| {
             log::error!("Failed to load album structure: {:?}", e);
+            e.to_string()
+        })
+}
+
+#[tauri::command]
+pub fn save_carousel_structure(
+    db: State<'_, Database>,
+    carousel: CarouselPayload,
+) -> Result<(), String> {
+    log::info!("save_carousel_structure for project: {}", carousel.project_id);
+    db.save_carousel_structure(&carousel)
+        .map_err(|e| {
+            log::error!("Failed to save carousel structure: {:?}", e);
+            e.to_string()
+        })
+}
+
+#[tauri::command]
+pub fn load_carousel_structure(
+    db: State<'_, Database>,
+    project_id: String,
+) -> Result<Option<CarouselPayload>, String> {
+    log::info!("load_carousel_structure for project: {}", project_id);
+    db.load_carousel_structure(&project_id)
+        .map_err(|e| {
+            log::error!("Failed to load carousel structure: {:?}", e);
             e.to_string()
         })
 }

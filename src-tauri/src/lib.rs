@@ -127,6 +127,8 @@ pub fn run() {
             commands::project_commands::update_project_name_and_path,
             commands::project_commands::save_album_structure,
             commands::project_commands::load_album_structure,
+            commands::project_commands::save_carousel_structure,
+            commands::project_commands::load_carousel_structure,
             commands::project_commands::export_afsn_package,
             commands::project_commands::import_afsn_package,
             commands::project_commands::export_afsn_with_dialog,

@@ -293,6 +293,82 @@ pub struct FolderMemberPayload {
     pub photo_id: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CarouselFramePayload {
+    pub id: String,
+    pub photo_id: Option<String>,
+    #[serde(default)]
+    pub file_path: String,
+    #[serde(default)]
+    pub file_name: String,
+    pub preview_path: Option<String>,
+    pub thumbnail_path: Option<String>,
+    #[serde(default)]
+    pub x: f64,
+    #[serde(default)]
+    pub y: f64,
+    #[serde(default)]
+    pub width: f64,
+    #[serde(default)]
+    pub height: f64,
+    #[serde(default)]
+    pub rotation: f64,
+    #[serde(default)]
+    pub z_index: Option<i32>,
+    #[serde(default)]
+    pub photo_aspect: Option<f64>,
+    #[serde(default)]
+    pub crop_x: Option<f64>,
+    #[serde(default)]
+    pub crop_y: Option<f64>,
+    #[serde(default)]
+    pub crop_scale: Option<f64>,
+    #[serde(default)]
+    pub crop_rotation: Option<f64>,
+    #[serde(default)]
+    pub border_enabled: Option<bool>,
+    #[serde(default)]
+    pub border_width: Option<f64>,
+    pub border_color: Option<String>,
+    pub border_style: Option<String>,
+    #[serde(default)]
+    pub opacity: Option<f64>,
+    #[serde(default)]
+    pub locked: Option<bool>,
+    pub shape_type: Option<String>,
+    pub custom_svg_path: Option<String>,
+    pub corner_radius_tl: Option<f64>,
+    pub corner_radius_tr: Option<f64>,
+    pub corner_radius_br: Option<f64>,
+    pub corner_radius_bl: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CarouselSlidePayload {
+    pub id: String,
+    pub slide_index: i32,
+    pub width_px: i32,
+    pub height_px: i32,
+    pub background_color: String,
+    #[serde(default)]
+    pub elements: Vec<CarouselFramePayload>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CarouselPayload {
+    pub id: String,
+    pub project_id: String,
+    pub ratio: String,
+    pub slide_width_px: i32,
+    pub slide_height_px: i32,
+    pub total_slides: i32,
+    #[serde(default)]
+    pub slides: Vec<CarouselSlidePayload>,
+}
+
 /// Thread-safe wrapper around SQLite connection.
 pub struct Database {
     conn: Mutex<Connection>,
@@ -2237,7 +2313,269 @@ impl Database {
         }))
     }
 
+    pub fn save_carousel_structure(&self, carousel: &CarouselPayload) -> SqliteResult<()> {
+        let mut conn = self.conn.lock().unwrap();
+        let tx = conn.transaction()?;
+        Self::save_carousel_in_transaction(&tx, carousel)?;
+        tx.commit()
+    }
 
+    pub(crate) fn save_carousel_in_transaction(
+        tx: &rusqlite::Transaction,
+        carousel: &CarouselPayload,
+    ) -> SqliteResult<()> {
+        // Ensure project exists (or create shell)
+        let project_exists: bool = tx.query_row(
+            "SELECT 1 FROM projects WHERE id = ?1",
+            [&carousel.project_id],
+            |_| Ok(true),
+        ).unwrap_or(false);
+
+        if !project_exists {
+            tx.execute(
+                "INSERT OR IGNORE INTO projects (
+                    id, name, canvas_width, canvas_height, canvas_unit, canvas_dpi,
+                    spacing_value, spacing_unit, margin_enabled, margin_value, margin_unit,
+                    border_enabled, border_width, border_unit, border_color,
+                    background_type, background_color, project_type, created_at, updated_at
+                ) VALUES (?1, 'Untitled Carousel', ?2, ?3, 'px', 96, 0.0, 'px', 0, 0.0, 'px', 0, 0.0, 'px', '#FFFFFF', 'solid', '#FFFFFF', 'carousel', datetime('now'), datetime('now'))",
+                rusqlite::params![carousel.project_id, carousel.slide_width_px, carousel.slide_height_px],
+            )?;
+        }
+
+        // Upsert carousels metadata row
+        tx.execute(
+            "INSERT INTO carousels (id, project_id, ratio, slide_width_px, slide_height_px, total_slides, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, datetime('now'), datetime('now'))
+             ON CONFLICT(project_id) DO UPDATE SET
+                 id = excluded.id,
+                 ratio = excluded.ratio,
+                 slide_width_px = excluded.slide_width_px,
+                 slide_height_px = excluded.slide_height_px,
+                 total_slides = excluded.total_slides,
+                 updated_at = datetime('now')",
+            rusqlite::params![
+                carousel.id,
+                carousel.project_id,
+                carousel.ratio,
+                carousel.slide_width_px,
+                carousel.slide_height_px,
+                carousel.total_slides,
+            ],
+        )?;
+
+        // Delete existing slides (cascades to carousel_frames)
+        tx.execute("DELETE FROM carousel_slides WHERE project_id = ?1", [&carousel.project_id])?;
+
+        // Insert slides and frames
+        for slide in &carousel.slides {
+            tx.execute(
+                "INSERT INTO carousel_slides (id, project_id, slide_index, width_px, height_px, background_color, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, datetime('now'), datetime('now'))",
+                rusqlite::params![
+                    slide.id,
+                    carousel.project_id,
+                    slide.slide_index,
+                    slide.width_px,
+                    slide.height_px,
+                    slide.background_color,
+                ],
+            )?;
+
+            for (idx, frame) in slide.elements.iter().enumerate() {
+                let mut verified = frame.clone();
+                if let Some(ref photo_id) = verified.photo_id {
+                    let live: bool = tx.query_row(
+                        "SELECT EXISTS(SELECT 1 FROM photos WHERE id = ?1 AND project_id = ?2)",
+                        rusqlite::params![photo_id, carousel.project_id],
+                        |row| row.get(0),
+                    ).unwrap_or(false);
+                    if !live {
+                        verified.photo_id = None;
+                        verified.file_path.clear();
+                        verified.file_name.clear();
+                        verified.preview_path = None;
+                        verified.thumbnail_path = None;
+                    }
+                }
+
+                let z = verified.z_index.unwrap_or(idx as i32 + 1);
+
+                tx.execute(
+                    "INSERT INTO carousel_frames (
+                        id, slide_id, photo_id, file_path, file_name, preview_path, thumbnail_path,
+                        x, y, width, height, rotation, z_index, photo_aspect,
+                        crop_x, crop_y, crop_scale, crop_rotation,
+                        border_enabled, border_width, border_color, border_style,
+                        opacity, locked, shape_type, custom_svg_path,
+                        corner_radius_tl, corner_radius_tr, corner_radius_br, corner_radius_bl,
+                        created_at, updated_at
+                    ) VALUES (
+                        ?1, ?2, ?3, ?4, ?5, ?6, ?7,
+                        ?8, ?9, ?10, ?11, ?12, ?13, ?14,
+                        ?15, ?16, ?17, ?18,
+                        ?19, ?20, ?21, ?22,
+                        ?23, ?24, ?25, ?26,
+                        ?27, ?28, ?29, ?30,
+                        datetime('now'), datetime('now')
+                    )",
+                    rusqlite::params![
+                        verified.id,
+                        slide.id,
+                        verified.photo_id,
+                        verified.file_path,
+                        verified.file_name,
+                        verified.preview_path,
+                        verified.thumbnail_path,
+                        verified.x,
+                        verified.y,
+                        verified.width,
+                        verified.height,
+                        verified.rotation,
+                        z,
+                        verified.photo_aspect.unwrap_or(1.0),
+                        verified.crop_x.unwrap_or(0.0),
+                        verified.crop_y.unwrap_or(0.0),
+                        verified.crop_scale.unwrap_or(1.0),
+                        verified.crop_rotation.unwrap_or(0.0),
+                        verified.border_enabled.unwrap_or(false) as i32,
+                        verified.border_width.unwrap_or(0.0),
+                        verified.border_color.as_deref().unwrap_or("#FFFFFF"),
+                        verified.border_style.as_deref().unwrap_or("solid"),
+                        verified.opacity.unwrap_or(1.0),
+                        verified.locked.unwrap_or(false) as i32,
+                        verified.shape_type.as_deref().unwrap_or("rectangle"),
+                        verified.custom_svg_path,
+                        verified.corner_radius_tl.unwrap_or(0.0),
+                        verified.corner_radius_tr.unwrap_or(0.0),
+                        verified.corner_radius_br.unwrap_or(0.0),
+                        verified.corner_radius_bl.unwrap_or(0.0),
+                    ],
+                )?;
+            }
+        }
+
+        // Update project updated_at timestamp
+        tx.execute("UPDATE projects SET updated_at = datetime('now') WHERE id = ?1", [&carousel.project_id])?;
+
+        Ok(())
+    }
+
+    pub fn load_carousel_structure(&self, project_id: &str) -> SqliteResult<Option<CarouselPayload>> {
+        let conn = self.conn.lock().unwrap();
+
+        let mut stmt = conn.prepare(
+            "SELECT id, ratio, slide_width_px, slide_height_px, total_slides
+             FROM carousels WHERE project_id = ?1",
+        )?;
+        let mut rows = stmt.query([project_id])?;
+
+        let (carousel_id, ratio, slide_width_px, slide_height_px, total_slides) = if let Some(row) = rows.next()? {
+            (
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, i32>(2)?,
+                row.get::<_, i32>(3)?,
+                row.get::<_, i32>(4)?,
+            )
+        } else {
+            return Ok(None);
+        };
+
+        let mut slide_stmt = conn.prepare(
+            "SELECT id, slide_index, width_px, height_px, background_color
+             FROM carousel_slides
+             WHERE project_id = ?1
+             ORDER BY slide_index ASC",
+        )?;
+
+        let slide_rows = slide_stmt.query_map([project_id], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i32>(1)?,
+                row.get::<_, i32>(2)?,
+                row.get::<_, i32>(3)?,
+                row.get::<_, String>(4)?,
+            ))
+        })?;
+
+        let mut slides = Vec::new();
+        for slide_res in slide_rows {
+            let (slide_id, slide_index, width_px, height_px, background_color) = slide_res?;
+
+            let mut frame_stmt = conn.prepare(
+                "SELECT id, photo_id, file_path, file_name, preview_path, thumbnail_path,
+                        x, y, width, height, rotation, z_index, photo_aspect,
+                        crop_x, crop_y, crop_scale, crop_rotation,
+                        border_enabled, border_width, border_color, border_style,
+                        opacity, locked, shape_type, custom_svg_path,
+                        corner_radius_tl, corner_radius_tr, corner_radius_br, corner_radius_bl
+                 FROM carousel_frames
+                 WHERE slide_id = ?1
+                 ORDER BY z_index ASC, rowid ASC",
+            )?;
+
+            let frame_rows = frame_stmt.query_map([&slide_id], |row| {
+                let border_enabled_int: i32 = row.get(17)?;
+                let locked_int: i32 = row.get(22)?;
+                Ok(CarouselFramePayload {
+                    id: row.get(0)?,
+                    photo_id: row.get(1)?,
+                    file_path: row.get(2)?,
+                    file_name: row.get(3)?,
+                    preview_path: row.get(4)?,
+                    thumbnail_path: row.get(5)?,
+                    x: row.get(6)?,
+                    y: row.get(7)?,
+                    width: row.get(8)?,
+                    height: row.get(9)?,
+                    rotation: row.get(10)?,
+                    z_index: Some(row.get(11)?),
+                    photo_aspect: Some(row.get(12)?),
+                    crop_x: Some(row.get(13)?),
+                    crop_y: Some(row.get(14)?),
+                    crop_scale: Some(row.get(15)?),
+                    crop_rotation: Some(row.get(16)?),
+                    border_enabled: Some(border_enabled_int != 0),
+                    border_width: Some(row.get(18)?),
+                    border_color: row.get(19)?,
+                    border_style: row.get(20)?,
+                    opacity: Some(row.get(21)?),
+                    locked: Some(locked_int != 0),
+                    shape_type: row.get(23)?,
+                    custom_svg_path: row.get(24)?,
+                    corner_radius_tl: Some(row.get(25)?),
+                    corner_radius_tr: Some(row.get(26)?),
+                    corner_radius_br: Some(row.get(27)?),
+                    corner_radius_bl: Some(row.get(28)?),
+                })
+            })?;
+
+            let mut elements = Vec::new();
+            for frame_res in frame_rows {
+                elements.push(frame_res?);
+            }
+
+            slides.push(CarouselSlidePayload {
+                id: slide_id,
+                slide_index,
+                width_px,
+                height_px,
+                background_color,
+                elements,
+            });
+        }
+
+        Ok(Some(CarouselPayload {
+            id: carousel_id,
+            project_id: project_id.to_string(),
+            ratio,
+            slide_width_px,
+            slide_height_px,
+            total_slides,
+            slides,
+        }))
+    }
 }
 
 #[cfg(test)]
