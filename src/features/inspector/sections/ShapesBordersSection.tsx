@@ -147,8 +147,15 @@ export function ShapesBordersSection({ onToast, activeMode = 'print' }: ShapesBo
   };
 
   const handleMasterRadiusChange = (radius: number) => {
+    let nextShapeType = currentShape;
+    if (currentShape === 'rectangle' && radius > 0) {
+      nextShapeType = 'rounded';
+    } else if (currentShape === 'rounded' && radius === 0) {
+      nextShapeType = 'rectangle';
+    }
+
     updateSelectedBorders({
-      shapeType: radius > 0 ? 'rounded' : 'rectangle',
+      shapeType: nextShapeType,
       cornerRadius: radius,
       cornerRadiusTl: radius,
       cornerRadiusTr: radius,
