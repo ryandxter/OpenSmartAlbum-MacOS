@@ -115,7 +115,10 @@
   2. Adjusting corner radius on polygons and stars computes smooth mathematical vertex fillet curves (`c.arcTo` in Canvas 2D and quadratic bezier/arc in SVG) in `src/domain/shapes.ts` rather than sharp, unrounded vertices.
   3. Uploading a custom SVG vector mask automatically normalizes `viewBox` coordinates and dimensions, fitting the mask properly to the photo frame aspect ratio without clipping groups failing.
   4. The Inspector's shape preset grid provides an "Oval" button alongside Circle that applies an elliptical vector mask with full contour border and pan/zoom crop support.
-**Plans**: 0 plans
+**Plans**: 3 plans
+  - [ ] 17-01: Mathematical Polygon & Star Fillet Generator + Unified SVG Path Engine (VEC-02, VEC-04)
+  - [ ] 17-02: Inspector UI Unlock, Oval Preset Button & Tip/Valley Star Controls (VEC-01, VEC-04)
+  - [ ] 17-03: Compound SVG Mask Parser, ViewBox Normalization & Rust Export Engine Parity (VEC-03)
 
 ---
 
@@ -133,7 +136,7 @@ Phases execute in numeric order: 14 → 15 → 16 → 17
 | 14. Carousel Multi-Photo Drag & Context Routing | v1.3.0 | 2/2 | COMPLETED | 2026-09-28 |
 | 15. Social Carousel SQLite & Package Persistence | v1.3.0 | 3/3 | COMPLETED | 2026-09-29 |
 | 16. Workspace Isolation & Mode State Sync | v1.3.0 | 3/3 | COMPLETED | 2026-09-29 |
-| 17. Vector Shape Mask Corner Radii & Fillets | v1.3.0 | 0/0 | PENDING | — |
+| 17. Vector Shape Mask Corner Radii & Fillets | v1.3.0 | 0/3 | READY | — |
 
 ---
 *Roadmap generated: 2026-09-28*

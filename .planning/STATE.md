@@ -25,9 +25,9 @@ See: `.planning/PROJECT.md`, `.planning/REQUIREMENTS.md` & `.planning/ROADMAP.md
 ## Current Position
 
 Phase: Phase 17: Vector Shape Mask Corner Radii & Polygon Tangent Fillets
-Plan: Pending planning
-Status: Phase 16 execution complete. Next: Phase 17.
-Last activity: 2026-09-29 — Completed 16-03 (ISO-04, ISO-05). Phase 16 fully shipped.
+Plan: 17-01 ready for execution
+Status: Planning complete (3/3 plans generated). Ready for execution.
+Last activity: 2026-09-29 — Generated execution plans 17-01, 17-02, 17-03.
 
 ## Milestone v1.3.0 Phases
 
@@ -36,7 +36,7 @@ Last activity: 2026-09-29 — Completed 16-03 (ISO-04, ISO-05). Phase 16 fully s
 | Phase 14: Carousel Canvas Multi-Photo Drag-and-Drop & Filmstrip Context Routing | COMPLETED | CAR-01..CAR-04 | 2/2 | `.stageWrapper` drop listener, in-bounds ghost badge, atomic batch placement, mode-aware context menu & double-click |
 | Phase 15: Social Carousel Full SQLite & Package Persistence | COMPLETED | PERS-01..PERS-04 | 3/3 | SQLite v16 carousel schema, IPC save/load, `.afsn` archive, dirty tracking, window close guard, slide thumbnail caching |
 | Phase 16: Workspace Isolation & Mode State Synchronization | COMPLETED | ISO-01..ISO-05 | 3/3 | Global `activeMode` in `appStore`, isolated zoom levels, mode-guarded titlebar/shortcuts, slide coordinate preservation, layout style preservation |
-| Phase 17: Vector Shape Mask Corner Radii & Polygon Tangent Fillets | PENDING | VEC-01..VEC-04 | 0/0 | Unlocked Inspector corner radius, vertex fillet tangent arc math in `shapes.ts`, SVG viewBox normalization, Oval preset |
+| Phase 17: Vector Shape Mask Corner Radii & Polygon Tangent Fillets | READY | VEC-01..VEC-04 | 0/3 | Unlocked Inspector corner radius, vertex fillet tangent arc math in `shapes.ts`, SVG viewBox normalization, Oval preset |
 
 ## Shipped Milestones Summary
 
