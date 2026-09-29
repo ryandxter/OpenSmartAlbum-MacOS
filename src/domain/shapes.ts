@@ -35,62 +35,245 @@ export const SHAPE_PRESETS: ShapePresetInfo[] = [
   { id: 'heart', label: 'Heart', category: 'decorative' },
 ];
 
-/**
- * Generates an SVG path string for a regular polygon (Hexagon: 6, Octagon: 8).
- * Option A (Geometric 1:1 Centered): Scales within min(width, height) and centers in bounding box.
- */
-export function createPolygonSvgPath(sides: number, width: number, height: number): string {
-  const size = Math.min(width, height);
-  const rx = size / 2;
-  const ry = size / 2;
-  const cx = width / 2;
-  const cy = height / 2;
+export interface Vertex2D {
+  x: number;
+  y: number;
+}
 
-  let path = '';
-  // Start from top vertex (-Math.PI / 2)
-  for (let i = 0; i < sides; i++) {
-    const angle = (i * 2 * Math.PI) / sides - Math.PI / 2;
-    const x = cx + rx * Math.cos(angle);
-    const y = cy + ry * Math.sin(angle);
-    if (i === 0) {
-      path += `M ${x.toFixed(2)} ${y.toFixed(2)}`;
-    } else {
-      path += ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
+/**
+ * Rounds the vertices of a 2D polygon using circular arc tangent fillets.
+ * Dynamically clamps tangent distance to at most half the length of the shortest adjacent edge,
+ * preventing self-intersection, arc overlapping, or shape inversion.
+ *
+ * @param vertices Ordered array of 2D vertices defining the polygon contour
+ * @param radii Uniform fillet radius number, or array of per-vertex radii
+ * @param closed Whether the polygon contour is closed (default: true)
+ */
+export function roundPolygonVertices(
+  vertices: Vertex2D[],
+  radii: number | number[] = 0,
+  closed: boolean = true
+): string {
+  const n = vertices.length;
+  if (n < 3) return '';
+
+  const getRadius = (idx: number): number => {
+    if (Array.isArray(radii)) {
+      return radii[idx] !== undefined ? Math.max(0, radii[idx]) : 0;
+    }
+    return Math.max(0, radii);
+  };
+
+  // Check if any radius is > 0
+  let hasRounding = false;
+  for (let i = 0; i < n; i++) {
+    if (getRadius(i) > 0.01) {
+      hasRounding = true;
+      break;
     }
   }
-  path += ' Z';
+
+  const v0 = vertices[0];
+  if (!v0) return '';
+
+  // Fast path: sharp polygon if no corner radius
+  if (!hasRounding) {
+    let p = `M ${v0.x.toFixed(2)} ${v0.y.toFixed(2)}`;
+    for (let i = 1; i < n; i++) {
+      const v = vertices[i];
+      if (v) {
+        p += ` L ${v.x.toFixed(2)} ${v.y.toFixed(2)}`;
+      }
+    }
+    if (closed) p += ' Z';
+    return p;
+  }
+
+  // Precompute tangent points and arcs for each vertex
+  interface VertexFillet {
+    tIn: Vertex2D;
+    tOut: Vertex2D;
+    rEff: number;
+    sweep: number;
+    isRounded: boolean;
+  }
+
+  const fillets: VertexFillet[] = [];
+
+  for (let i = 0; i < n; i++) {
+    const vi = vertices[i];
+    const prev = vertices[(i - 1 + n) % n];
+    const next = vertices[(i + 1) % n];
+    if (!vi || !prev || !next) continue;
+
+    const ux = prev.x - vi.x;
+    const uy = prev.y - vi.y;
+    const lIn = Math.hypot(ux, uy);
+
+    const vx = next.x - vi.x;
+    const vy = next.y - vi.y;
+    const lOut = Math.hypot(vx, vy);
+
+    const r = getRadius(i);
+
+    if (lIn < 1e-4 || lOut < 1e-4 || r <= 0.01) {
+      fillets.push({ tIn: vi, tOut: vi, rEff: 0, sweep: 1, isRounded: false });
+      continue;
+    }
+
+    const uHatX = ux / lIn;
+    const uHatY = uy / lIn;
+    const vHatX = vx / lOut;
+    const vHatY = vy / lOut;
+
+    const dot = Math.max(-1, Math.min(1, uHatX * vHatX + uHatY * vHatY));
+    const theta = Math.acos(dot);
+
+    if (theta < 1e-3 || theta > Math.PI - 1e-3) {
+      fillets.push({ tIn: vi, tOut: vi, rEff: 0, sweep: 1, isRounded: false });
+      continue;
+    }
+
+    const tanHalf = Math.tan(theta / 2);
+    if (tanHalf < 1e-4) {
+      fillets.push({ tIn: vi, tOut: vi, rEff: 0, sweep: 1, isRounded: false });
+      continue;
+    }
+
+    const t = r / tanHalf;
+    const dMax = Math.min(lIn, lOut) / 2;
+    const d = Math.min(dMax, t);
+    const rEff = d * tanHalf;
+
+    const tIn = { x: vi.x + d * uHatX, y: vi.y + d * uHatY };
+    const tOut = { x: vi.x + d * vHatX, y: vi.y + d * vHatY };
+
+    // 2D Cross product of e1 = vi - prev = -u and e2 = next - vi = v
+    // e1x = -ux, e1y = -uy; e2x = vx, e2y = vy
+    const cp = -ux * vy - (-uy * vx);
+    const sweep = cp > 0 ? 1 : 0;
+
+    fillets.push({ tIn, tOut, rEff, sweep, isRounded: true });
+  }
+
+  // Construct SVG path starting from tOut of vertex 0
+  const first = fillets[0];
+  if (!first) return '';
+
+  let path = '';
+  if (first.isRounded) {
+    path += `M ${first.tOut.x.toFixed(2)} ${first.tOut.y.toFixed(2)}`;
+  } else {
+    path += `M ${v0.x.toFixed(2)} ${v0.y.toFixed(2)}`;
+  }
+
+  for (let i = 1; i < n; i++) {
+    const f = fillets[i];
+    const v = vertices[i];
+    if (!f || !v) continue;
+
+    if (f.isRounded) {
+      path += ` L ${f.tIn.x.toFixed(2)} ${f.tIn.y.toFixed(2)}`;
+      path += ` A ${f.rEff.toFixed(2)} ${f.rEff.toFixed(2)} 0 0 ${f.sweep} ${f.tOut.x.toFixed(2)} ${f.tOut.y.toFixed(2)}`;
+    } else {
+      path += ` L ${v.x.toFixed(2)} ${v.y.toFixed(2)}`;
+    }
+  }
+
+  if (first.isRounded) {
+    // If the first vertex was rounded, close arc to its tOut
+    path += ` L ${first.tIn.x.toFixed(2)} ${first.tIn.y.toFixed(2)}`;
+    path += ` A ${first.rEff.toFixed(2)} ${first.rEff.toFixed(2)} 0 0 ${first.sweep} ${first.tOut.x.toFixed(2)} ${first.tOut.y.toFixed(2)}`;
+  } else if (closed) {
+    path += ` L ${v0.x.toFixed(2)} ${v0.y.toFixed(2)}`;
+  }
+
+  if (closed) path += ' Z';
   return path;
 }
 
 /**
- * Generates an SVG path string for a star shape (default: 5 points).
+ * Generates an SVG path string for a regular polygon (Hexagon: 6, Octagon: 8) with optional corner fillet.
  * Option A (Geometric 1:1 Centered): Scales within min(width, height) and centers in bounding box.
  */
-export function createStarSvgPath(points: number = 5, width: number, height: number, innerRatio: number = 0.45): string {
+export function createPolygonSvgPath(
+  sides: number,
+  width: number,
+  height: number,
+  radius: number = 0
+): string {
   const size = Math.min(width, height);
   const rx = size / 2;
   const ry = size / 2;
   const cx = width / 2;
   const cy = height / 2;
 
-  let path = '';
+  const vertices: Vertex2D[] = [];
+  for (let i = 0; i < sides; i++) {
+    const angle = (i * 2 * Math.PI) / sides - Math.PI / 2;
+    vertices.push({
+      x: cx + rx * Math.cos(angle),
+      y: cy + ry * Math.sin(angle),
+    });
+  }
+
+  return roundPolygonVertices(vertices, radius, true);
+}
+
+/**
+ * Generates an SVG path string for a star shape with independent tip and valley corner fillets.
+ * Option A (Geometric 1:1 Centered): Scales within min(width, height) and centers in bounding box.
+ */
+export function createStarSvgPath(
+  points: number = 5,
+  width: number,
+  height: number,
+  innerRatio: number = 0.45,
+  tipRadius: number = 0,
+  valleyRadius: number = 0
+): string {
+  const size = Math.min(width, height);
+  const rx = size / 2;
+  const ry = size / 2;
+  const cx = width / 2;
+  const cy = height / 2;
+
   const totalSteps = points * 2;
+  const vertices: Vertex2D[] = [];
+  const radii: number[] = [];
+
   for (let i = 0; i < totalSteps; i++) {
     const angle = (i * Math.PI) / points - Math.PI / 2;
     const isInner = i % 2 !== 0;
     const currentRx = isInner ? rx * innerRatio : rx;
     const currentRy = isInner ? ry * innerRatio : ry;
-    const x = cx + currentRx * Math.cos(angle);
-    const y = cy + currentRy * Math.sin(angle);
-    if (i === 0) {
-      path += `M ${x.toFixed(2)} ${y.toFixed(2)}`;
-    } else {
-      path += ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
-    }
+    vertices.push({
+      x: cx + currentRx * Math.cos(angle),
+      y: cy + currentRy * Math.sin(angle),
+    });
+    radii.push(isInner ? valleyRadius : tipRadius);
   }
-  path += ' Z';
-  return path;
+
+  return roundPolygonVertices(vertices, radii, true);
 }
+
+/**
+ * Generates an SVG path string for an analytical Oval / Ellipse fitting (width, height).
+ */
+export function createOvalSvgPath(width: number, height: number): string {
+  const rx = width / 2;
+  const ry = height / 2;
+  return `M 0 ${ry.toFixed(2)} A ${rx.toFixed(2)} ${ry.toFixed(2)} 0 1 0 ${width.toFixed(2)} ${ry.toFixed(2)} A ${rx.toFixed(2)} ${ry.toFixed(2)} 0 1 0 0 ${ry.toFixed(2)} Z`;
+}
+
+// Aliases for functional parity and SVG generation pipelines
+export const generatePolygonPath = createPolygonSvgPath;
+export const generateHexagonPath = (w: number, h: number, r: number = 0) => createPolygonSvgPath(6, w, h, r);
+export const generateOctagonPath = (w: number, h: number, r: number = 0) => createPolygonSvgPath(8, w, h, r);
+export const generateStarPath = createStarSvgPath;
+export const generateScallopPath = createScallopSvgPath;
+export const generateHeartPath = createHeartSvgPath;
+export const generateOvalPath = createOvalSvgPath;
 
 /**
  * Generates an SVG path string for a smooth heart shape.
@@ -171,17 +354,14 @@ export function getShapeSvgPath(
       const cy = h / 2;
       return `M ${cx - r} ${cy} A ${r} ${r} 0 1 0 ${cx + r} ${cy} A ${r} ${r} 0 1 0 ${cx - r} ${cy} Z`;
     }
-    case 'oval': {
-      const rx = w / 2;
-      const ry = h / 2;
-      return `M 0 ${ry} A ${rx} ${ry} 0 1 0 ${w} ${ry} A ${rx} ${ry} 0 1 0 0 ${ry} Z`;
-    }
+    case 'oval':
+      return createOvalSvgPath(w, h);
     case 'hexagon':
-      return createPolygonSvgPath(6, w, h);
+      return createPolygonSvgPath(6, w, h, radii[0] ?? 0);
     case 'octagon':
-      return createPolygonSvgPath(8, w, h);
+      return createPolygonSvgPath(8, w, h, radii[0] ?? 0);
     case 'star':
-      return createStarSvgPath(5, w, h, 0.45);
+      return createStarSvgPath(5, w, h, 0.45, radii[0] ?? 0, radii[1] ?? 0);
     case 'scallop':
       return createScallopSvgPath(w, h, 10);
     case 'heart':
@@ -696,21 +876,9 @@ export function drawShapeToContext(
       c.lineTo(0, tl);
       c.arcTo(0, 0, tl, 0, tl);
     }
-  } else if (shapeType === 'hexagon' || shapeType === 'octagon') {
-    const sides = shapeType === 'hexagon' ? 6 : 8;
-    const size = Math.min(w, h);
-    const rx = size / 2;
-    const ry = size / 2;
-    const cx = w / 2;
-    const cy = h / 2;
-    for (let i = 0; i < sides; i++) {
-      const angle = (i * 2 * Math.PI) / sides - Math.PI / 2;
-      const x = cx + rx * Math.cos(angle);
-      const y = cy + ry * Math.sin(angle);
-      if (i === 0) c.moveTo(x, y);
-      else c.lineTo(x, y);
-    }
   } else if (
+    shapeType === 'hexagon' ||
+    shapeType === 'octagon' ||
     shapeType === 'star' ||
     shapeType === 'heart' ||
     shapeType === 'scallop' ||
