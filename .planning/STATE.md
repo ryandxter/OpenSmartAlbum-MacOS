@@ -3,14 +3,14 @@ gsd_state_version: "1.0"
 milestone: v1.3.0
 milestone_name: Workspace Isolation, Carousel Persistence & Vector Shape Polish
 status: executing
-last_updated: "2026-09-28T16:25:00.000Z"
-last_activity: 2026-09-28
+last_updated: "2026-09-29T10:38:00.000Z"
+last_activity: 2026-09-29
 progress:
   total_phases: 4
-  completed_phases: 1
-  total_plans: 5
-  completed_plans: 2
-  percent: 40
+  completed_phases: 2
+  total_plans: 8
+  completed_plans: 5
+  percent: 63
 ---
 
 # Project State: OpenSmartAlbum-MacOS Milestone v1.3.0
@@ -20,21 +20,21 @@ progress:
 See: `.planning/PROJECT.md`, `.planning/REQUIREMENTS.md` & `.planning/ROADMAP.md`
 
 **Core value:** Solid workspace mode isolation, complete SQLite and package persistence for Social Carousel, resilient multi-photo drag-and-drop, and Figma-grade polygon corner radius fillets.
-**Current status:** 🚀 Phase 15 plans created (15-01, 15-02, 15-03). Ready for execution.
+**Current status:** 🚀 Phase 15 COMPLETED (3/3 plans). Ready for Phase 16 AAS Debate & Planning.
 
 ## Current Position
 
-Phase: Phase 15: Social Carousel Full SQLite & Package Persistence
-Plan: 15-01 (Ready for Execution)
-Status: Phase 15 planned (3 atomic plans). Ready for execution.
-Last activity: 2026-09-29 — Generated execution plans 15-01, 15-02, and 15-03 for Phase 15.
+Phase: Phase 16: Workspace Isolation & Mode State Synchronization
+Plan: Awaiting AAS Debate → plan generation → execution
+Status: Phase 15 complete. All requirements PERS-01..PERS-04 satisfied. Ready for Phase 16.
+Last activity: 2026-09-29 — Executed Plans 15-01, 15-02, 15-03; Phase 15 fully completed with 47/47 Rust tests green and 0 TypeScript errors.
 
 ## Milestone v1.3.0 Phases
 
 | Phase | Status | Requirements | Plans | Target Deliverables |
 |---|---|---|---|---|
 | Phase 14: Carousel Canvas Multi-Photo Drag-and-Drop & Filmstrip Context Routing | COMPLETED | CAR-01..CAR-04 | 2/2 | `.stageWrapper` drop listener, in-bounds ghost badge, atomic batch placement, mode-aware context menu & double-click |
-| Phase 15: Social Carousel Full SQLite & Package Persistence | IN PROGRESS | PERS-01..PERS-04 | 0/3 | SQLite carousel schema/payload, `.afsn` archive export/import, dirty tracking & window close safeguards |
+| Phase 15: Social Carousel Full SQLite & Package Persistence | COMPLETED | PERS-01..PERS-04 | 3/3 | SQLite v16 carousel schema, IPC save/load, `.afsn` archive, dirty tracking, window close guard, slide thumbnail caching |
 | Phase 16: Workspace Isolation & Mode State Synchronization | PENDING | ISO-01..ISO-05 | 0/0 | Global `activeMode` in `appStore`, isolated zoom levels, mode-guarded titlebar/shortcuts, slide coordinate preservation, style preservation |
 | Phase 17: Vector Shape Mask Corner Radii & Polygon Tangent Fillets | PENDING | VEC-01..VEC-04 | 0/0 | Unlocked Inspector corner radius, vertex fillet tangent arc math in `shapes.ts`, SVG viewBox normalization, Oval preset |
 

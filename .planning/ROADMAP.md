@@ -87,9 +87,9 @@
   3. Modifying any carousel slide or frame marks the project as dirty, updating the title bar status indicator to amber ("Unsaved Changes"), and clearing back to green upon saving.
   4. Attempting to close the window or quit the app with unsaved carousel modifications displays the native macOS unsaved changes confirmation dialog.
 **Plans**: 3 plans
-  - [ ] 15-01: SQLite Schema Migration `migrate_v16` & Rust IPC Persistence Layer
-  - [ ] 15-02: Frontend Store Persistence, Autosave Engine & Project Hydration
-  - [ ] 15-03: macOS Window Close Guard, Native Confirmation Sheet, and Thumbnail Caching
+  - [x] 15-01: SQLite Schema Migration `migrate_v16` & Rust IPC Persistence Layer
+  - [x] 15-02: Frontend Store Persistence, Autosave Engine & Project Hydration
+  - [x] 15-03: macOS Window Close Guard, Native Confirmation Sheet, and Thumbnail Caching
 
 #### Phase 16: Workspace Isolation & Mode State Synchronization
 **Goal**: Establish clean workspace isolation between Print Album and Social Carousel environments by hoisting `activeMode` to global state, isolating zoom levels, mode-guarding title bar controls and keyboard shortcuts, and preventing frame coordinate detachment during slide reordering or layout cycling.
