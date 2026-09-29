@@ -72,6 +72,7 @@ fn test_live_e2e_export_print_album_and_carousel() {
         background_type: "color".to_string(),
         background_color: "#FFFFFF".to_string(),
         file_path: None,
+        project_type: "print".to_string(),
         created_at: "2026-09-23T00:00:00Z".to_string(),
         updated_at: "2026-09-23T00:00:00Z".to_string(),
     };

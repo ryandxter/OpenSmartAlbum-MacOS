@@ -34,6 +34,8 @@ pub struct ProjectRow {
     pub background_type: String,
     pub background_color: String,
     pub file_path: Option<String>,
+    #[serde(default = "default_project_type")]
+    pub project_type: String,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -73,6 +75,7 @@ pub struct PhotoFolderRow {
     pub updated_at: String,
 }
 
+fn default_project_type() -> String { "print".to_string() }
 fn default_element_type() -> String { "photo".to_string() }
 fn default_one_hundred() -> f64 { 100.0 }
 fn default_one_i32() -> i32 { 1 }
@@ -297,7 +300,7 @@ pub struct Database {
 
 impl Database {
     pub fn expected_version() -> i32 {
-        15
+        16
     }
 
     /// Initialize the database at the given path.
@@ -410,6 +413,9 @@ impl Database {
         }
         if current_version < 15 {
             Self::migrate_v15(conn)?;
+        }
+        if current_version < 16 {
+            Self::migrate_v16(conn)?;
         }
 
         Ok(())
@@ -874,6 +880,103 @@ impl Database {
         Ok(())
     }
 
+    /// Schema version 16: Social Carousel Schema & Project Discriminator
+    fn migrate_v16(conn: &Connection) -> SqliteResult<()> {
+        let project_columns: Vec<String> = conn
+            .prepare("PRAGMA table_info(projects)")?
+            .query_map([], |row| row.get(1))?
+            .filter_map(|row| row.ok())
+            .collect();
+
+        conn.execute_batch("BEGIN;")?;
+        let result = (|| -> SqliteResult<()> {
+            if !project_columns.contains(&"project_type".to_string()) {
+                conn.execute("ALTER TABLE projects ADD COLUMN project_type TEXT NOT NULL DEFAULT 'print'", [])?;
+                conn.execute("UPDATE projects SET project_type = 'carousel' WHERE canvas_unit = 'px'", [])?;
+            }
+
+            conn.execute_batch(
+                "CREATE TABLE IF NOT EXISTS carousels (
+                    id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL UNIQUE,
+                    ratio TEXT NOT NULL DEFAULT '1:1',
+                    slide_width_px INTEGER NOT NULL DEFAULT 1080,
+                    slide_height_px INTEGER NOT NULL DEFAULT 1080,
+                    total_slides INTEGER NOT NULL DEFAULT 3,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+                );
+                CREATE INDEX IF NOT EXISTS idx_carousels_project ON carousels(project_id);
+
+                CREATE TABLE IF NOT EXISTS carousel_slides (
+                    id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL,
+                    slide_index INTEGER NOT NULL,
+                    width_px INTEGER NOT NULL DEFAULT 1080,
+                    height_px INTEGER NOT NULL DEFAULT 1080,
+                    background_color TEXT NOT NULL DEFAULT '#FFFFFF',
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+                );
+                CREATE INDEX IF NOT EXISTS idx_carousel_slides_project ON carousel_slides(project_id);
+                CREATE INDEX IF NOT EXISTS idx_carousel_slides_index ON carousel_slides(project_id, slide_index);
+
+                CREATE TABLE IF NOT EXISTS carousel_frames (
+                    id TEXT PRIMARY KEY,
+                    slide_id TEXT NOT NULL,
+                    photo_id TEXT,
+                    file_path TEXT NOT NULL DEFAULT '',
+                    file_name TEXT NOT NULL DEFAULT '',
+                    preview_path TEXT,
+                    thumbnail_path TEXT,
+                    x REAL NOT NULL DEFAULT 0.0,
+                    y REAL NOT NULL DEFAULT 0.0,
+                    width REAL NOT NULL DEFAULT 1080.0,
+                    height REAL NOT NULL DEFAULT 1080.0,
+                    rotation REAL NOT NULL DEFAULT 0.0,
+                    z_index INTEGER NOT NULL DEFAULT 1,
+                    photo_aspect REAL NOT NULL DEFAULT 1.0,
+                    crop_x REAL NOT NULL DEFAULT 0.0,
+                    crop_y REAL NOT NULL DEFAULT 0.0,
+                    crop_scale REAL NOT NULL DEFAULT 1.0,
+                    crop_rotation REAL NOT NULL DEFAULT 0.0,
+                    border_enabled INTEGER NOT NULL DEFAULT 0,
+                    border_width REAL NOT NULL DEFAULT 0.0,
+                    border_color TEXT NOT NULL DEFAULT '#FFFFFF',
+                    border_style TEXT NOT NULL DEFAULT 'solid',
+                    opacity REAL NOT NULL DEFAULT 1.0,
+                    locked INTEGER NOT NULL DEFAULT 0,
+                    shape_type TEXT NOT NULL DEFAULT 'rectangle',
+                    custom_svg_path TEXT,
+                    corner_radius_tl REAL NOT NULL DEFAULT 0.0,
+                    corner_radius_tr REAL NOT NULL DEFAULT 0.0,
+                    corner_radius_br REAL NOT NULL DEFAULT 0.0,
+                    corner_radius_bl REAL NOT NULL DEFAULT 0.0,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    FOREIGN KEY(slide_id) REFERENCES carousel_slides(id) ON DELETE CASCADE
+                );
+                CREATE INDEX IF NOT EXISTS idx_carousel_frames_slide ON carousel_frames(slide_id);
+                CREATE INDEX IF NOT EXISTS idx_carousel_frames_photo ON carousel_frames(photo_id);
+
+                INSERT INTO schema_version (version) VALUES (16);"
+            )?;
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => conn.execute_batch("COMMIT;")?,
+            Err(error) => {
+                let _ = conn.execute_batch("ROLLBACK;");
+                return Err(error);
+            }
+        }
+        log::info!("Applied database migration v16");
+        Ok(())
+    }
+
     pub fn get_schema_version(&self) -> SqliteResult<i32> {
         let conn = self.conn.lock().unwrap();
         let version: i32 = conn.query_row(
@@ -973,6 +1076,7 @@ impl Database {
         background_color: &str,
     ) -> SqliteResult<()> {
         let conn = self.conn.lock().unwrap();
+        let project_type = if canvas_unit == "px" { "carousel" } else { "print" };
         conn.execute(
             "INSERT INTO projects (
                 id, name, canvas_width, canvas_height, canvas_unit, canvas_dpi,
@@ -981,6 +1085,7 @@ impl Database {
                 margin_top, margin_bottom, margin_outside, margin_spine,
                 border_enabled, border_width, border_unit, border_color,
                 background_type, background_color,
+                project_type,
                 created_at, updated_at
             ) VALUES (
                 ?1, ?2, ?3, ?4, ?5, ?6,
@@ -989,6 +1094,7 @@ impl Database {
                 ?12, ?13, ?14, ?15,
                 ?16, ?17, ?18, ?19,
                 ?20, ?21,
+                ?22,
                 datetime('now'), datetime('now')
             )",
             rusqlite::params![
@@ -998,6 +1104,7 @@ impl Database {
                 margin_top, margin_bottom, margin_outside, margin_spine,
                 border_enabled as i32, border_width, border_unit, border_color,
                 background_type, background_color,
+                project_type,
             ],
         )?;
         Ok(())
@@ -1015,6 +1122,7 @@ impl Database {
                     COALESCE(margin_spine, margin_value),
                     border_enabled, border_width, border_unit, border_color,
                     background_type, background_color, file_path,
+                    COALESCE(project_type, 'print'),
                     created_at, updated_at
              FROM projects WHERE id = ?1",
         )?;
@@ -1046,8 +1154,9 @@ impl Database {
                 background_type: row.get(19)?,
                 background_color: row.get(20)?,
                 file_path: row.get(21)?,
-                created_at: row.get(22)?,
-                updated_at: row.get(23)?,
+                project_type: row.get(22)?,
+                created_at: row.get(23)?,
+                updated_at: row.get(24)?,
             }))
         } else {
             Ok(None)
@@ -1125,6 +1234,7 @@ impl Database {
                     COALESCE(margin_spine, margin_value),
                     border_enabled, border_width, border_unit, border_color,
                     background_type, background_color, file_path,
+                    COALESCE(project_type, 'print'),
                     created_at, updated_at
              FROM projects
              ORDER BY updated_at DESC
@@ -1157,8 +1267,9 @@ impl Database {
                 background_type: row.get(19)?,
                 background_color: row.get(20)?,
                 file_path: row.get(21)?,
-                created_at: row.get(22)?,
-                updated_at: row.get(23)?,
+                project_type: row.get(22)?,
+                created_at: row.get(23)?,
+                updated_at: row.get(24)?,
             })
         })?;
 
@@ -1845,6 +1956,7 @@ impl Database {
                     COALESCE(margin_spine, margin_value),
                     border_enabled, border_width, border_unit, border_color,
                     background_type, background_color, file_path,
+                    COALESCE(project_type, 'print'),
                     created_at, updated_at
              FROM projects WHERE id = ?1",
         )?;
@@ -1875,8 +1987,9 @@ impl Database {
                 background_type: row.get(19)?,
                 background_color: row.get(20)?,
                 file_path: row.get(21)?,
-                created_at: row.get(22)?,
-                updated_at: row.get(23)?,
+                project_type: row.get(22)?,
+                created_at: row.get(23)?,
+                updated_at: row.get(24)?,
             }
         } else {
             return Ok(None);

@@ -1984,6 +1984,7 @@ mod tests {
             background_type: "solid".to_string(),
             background_color: "#FFFFFF".to_string(),
             file_path: None,
+            project_type: "print".to_string(),
             created_at: "2026-08-29T12:00:00Z".to_string(),
             updated_at: "2026-08-29T12:00:00Z".to_string(),
         };
@@ -2144,6 +2145,7 @@ mod tests {
                     background_type: "solid".to_string(),
                     background_color: "#FFFFFF".to_string(),
                     file_path: None,
+                    project_type: "print".to_string(),
                     created_at: String::new(),
                     updated_at: String::new(),
                 };
@@ -2342,6 +2344,7 @@ mod tests {
             background_type: "solid".to_string(),
             background_color: "#FFFFFF".to_string(),
             file_path: None,
+            project_type: "print".to_string(),
             created_at: "2026-08-29T12:00:00Z".to_string(),
             updated_at: "2026-08-29T12:00:00Z".to_string(),
         };
@@ -2594,6 +2597,7 @@ mod tests {
             background_type: "solid".to_string(),
             background_color: "#FFFFFF".to_string(),
             file_path: None,
+            project_type: "print".to_string(),
             created_at: "2026-08-29T12:00:00Z".to_string(),
             updated_at: "2026-08-29T12:00:00Z".to_string(),
         };
