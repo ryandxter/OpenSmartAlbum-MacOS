@@ -80,7 +80,25 @@ export interface CarouselPhotoFrame {
   cornerRadiusBl?: number;
 }
 
-export type CarouselElement = CarouselPhotoFrame;
+export interface CarouselTextFrame {
+  type: 'text';
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  text: string;
+  fontSize: number;
+  fontFamily: string;
+  fontWeight: string;
+  color: string;
+  align: 'left' | 'center' | 'right';
+  locked: boolean;
+  opacity?: number;
+  rotation?: number;
+}
+
+export type CarouselElement = CarouselPhotoFrame | CarouselTextFrame;
 
 export interface CarouselSlide {
   id: string;

@@ -372,21 +372,40 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport, activeMode =
         id: s.id,
         slideIndex: idx,
         backgroundColor: s.backgroundColor,
-        elements: s.elements.map((el) => ({
-          id: el.id,
-          filePath: el.filePath || null,
-          previewPath: el.previewPath || null,
-          x: el.x,
-          y: el.y,
-          width: el.width,
-          height: el.height,
-          cropX: el.cropX ?? null,
-          cropY: el.cropY ?? null,
-          cropScale: el.cropScale ?? null,
-          rotation: el.rotation ?? null,
-          cornerRadius: el.cornerRadius ?? null,
-          shapeType: el.shapeType ?? null,
-        })),
+        elements: s.elements.map((el) => {
+          if (el.type === 'photo') {
+            return {
+              id: el.id,
+              filePath: el.filePath || null,
+              previewPath: el.previewPath || null,
+              x: el.x,
+              y: el.y,
+              width: el.width,
+              height: el.height,
+              cropX: el.cropX ?? null,
+              cropY: el.cropY ?? null,
+              cropScale: el.cropScale ?? null,
+              rotation: el.rotation ?? null,
+              cornerRadius: el.cornerRadius ?? null,
+              shapeType: el.shapeType ?? null,
+            };
+          }
+          return {
+            id: el.id,
+            filePath: null,
+            previewPath: null,
+            x: el.x,
+            y: el.y,
+            width: el.width,
+            height: el.height,
+            cropX: null,
+            cropY: null,
+            cropScale: null,
+            rotation: el.rotation ?? null,
+            cornerRadius: null,
+            shapeType: null,
+          };
+        }),
       })),
     };
 

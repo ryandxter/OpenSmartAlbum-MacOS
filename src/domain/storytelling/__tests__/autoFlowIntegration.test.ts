@@ -2,7 +2,7 @@ import { useAlbumStore } from '../../../stores/albumStore';
 import { useCarouselStore } from '../../../stores/carouselStore';
 import { useHistoryStore } from '../../../stores/historyStore';
 import { createInitialAlbum } from '../../../domain/album';
-import { createInitialCarousel } from '../../../domain/carousel';
+import { createInitialCarousel, CarouselPhotoFrame } from '../../../domain/carousel';
 import { Project } from '../../../domain/project';
 import { Photo } from '../../../domain/photo';
 
@@ -157,7 +157,7 @@ async function runAutoFlowTests() {
     `Carousel Zero-Loss Photo Invariant failed: expected 10 photos placed, got ${allFrames.length}`
   );
 
-  const placedCarouselPhotoIds = new Set(allFrames.map((f) => f.photoId));
+  const placedCarouselPhotoIds = new Set(allFrames.map((f) => (f as CarouselPhotoFrame).photoId));
   for (const p of photos10) {
     assert(placedCarouselPhotoIds.has(p.id), `Missing photo ID ${p.id} from auto-flowed slides`);
   }
@@ -169,7 +169,7 @@ async function runAutoFlowTests() {
     assert(frame.x >= 0, `Frame x must be >= 0: got ${frame.x}`);
     assert(frame.y >= 0, `Frame y must be >= 0: got ${frame.y}`);
     assert(
-      typeof frame.filePath === 'string' && frame.filePath.length > 0,
+      typeof (frame as CarouselPhotoFrame).filePath === 'string' && (frame as CarouselPhotoFrame).filePath!.length > 0,
       `Frame filePath cannot be empty: ${frame.id}`
     );
   }

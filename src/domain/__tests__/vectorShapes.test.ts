@@ -36,6 +36,7 @@ import {
   createScallopSvgPath,
 } from '../shapes';
 import { useCarouselStore } from '../../stores/carouselStore';
+import type { CarouselPhotoFrame } from '../carousel';
 
 console.log('🧪 Starting Vector Shape Masking & In-Shape Crop Engine Tests...\n');
 
@@ -369,7 +370,7 @@ useCarouselStore.getState().updatePhotoFrame(frame.id, {
   borderStyle: 'dashed',
 });
 
-const updatedFrame = useCarouselStore.getState().currentCarousel?.slides[0]?.elements[0];
+const updatedFrame = useCarouselStore.getState().currentCarousel?.slides[0]?.elements[0] as CarouselPhotoFrame | undefined;
 assert.ok(updatedFrame, 'Updated frame must exist');
 assert.strictEqual(updatedFrame.shapeType, 'heart', 'shapeType must be updated to heart');
 assert.strictEqual(updatedFrame.borderEnabled, true, 'borderEnabled must be true');

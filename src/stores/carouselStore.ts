@@ -4,6 +4,8 @@ import {
   CarouselSlide,
   CarouselRatio,
   CarouselPhotoFrame,
+  CarouselTextFrame,
+  CarouselElement,
   createInitialCarousel,
   createCarouselSlide,
   scaleFramesForRatioSwitch,
@@ -87,6 +89,7 @@ export interface CarouselState {
   swapFrames: (frameIdA: string, frameIdB: string) => void;
   toggleSliceGuides: () => void;
   setShowSliceGuides: (show: boolean) => void;
+  addTextFrame: () => void;
 }
 
 export const useCarouselStore = create<CarouselState>((set, get) => ({
@@ -123,9 +126,29 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
 
     set({ saveStatus: 'saving' });
 
-    const sanitizeFrame = (frame: CarouselPhotoFrame): any => {
+    const sanitizeFrame = (frame: CarouselElement): any => {
+      if (frame.type === 'text') {
+        return {
+          type: 'text',
+          id: frame.id,
+          x: Number.isFinite(frame.x) ? frame.x : 0,
+          y: Number.isFinite(frame.y) ? frame.y : 0,
+          width: Number.isFinite(frame.width) ? frame.width : 100,
+          height: Number.isFinite(frame.height) ? frame.height : 80,
+          text: frame.text || '',
+          fontSize: frame.fontSize || 48,
+          fontFamily: frame.fontFamily || 'SF Pro Display, system-ui, sans-serif',
+          fontWeight: frame.fontWeight || '700',
+          color: frame.color || '#FFFFFF',
+          align: frame.align || 'center',
+          locked: Boolean(frame.locked),
+          opacity: Number.isFinite(frame.opacity) ? Math.max(0, Math.min(1, frame.opacity!)) : 1.0,
+          rotation: Number.isFinite(frame.rotation) ? frame.rotation : 0,
+        };
+      }
       const cornerRadiusNum = typeof frame.cornerRadius === 'number' ? frame.cornerRadius : null;
       return {
+        type: 'photo',
         id: frame.id,
         photoId: frame.photoId || null,
         filePath: frame.filePath || '',
@@ -1414,9 +1437,12 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     if (!currentCarousel) return;
 
     const slide = currentCarousel.slides[slideIndex];
-    if (!slide || slide.elements.length < 2) return;
+    if (!slide) return;
 
-    const targetFrame = slide.elements.find((el) => el.id === frameId);
+    const photoFrames = slide.elements.filter((el): el is CarouselPhotoFrame => el.type === 'photo');
+    if (photoFrames.length < 2) return;
+
+    const targetFrame = photoFrames.find((el) => el.id === frameId);
     if (!targetFrame) return;
 
     pushHistory();
@@ -1425,7 +1451,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     const slideH = currentCarousel.slideHeightPx;
     const targetHeroId = targetFrame.photoId || targetFrame.id;
 
-    const adaptivePhotos: AdaptivePhoto[] = slide.elements.map((el) => ({
+    const adaptivePhotos: AdaptivePhoto[] = photoFrames.map((el) => ({
       id: el.id,
       photoId: el.photoId,
       filePath: el.filePath,
@@ -1477,10 +1503,11 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
       };
     });
 
+    const otherElements = slide.elements.filter((el) => el.type !== 'photo');
     const updatedSlides = [...currentCarousel.slides];
     updatedSlides[slideIndex] = {
       ...slide,
-      elements: updatedFrames,
+      elements: [...updatedFrames, ...otherElements],
     };
 
     set({
@@ -1586,4 +1613,43 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
 
   toggleSliceGuides: () => set((state) => ({ showSliceGuides: !state.showSliceGuides })),
   setShowSliceGuides: (show) => set({ showSliceGuides: show }),
+
+  addTextFrame: () => {
+    const { currentCarousel, activeSlideIndex, pushHistory } = get();
+    if (!currentCarousel) return;
+    const slide = currentCarousel.slides[activeSlideIndex];
+    if (!slide) return;
+    pushHistory();
+
+    const slideStartX = activeSlideIndex * currentCarousel.slideWidthPx;
+    const frameId = `text-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+    const newTextFrame: CarouselTextFrame = {
+      type: 'text',
+      id: frameId,
+      x: Math.round(slideStartX + currentCarousel.slideWidthPx * 0.1),
+      y: Math.round(currentCarousel.slideHeightPx * 0.4),
+      width: Math.round(currentCarousel.slideWidthPx * 0.8),
+      height: 80,
+      text: 'Add your text here',
+      fontSize: 48,
+      fontFamily: 'SF Pro Display, system-ui, sans-serif',
+      fontWeight: '700',
+      color: '#FFFFFF',
+      align: 'center',
+      locked: false,
+    };
+
+    const updatedSlides = currentCarousel.slides.map((s, idx) =>
+      idx === activeSlideIndex
+        ? { ...s, elements: [...s.elements, newTextFrame] }
+        : s
+    );
+
+    set({
+      currentCarousel: { ...currentCarousel, slides: updatedSlides },
+      selectedFrameId: frameId,
+      selectedFrameIds: [frameId],
+    });
+  },
 }));

@@ -7,6 +7,7 @@ import { useCarouselStore } from '../../../stores/carouselStore';
 import { useAlbumStore } from '../../../stores/albumStore';
 import { usePhotoStore } from '../../../stores/photoStore';
 import type { Photo } from '../../../domain/photo';
+import type { CarouselPhotoFrame } from '../../../domain/carousel';
 
 function assert(condition: boolean, message: string) {
   if (!condition) {
@@ -131,7 +132,7 @@ console.log('=== Running Carousel Batch Placement & Context Routing Test Suite =
   assert(reflowedSlide.elements.length === 4, `Slide should now contain 4 photo frames, got ${reflowedSlide.elements.length}`);
 
   // Find the preserved original frame by id
-  const preservedFrame = reflowedSlide.elements.find((el) => el.id === targetFrame.id);
+  const preservedFrame = reflowedSlide.elements.find((el): el is CarouselPhotoFrame => el.id === targetFrame.id);
   assert(preservedFrame !== undefined, 'Original frame ID must be preserved during smart reflow');
   assert(preservedFrame!.borderEnabled === true, 'borderEnabled must be preserved');
   assert(preservedFrame!.borderWidth === 6, 'borderWidth must be preserved');
@@ -148,7 +149,7 @@ console.log('=== Running Carousel Batch Placement & Context Routing Test Suite =
 // Test 4: Frame replacement preserves target frame geometry and updates photo references
 {
   const slide = useCarouselStore.getState().currentCarousel!.slides[0]!;
-  const frameToReplace = slide.elements[0]!;
+  const frameToReplace = slide.elements[0] as CarouselPhotoFrame;
   const origX = frameToReplace.x;
   const origY = frameToReplace.y;
   const origW = frameToReplace.width;
@@ -164,7 +165,7 @@ console.log('=== Running Carousel Batch Placement & Context Routing Test Suite =
   assert(returnedIds[0] === frameToReplace.id, 'Returned frame ID must match replaced frame');
 
   const afterReplaceSlide = useCarouselStore.getState().currentCarousel!.slides[0]!;
-  const replacedFrame = afterReplaceSlide.elements.find((el) => el.id === frameToReplace.id)!;
+  const replacedFrame = afterReplaceSlide.elements.find((el): el is CarouselPhotoFrame => el.id === frameToReplace.id)!;
 
   assert(replacedFrame.photoId === 'p-replacement', 'photoId must be updated to replacement photo');
   assert(replacedFrame.filePath === '/path/to/replacement.jpg', 'filePath must be updated');
@@ -213,7 +214,7 @@ console.log('=== Running Carousel Batch Placement & Context Routing Test Suite =
 
   const slide1After = useCarouselStore.getState().currentCarousel!.slides[1]!;
   assert(slide1After.elements.length === 1, 'Slide 1 should receive 1 photo frame via carousel mode dispatch');
-  assert(slide1After.elements[0]!.photoId === 'photo-route-a', 'Placed photo must match route-a');
+  assert((slide1After.elements[0] as CarouselPhotoFrame).photoId === 'photo-route-a', 'Placed photo must match route-a');
 
   // Verify photoStore usedCount incremented
   const photoInStore = usePhotoStore.getState().photos.find((p) => p.id === 'photo-route-a')!;
