@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Plus, FolderOpen, Clock, Image, X } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
@@ -22,6 +22,19 @@ export function WelcomeScreen() {
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [missingFileProject, setMissingFileProject] = useState<Project | null>(null);
   const [missingProjectIds, setMissingProjectIds] = useState<Set<string>>(new Set());
+
+  /** Map of projectId → cached thumbnail dataUrl from localStorage (carousel projects only). */
+  const thumbnailMap = useMemo<Record<string, string>>(() => {
+    const map: Record<string, string> = {};
+    for (const proj of recentProjects) {
+      try {
+        const cached = localStorage.getItem(`afsn_thumb_${proj.id}`);
+        if (cached) map[proj.id] = cached;
+      } catch { /* localStorage unavailable */ }
+    }
+    return map;
+  }, [recentProjects]);
+
 
   useEffect(() => {
     loadRecentProjects();
@@ -176,7 +189,16 @@ export function WelcomeScreen() {
                     title={missingProjectIds.has(proj.id) ? `Project file missing from disk: ${proj.filePath}` : `Open ${proj.name}`}
                   >
                     <div className={styles.projectIconBadge}>
-                      <Image size={16} strokeWidth={1.5} />
+                      {thumbnailMap[proj.id] ? (
+                        <img
+                          src={thumbnailMap[proj.id]}
+                          alt={`${proj.name} thumbnail`}
+                          className={styles.projectThumbnailImg}
+                          draggable={false}
+                        />
+                      ) : (
+                        <Image size={16} strokeWidth={1.5} />
+                      )}
                     </div>
                     <div className={styles.projectInfo}>
                       <span className={styles.projectName}>{proj.name}</span>

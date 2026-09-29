@@ -29,6 +29,33 @@ const persistProjectSpacing = async (project: Project): Promise<void> => {
   });
 };
 
+/** Fire-and-forget helper: capture slide 0 canvas thumbnail, cache in localStorage, persist to Tauri cache dir. */
+const captureAndCacheCarouselThumbnail = async (projectId: string): Promise<void> => {
+  try {
+    // Look for the carousel slide 0 canvas exported by Konva stage
+    const stage = (window as unknown as Record<string, unknown>)['__konvaStage__'];
+    let dataUrl: string | null = null;
+    if (stage && typeof (stage as { toDataURL?: (opts: object) => string }).toDataURL === 'function') {
+      dataUrl = (stage as { toDataURL: (opts: object) => string }).toDataURL({ mimeType: 'image/png', quality: 0.8, pixelRatio: 0.25 });
+    } else {
+      // Fallback: search for the first visible canvas in the carousel stage wrapper
+      const canvas = document.querySelector<HTMLCanvasElement>('.stageWrapper canvas');
+      if (canvas) {
+        dataUrl = canvas.toDataURL('image/png', 0.8);
+      }
+    }
+    if (!dataUrl) return;
+    // Shrink to a compact preview (≤1KB via low-res PNG data already)
+    try { localStorage.setItem(`afsn_thumb_${projectId}`, dataUrl); } catch { /* storage full */ }
+    // Persist to Tauri app cache directory
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke('save_project_thumbnail', { projectId, base64Png: dataUrl });
+  } catch {
+    // Non-critical — thumbnail is a UI enhancement only
+  }
+};
+
+
 interface ProjectState {
   currentProject: Project | null;
   recentProjects: Project[];
@@ -600,6 +627,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         if (get().currentProject?.id === current.id && isCarouselEqual(useCarouselStore.getState().currentCarousel, carousel)) {
           useCarouselStore.getState().setSaveStatus('saved');
         }
+        // Async thumbnail capture — fire-and-forget, never blocks the save result
+        void captureAndCacheCarouselThumbnail(current.id);
         return { success: true, filePath: savedPath, isSaveAs: !exists };
       } catch (error) {
         if (get().currentProject?.id === current.id) {
