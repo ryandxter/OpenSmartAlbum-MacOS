@@ -154,6 +154,27 @@ Export formats ready for professional lab printing or digital client delivery:
 - **Ultra High-Res Raster:** JPEG (sRGB), Lossless PNG, and 1200 DPI TIFF for museum-grade fine art prints.
 </details>
 
+<details>
+<summary><h3>📐 7. Vector Shape Masking & Figma-Grade Vertex Tangent Fillets (New in v1.3.0)</h3></summary>
+
+Elevate standard rectilinear photo albums into high-end editorial designs with advanced geometric clipping:
+- **10 Shape Presets:** Rectangle, Rounded, Circle, Oval, Hexagon, Octagon, Star, Scallop, Heart, and Custom SVG.
+- **Mathematical Vertex Tangent Fillets:** Calculates circular arcs ($\theta = \arccos(\hat{u} \cdot \hat{v})$, $t = r / \tan(\theta/2)$) with dynamic self-intersection clamping ($d_{\max} = \min(L_{in}, L_{out})/2$) in `src/domain/shapes.ts`.
+- **Independent Tip & Valley Star Controls:** Dial in outer point softness and inner valley curves independently.
+- **Compound SVG Mask Normalizer:** Automatically parses nested `<path>`, `<circle>`, `<rect>`, `<ellipse>`, and `<polygon>` elements, enforcing aspect-fit containment and centering on asymmetrical frames.
+- **Rust Export Parity:** Exports vector fillets with pixel-perfect accuracy to 300 DPI layered PSD and high-res print files.
+</details>
+
+<details>
+<summary><h3>🛡️ 8. Workspace Isolation & Full Carousel Persistence (New in v1.3.0)</h3></summary>
+
+Seamlessly switch between fine-art print albums and modern digital social storytelling:
+- **Global `activeMode` Hoisting:** App title bar, shortcuts, and dialogs dynamically adapt between Print Album and Social Carousel modes.
+- **Independent Viewport Zooms:** Preserves `printZoom` and `carouselZoom` independently with zero scaling jumps or pan drift.
+- **Full SQLite v16 & `.afsn` Package Persistence:** All carousel slides, photo frames, aspect ratios, and custom backgrounds are fully serialized to SQLite and `.afsn` archives.
+- **Real-Time Dirty Tracking & Close Guard:** Dynamic title bar save status (green "Saved" vs amber "Unsaved Changes") with a native macOS close safeguard sheet.
+</details>
+
 ---
 
 <a name="en-v130"></a>
@@ -402,6 +423,27 @@ Format hasil akhir siap kirim ke lab percetakan profesional:
 - **Layered Photoshop (.PSD):** Layer foto terpisah lengkap dengan vector clipping mask untuk 8 bentuk bingkai.
 - **PDF/X Siap Cetak:** Dilengkapi tanda potong (*crop marks*), area bleed (3mm–5mm), dan informasi slug.
 - **Raster Kualitas Ultra:** JPEG (sRGB), Lossless PNG, dan 1200 DPI TIFF untuk cetakan pameran museum.
+</details>
+
+<details>
+<summary><h3>📐 7. Masking Bentuk Vektor & Fillet Tangen Sudut Poligon (Fitur Baru v1.3.0)</h3></summary>
+
+Tingkatkan desain album foto standar menjadi layout editorial fine-art dengan kliping geometris mutakhir:
+- **10 Preset Bentuk:** Persegi Panjang, Sudut Tumpul (Rounded), Lingkaran, Oval, Hexagon, Octagon, Bintang, Scallop, Hati, dan Custom SVG.
+- **Engine Fillet Tangen Matematis:** Menghitung busur melengkung circular ($\theta = \arccos(\hat{u} \cdot \hat{v})$, $t = r / \tan(\theta/2)$) dengan self-intersection clamp dinamis ($d_{\max} = \min(L_{in}, L_{out})/2$) di `src/domain/shapes.ts`.
+- **Kontrol Ujung & Lembah Terpisah untuk Bintang:** Atur kehalusan sudut ujung luar dan lekukan lembah dalam bintang secara mandiri.
+- **Normalizer Masker SVG Compound:** Otomatis menggabungkan elemen `<path>`, `<circle>`, `<rect>`, `<ellipse>`, dan `<polygon>`, dengan fit aspek rasio dan centering tanpa distorsi.
+- **Parity Ekspor Rust:** Mengekspor fillet vektor dengan presisi 1:1 ke file PSD berlapis 300 DPI dan format cetak resolusi tinggi.
+</details>
+
+<details>
+<summary><h3>🛡️ 8. Isolasi Workspace & Persistensi Penuh Carousel (Fitur Baru v1.3.0)</h3></summary>
+
+Beralih mulus antara album cetak fine-art dan storytelling media sosial digital:
+- **Hoisting `activeMode` Global:** Title bar aplikasi, pintasan keyboard, dan dialog beradaptasi dinamis antara mode Print Album dan Social Carousel.
+- **Zoom Kanvas Independen:** Mempertahankan level zoom `printZoom` dan `carouselZoom` secara terpisah tanpa lompatan skala kanvas.
+- **Persistensi Penuh SQLite v16 & Arsip `.afsn`:** Seluruh slide carousel, bingkai foto, aspek rasio, dan background kustom tersimpan utuh ke SQLite dan arsip `.afsn`.
+- **Pelacak Perubahan Real-Time & Pengaman Tutup Jendela:** Status simpan dinamis pada title bar (hijau "Saved" vs amber "Unsaved Changes") dengan sheet konfirmasi native macOS saat keluar.
 </details>
 
 ---
