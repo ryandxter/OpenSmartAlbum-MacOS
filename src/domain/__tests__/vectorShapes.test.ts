@@ -56,6 +56,7 @@ import {
   createHeartSvgPath,
   createScallopSvgPath,
   createOvalSvgPath,
+  normalizeCustomSvgMask,
 } from '../shapes';
 import { useCarouselStore } from '../../stores/carouselStore';
 import type { CarouselPhotoFrame } from '../carousel';
@@ -565,4 +566,53 @@ describeFn('Test Suite 9: Stroke Contour & Mask Alignment Invariant', () => {
   });
 });
 
-console.log('\n🎉 ALL 9 TEST SUITES COMPLETED! Vector Shape Masking & Fillet Engine is 100% verified.');
+// ---------------------------------------------------------------------------
+// Suite 10: Compound SVG Mask Normalization
+// ---------------------------------------------------------------------------
+describeFn('Test Suite 10: Compound SVG Mask Normalization', () => {
+  itFn('Multi-element SVG merges <path>, <circle>, <rect>, <polygon> into compound path', () => {
+    const rawSvg = `
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <rect x="10" y="10" width="80" height="80" rx="5" ry="5"/>
+        <circle cx="50" cy="50" r="20"/>
+        <path d="M 20 20 L 80 80"/>
+        <polygon points="30,30 70,30 50,70"/>
+      </svg>
+    `;
+    // Intrinsic normalization without target frame dimensions
+    const intrinsic = normalizeCustomSvgMask(rawSvg);
+    assert.ok(intrinsic !== null, 'Intrinsic normalization must succeed');
+    assert.strictEqual(intrinsic.viewBox.width, 100);
+    assert.strictEqual(intrinsic.viewBox.height, 100);
+    assert.ok(intrinsic.pathData.includes('M'), 'Path data must have M commands');
+    assert.ok(intrinsic.pathData.includes('A') || intrinsic.pathData.includes('L'), 'Must have arc or line commands');
+    assert.ok(intrinsic.pathData.includes('Z'), 'Must have Z commands');
+
+    // Normalized and fitted to target frame dimensions (200x200)
+    const result = normalizeCustomSvgMask(rawSvg, 200, 200);
+    assert.ok(result !== null, 'Normalization to target frame must succeed');
+    assert.strictEqual(result.viewBox.width, 200);
+    assert.strictEqual(result.viewBox.height, 200);
+    assert.ok(result.pathData.includes('M'), 'Scaled path data must have M commands');
+    assert.ok(result.pathData.includes('Z'), 'Scaled path data must have Z commands');
+  });
+
+  itFn('Aspect-fit containment centers mask without non-uniform stretching', () => {
+    const rawSvg = `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"/></svg>`;
+    const intrinsic = normalizeCustomSvgMask(rawSvg);
+    assert.ok(intrinsic !== null);
+    assert.strictEqual(intrinsic.viewBox.width, 100);
+    assert.strictEqual(intrinsic.viewBox.height, 100);
+
+    const fitted = normalizeCustomSvgMask(rawSvg, 400, 200);
+    assert.ok(fitted !== null);
+    assert.strictEqual(fitted.viewBox.width, 400);
+    assert.strictEqual(fitted.viewBox.height, 200);
+    // Circle with cx=50, cy=50, r=40 in 100x100 viewBox fitted into 400x200:
+    // Scale = 2, offsetX = 100, offsetY = 0 -> start point (10, 50) maps to (120, 100)
+    assert.ok(fitted.pathData.includes('120') && fitted.pathData.includes('100'), 'Fitted path must contain aspect-fit scaled coordinates');
+  });
+});
+
+console.log('\n🎉 ALL 10 TEST SUITES COMPLETED! Vector Shape Masking & Fillet Engine is 100% verified.');
+

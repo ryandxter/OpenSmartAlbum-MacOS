@@ -2,15 +2,15 @@
 gsd_state_version: "1.0"
 milestone: v1.3.0
 milestone_name: Workspace Isolation, Carousel Persistence & Vector Shape Polish
-status: executing
-last_updated: "2026-09-29T10:55:00.000Z"
+status: completed
+last_updated: "2026-09-29T14:25:00.000Z"
 last_activity: 2026-09-29
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 11
-  completed_plans: 8
-  percent: 73
+  completed_plans: 11
+  percent: 100
 ---
 
 # Project State: OpenSmartAlbum-MacOS Milestone v1.3.0
@@ -20,14 +20,14 @@ progress:
 See: `.planning/PROJECT.md`, `.planning/REQUIREMENTS.md` & `.planning/ROADMAP.md`
 
 **Core value:** Solid workspace mode isolation, complete SQLite and package persistence for Social Carousel, resilient multi-photo drag-and-drop, and Figma-grade polygon corner radius fillets.
-**Current status:** ✅ Phase 16 completed (3/3 plans). Phase 17 ready for planning.
+**Current status:** ✅ Milestone v1.3.0 completed (4/4 phases, 11/11 plans). All phases verified.
 
 ## Current Position
 
 Phase: Phase 17: Vector Shape Mask Corner Radii & Polygon Tangent Fillets
-Plan: 17-01 ready for execution
-Status: Planning complete (3/3 plans generated). Ready for execution.
-Last activity: 2026-09-29 — Generated execution plans 17-01, 17-02, 17-03.
+Plan: 17-03 completed
+Status: Milestone complete (4/4 phases complete).
+Last activity: 2026-09-29 — Completed Plan 17-03, verified 10/10 vector shape test suites and 50/50 Rust tests.
 
 ## Milestone v1.3.0 Phases
 
@@ -36,7 +36,8 @@ Last activity: 2026-09-29 — Generated execution plans 17-01, 17-02, 17-03.
 | Phase 14: Carousel Canvas Multi-Photo Drag-and-Drop & Filmstrip Context Routing | COMPLETED | CAR-01..CAR-04 | 2/2 | `.stageWrapper` drop listener, in-bounds ghost badge, atomic batch placement, mode-aware context menu & double-click |
 | Phase 15: Social Carousel Full SQLite & Package Persistence | COMPLETED | PERS-01..PERS-04 | 3/3 | SQLite v16 carousel schema, IPC save/load, `.afsn` archive, dirty tracking, window close guard, slide thumbnail caching |
 | Phase 16: Workspace Isolation & Mode State Synchronization | COMPLETED | ISO-01..ISO-05 | 3/3 | Global `activeMode` in `appStore`, isolated zoom levels, mode-guarded titlebar/shortcuts, slide coordinate preservation, layout style preservation |
-| Phase 17: Vector Shape Mask Corner Radii & Polygon Tangent Fillets | READY | VEC-01..VEC-04 | 0/3 | Unlocked Inspector corner radius, vertex fillet tangent arc math in `shapes.ts`, SVG viewBox normalization, Oval preset |
+| Phase 17: Vector Shape Mask Corner Radii & Polygon Tangent Fillets | COMPLETED | VEC-01..VEC-04 | 3/3 | Unlocked Inspector corner radius, vertex fillet tangent arc math in `shapes.ts`, SVG viewBox normalization, Oval preset |
+
 
 ## Shipped Milestones Summary
 

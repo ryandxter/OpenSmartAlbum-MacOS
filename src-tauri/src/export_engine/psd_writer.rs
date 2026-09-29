@@ -196,8 +196,114 @@ pub fn rasterize_polygon_mask(w: u32, h: u32, vertices: &[Point2D]) -> ImageBuff
     mask
 }
 
-/// Generates a regular polygon (Hexagon: 6, Octagon: 8).
-pub fn generate_polygon_mask(sides: usize, w: u32, h: u32) -> ImageBuffer<Luma<u8>, Vec<u8>> {
+/// Samples circular arc fillet points at vertex `vi` between adjacent vertices `prev` and `next`.
+/// Tangent distance is clamped to at most half the length of the shortest adjacent edge.
+fn sample_vertex_fillet(
+    vi: Point2D,
+    prev: Point2D,
+    next: Point2D,
+    radius: f64,
+    out: &mut Vec<Point2D>,
+) {
+    if radius <= 0.01 {
+        out.push(vi);
+        return;
+    }
+
+    let ux = prev.x - vi.x;
+    let uy = prev.y - vi.y;
+    let l_in = (ux * ux + uy * uy).sqrt();
+
+    let vx = next.x - vi.x;
+    let vy = next.y - vi.y;
+    let l_out = (vx * vx + vy * vy).sqrt();
+
+    if l_in < 1e-4 || l_out < 1e-4 {
+        out.push(vi);
+        return;
+    }
+
+    let u_hat_x = ux / l_in;
+    let u_hat_y = uy / l_in;
+    let v_hat_x = vx / l_out;
+    let v_hat_y = vy / l_out;
+
+    let dot = (u_hat_x * v_hat_x + u_hat_y * v_hat_y).clamp(-1.0, 1.0);
+    let theta = dot.acos();
+
+    if theta < 1e-3 || theta > std::f64::consts::PI - 1e-3 {
+        out.push(vi);
+        return;
+    }
+
+    let tan_half = (theta / 2.0).tan();
+    if tan_half < 1e-4 {
+        out.push(vi);
+        return;
+    }
+
+    let t = radius / tan_half;
+    let d_max = l_in.min(l_out) / 2.0;
+    let d = t.min(d_max);
+    let r_eff = d * tan_half;
+
+    let t_in = Point2D {
+        x: vi.x + d * u_hat_x,
+        y: vi.y + d * u_hat_y,
+    };
+    let t_out = Point2D {
+        x: vi.x + d * v_hat_x,
+        y: vi.y + d * v_hat_y,
+    };
+
+    let cp = -ux * vy - (-uy * vx);
+    let sweep = cp > 0.0;
+
+    let denom = 1.0 + dot;
+    if denom.abs() < 1e-6 {
+        out.push(vi);
+        return;
+    }
+
+    let factor = d / denom;
+    let center = Point2D {
+        x: vi.x + factor * (u_hat_x + v_hat_x),
+        y: vi.y + factor * (u_hat_y + v_hat_y),
+    };
+
+    let phi_start = (t_in.y - center.y).atan2(t_in.x - center.x);
+    let phi_end = (t_out.y - center.y).atan2(t_out.x - center.x);
+    let mut delta_phi = phi_end - phi_start;
+
+    if sweep {
+        while delta_phi < 0.0 {
+            delta_phi += 2.0 * std::f64::consts::PI;
+        }
+        while delta_phi > 2.0 * std::f64::consts::PI {
+            delta_phi -= 2.0 * std::f64::consts::PI;
+        }
+    } else {
+        while delta_phi > 0.0 {
+            delta_phi -= 2.0 * std::f64::consts::PI;
+        }
+        while delta_phi < -2.0 * std::f64::consts::PI {
+            delta_phi += 2.0 * std::f64::consts::PI;
+        }
+    }
+
+    let samples = 8;
+    for s in 0..=samples {
+        let frac = s as f64 / samples as f64;
+        let phi = phi_start + frac * delta_phi;
+        out.push(Point2D {
+            x: center.x + r_eff * phi.cos(),
+            y: center.y + r_eff * phi.sin(),
+        });
+    }
+}
+
+/// Generates a regular polygon (Hexagon: 6, Octagon: 8) with circular arc fillets.
+pub fn generate_polygon_mask(sides: usize, radius: f64, w: u32, h: u32) -> ImageBuffer<Luma<u8>, Vec<u8>> {
     let rx = w as f64 / 2.0;
     let ry = h as f64 / 2.0;
     let cx = rx;
@@ -211,11 +317,32 @@ pub fn generate_polygon_mask(sides: usize, w: u32, h: u32) -> ImageBuffer<Luma<u
             y: cy + ry * angle.sin(),
         });
     }
-    rasterize_polygon_mask(w, h, &vertices)
+
+    if radius <= 0.01 {
+        return rasterize_polygon_mask(w, h, &vertices);
+    }
+
+    let mut curved_vertices = Vec::new();
+    let n = vertices.len();
+    for i in 0..n {
+        let prev = vertices[(i + n - 1) % n];
+        let vi = vertices[i];
+        let next = vertices[(i + 1) % n];
+        sample_vertex_fillet(vi, prev, next, radius, &mut curved_vertices);
+    }
+
+    rasterize_polygon_mask(w, h, &curved_vertices)
 }
 
-/// Generates a 5-point star mask with configurable inner radius ratio.
-pub fn generate_star_mask(points: usize, inner_ratio: f64, w: u32, h: u32) -> ImageBuffer<Luma<u8>, Vec<u8>> {
+/// Generates a 5-point star mask with configurable inner radius ratio and independent tip/valley fillets.
+pub fn generate_star_mask(
+    points: usize,
+    inner_ratio: f64,
+    tip_r: f64,
+    valley_r: f64,
+    w: u32,
+    h: u32,
+) -> ImageBuffer<Luma<u8>, Vec<u8>> {
     let rx = w as f64 / 2.0;
     let ry = h as f64 / 2.0;
     let cx = rx;
@@ -233,7 +360,22 @@ pub fn generate_star_mask(points: usize, inner_ratio: f64, w: u32, h: u32) -> Im
             y: cy + cry * angle.sin(),
         });
     }
-    rasterize_polygon_mask(w, h, &vertices)
+
+    if tip_r <= 0.01 && valley_r <= 0.01 {
+        return rasterize_polygon_mask(w, h, &vertices);
+    }
+
+    let mut curved_vertices = Vec::new();
+    let n = vertices.len();
+    for i in 0..n {
+        let prev = vertices[(i + n - 1) % n];
+        let vi = vertices[i];
+        let next = vertices[(i + 1) % n];
+        let r = if i % 2 == 0 { tip_r } else { valley_r };
+        sample_vertex_fillet(vi, prev, next, r, &mut curved_vertices);
+    }
+
+    rasterize_polygon_mask(w, h, &curved_vertices)
 }
 
 /// Evaluates a cubic bezier curve point at parameter t in [0.0, 1.0].
@@ -406,6 +548,107 @@ pub fn generate_rounded_rect_mask(
     mask
 }
 
+/// Evaluates an elliptical arc according to SVG 1.1 Implementation Notes (F.6 Elliptical arc implementation notes).
+fn sample_svg_arc(
+    p0: Point2D,
+    mut rx: f64,
+    mut ry: f64,
+    x_axis_rotation_deg: f64,
+    large_arc_flag: bool,
+    sweep_flag: bool,
+    p1: Point2D,
+    out: &mut Vec<Point2D>,
+) {
+    rx = rx.abs();
+    ry = ry.abs();
+
+    if rx < 1e-6 || ry < 1e-6 {
+        out.push(p1);
+        return;
+    }
+
+    let dx = (p0.x - p1.x) / 2.0;
+    let dy = (p0.y - p1.y) / 2.0;
+    if dx.abs() < 1e-9 && dy.abs() < 1e-9 {
+        return;
+    }
+
+    let phi = x_axis_rotation_deg.to_radians();
+    let cos_phi = phi.cos();
+    let sin_phi = phi.sin();
+
+    // Step 1: Compute (x1', y1')
+    let x1_prime = cos_phi * dx + sin_phi * dy;
+    let y1_prime = -sin_phi * dx + cos_phi * dy;
+
+    // Step 2: Ensure radii are large enough
+    let lambda = (x1_prime * x1_prime) / (rx * rx) + (y1_prime * y1_prime) / (ry * ry);
+    if lambda > 1.0 {
+        let sqrt_lambda = lambda.sqrt();
+        rx *= sqrt_lambda;
+        ry *= sqrt_lambda;
+    }
+
+    // Step 3: Compute (cx', cy')
+    let rx_sq = rx * rx;
+    let ry_sq = ry * ry;
+    let x1_sq = x1_prime * x1_prime;
+    let y1_sq = y1_prime * y1_prime;
+
+    let num = (rx_sq * ry_sq - rx_sq * y1_sq - ry_sq * x1_sq).max(0.0);
+    let den = rx_sq * y1_sq + ry_sq * x1_sq;
+    let factor = if den > 1e-9 {
+        let sq = (num / den).sqrt();
+        if large_arc_flag == sweep_flag { -sq } else { sq }
+    } else {
+        0.0
+    };
+
+    let cx_prime = factor * (rx * y1_prime / ry);
+    let cy_prime = factor * -(ry * x1_prime / rx);
+
+    // Step 4: Compute (cx, cy) from (cx', cy')
+    let cx = cos_phi * cx_prime - sin_phi * cy_prime + (p0.x + p1.x) / 2.0;
+    let cy = sin_phi * cx_prime + cos_phi * cy_prime + (p0.y + p1.y) / 2.0;
+
+    // Step 5: Compute start angle theta1 and angular sweep delta_theta
+    let ux = (x1_prime - cx_prime) / rx;
+    let uy = (y1_prime - cy_prime) / ry;
+    let vx = (-x1_prime - cx_prime) / rx;
+    let vy = (-y1_prime - cy_prime) / ry;
+
+    let u_len = (ux * ux + uy * uy).sqrt().max(1e-9);
+    let cos_theta1 = (ux / u_len).clamp(-1.0, 1.0);
+    let mut theta1 = cos_theta1.acos();
+    if uy < 0.0 {
+        theta1 = -theta1;
+    }
+
+    let v_len = (vx * vx + vy * vy).sqrt().max(1e-9);
+    let cos_delta = ((ux * vx + uy * vy) / (u_len * v_len)).clamp(-1.0, 1.0);
+    let mut delta_theta = cos_delta.acos();
+    if ux * vy - uy * vx < 0.0 {
+        delta_theta = -delta_theta;
+    }
+
+    if !sweep_flag && delta_theta > 0.0 {
+        delta_theta -= 2.0 * std::f64::consts::PI;
+    } else if sweep_flag && delta_theta < 0.0 {
+        delta_theta += 2.0 * std::f64::consts::PI;
+    }
+
+    let steps = 16;
+    for s in 1..=steps {
+        let t = s as f64 / steps as f64;
+        let theta = theta1 + t * delta_theta;
+        let p_prime_x = rx * theta.cos();
+        let p_prime_y = ry * theta.sin();
+        let px = cos_phi * p_prime_x - sin_phi * p_prime_y + cx;
+        let py = sin_phi * p_prime_x + cos_phi * p_prime_y + cy;
+        out.push(Point2D { x: px, y: py });
+    }
+}
+
 /// Lightweight tokenizer & parser for custom SVG path strings, scaled to (w, h).
 pub fn generate_custom_svg_mask(path_str: &str, w: u32, h: u32) -> ImageBuffer<Luma<u8>, Vec<u8>> {
     let mut tokens = Vec::new();
@@ -550,6 +793,35 @@ pub fn generate_custom_svg_mask(path_str: &str, w: u32, h: u32) -> ImageBuffer<L
                         }
                     }
                 }
+                'A' | 'a' => {
+                    let is_rel = cmd == 'a';
+                    while idx + 6 < tokens.len() {
+                        if let (
+                            SvgToken::Num(rx), SvgToken::Num(ry),
+                            SvgToken::Num(rot),
+                            SvgToken::Num(laf), SvgToken::Num(swp),
+                            SvgToken::Num(x), SvgToken::Num(y),
+                        ) = (
+                            &tokens[idx], &tokens[idx + 1],
+                            &tokens[idx + 2],
+                            &tokens[idx + 3], &tokens[idx + 4],
+                            &tokens[idx + 5], &tokens[idx + 6],
+                        ) {
+                            let p_end = if is_rel {
+                                Point2D { x: cur.x + x, y: cur.y + y }
+                            } else {
+                                Point2D { x: *x, y: *y }
+                            };
+                            let large_arc = *laf > 0.5;
+                            let sweep = *swp > 0.5;
+                            sample_svg_arc(cur, *rx, *ry, *rot, large_arc, sweep, p_end, &mut raw_vertices);
+                            cur = p_end;
+                            idx += 7;
+                        } else {
+                            break;
+                        }
+                    }
+                }
                 'Z' | 'z' => {
                     raw_vertices.push(start);
                     cur = start;
@@ -569,7 +841,7 @@ pub fn generate_custom_svg_mask(path_str: &str, w: u32, h: u32) -> ImageBuffer<L
         return full;
     }
 
-    // Normalize and scale vertices to bounding box (w, h)
+    // Normalize and scale vertices to bounding box (w, h) with aspect-preserving contain fit
     let min_x = raw_vertices.iter().map(|p| p.x).fold(f64::INFINITY, f64::min);
     let max_x = raw_vertices.iter().map(|p| p.x).fold(f64::NEG_INFINITY, f64::max);
     let min_y = raw_vertices.iter().map(|p| p.y).fold(f64::INFINITY, f64::min);
@@ -578,10 +850,14 @@ pub fn generate_custom_svg_mask(path_str: &str, w: u32, h: u32) -> ImageBuffer<L
     let span_x = (max_x - min_x).max(1e-6);
     let span_y = (max_y - min_y).max(1e-6);
 
+    let scale = (w as f64 / span_x).min(h as f64 / span_y);
+    let offset_x = (w as f64 - span_x * scale) / 2.0;
+    let offset_y = (h as f64 - span_y * scale) / 2.0;
+
     let scaled: Vec<Point2D> = raw_vertices.into_iter().map(|p| {
         Point2D {
-            x: ((p.x - min_x) / span_x) * w as f64,
-            y: ((p.y - min_y) / span_y) * h as f64,
+            x: offset_x + (p.x - min_x) * scale,
+            y: offset_y + (p.y - min_y) * scale,
         }
     }).collect();
 
@@ -606,9 +882,9 @@ pub fn generate_shape_mask(
     match shape {
         "circle" => Some(generate_circle_mask(w, h)),
         "oval" => Some(generate_oval_mask(w, h)),
-        "hexagon" => Some(generate_polygon_mask(6, w, h)),
-        "octagon" => Some(generate_polygon_mask(8, w, h)),
-        "star" => Some(generate_star_mask(5, 0.45, w, h)),
+        "hexagon" => Some(generate_polygon_mask(6, radii.0, w, h)),
+        "octagon" => Some(generate_polygon_mask(8, radii.0, w, h)),
+        "star" => Some(generate_star_mask(5, 0.45, radii.0, radii.1, w, h)),
         "scallop" => Some(generate_scallop_mask(10, w, h)),
         "heart" => Some(generate_heart_mask(w, h)),
         "custom_svg" => {
@@ -1077,8 +1353,40 @@ mod tests {
         // Far corner should be outside 0
         assert_eq!(circle_mask.get_pixel(0, 0)[0], 0);
 
-        let hex_mask = generate_polygon_mask(6, 100, 100);
+        let hex_mask = generate_polygon_mask(6, 0.0, 100, 100);
         assert_eq!(hex_mask.get_pixel(50, 50)[0], 255);
         assert_eq!(hex_mask.get_pixel(0, 0)[0], 0);
     }
+
+    #[test]
+    fn test_polygon_mask_fillet_radius_rasterization() {
+        let hex_mask = generate_polygon_mask(6, 20.0, 100, 100);
+        assert_eq!(hex_mask.width(), 100);
+        assert_eq!(hex_mask.height(), 100);
+        assert_eq!(hex_mask.get_pixel(50, 50)[0], 255);
+        assert_eq!(hex_mask.get_pixel(0, 0)[0], 0);
+    }
+
+    #[test]
+    fn test_star_mask_fillet_rasterization() {
+        let star_mask = generate_star_mask(5, 0.45, 15.0, 5.0, 100, 100);
+        assert_eq!(star_mask.width(), 100);
+        assert_eq!(star_mask.height(), 100);
+        assert_eq!(star_mask.get_pixel(50, 50)[0], 255);
+        assert_eq!(star_mask.get_pixel(0, 0)[0], 0);
+    }
+
+    #[test]
+    fn test_custom_svg_mask_aspect_fit_preserves_centering() {
+        let path_str = "M 0 0 L 100 0 L 100 100 L 0 100 Z";
+        let mask = generate_custom_svg_mask(path_str, 200, 100);
+        assert_eq!(mask.width(), 200);
+        assert_eq!(mask.height(), 100);
+        // Center should be opaque
+        assert_eq!(mask.get_pixel(100, 50)[0], 255);
+        // Edges beyond 1:1 aspect fit contain should be 0
+        assert_eq!(mask.get_pixel(10, 50)[0], 0);
+        assert_eq!(mask.get_pixel(190, 50)[0], 0);
+    }
 }
+
