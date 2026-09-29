@@ -233,11 +233,27 @@
   border-radius: 50%;
   flex-shrink: 0;
   background-color: #10b981; /* Green saved */
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .statusDotUnsaved {
   background-color: #f59e0b; /* Amber unsaved */
   box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+}
+
+.statusDotSaving {
+  background-color: #3b82f6; /* Blue saving */
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.6);
+  animation: pulseSaving 1.2s infinite ease-in-out;
+}
+
+@keyframes pulseSaving {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .projectNameText {

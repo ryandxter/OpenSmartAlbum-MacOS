@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useProjectStore } from '../../stores/projectStore';
 import { useAlbumStore } from '../../stores/albumStore';
+import { useCarouselStore } from '../../stores/carouselStore';
 import { useAppStore } from '../../stores/appStore';
 import { useHistoryStore } from '../../stores/historyStore';
 import { usePhotoStore } from '../../stores/photoStore';
@@ -62,14 +63,31 @@ export function AppTitleBar({
   const exportCompleteProjectPackageWithPhotos = useProjectStore((s) => s.exportCompleteProjectPackageWithPhotos);
   const importProjectFromAfsn = useProjectStore((s) => s.importProjectFromAfsn);
 
-  const activeSpreadId = useAlbumStore((s) => s.activeSpreadId);
-  const saveStatus = useAlbumStore((s) => s.saveStatus);
-  const lastSavedAt = useAlbumStore((s) => s.lastSavedAt);
-  const undo = useAlbumStore((s) => s.undo);
-  const redo = useAlbumStore((s) => s.redo);
+  const isCarousel = activeMode === 'carousel' || currentProject?.canvasUnit === 'px' || currentProject?.projectType === 'carousel';
 
-  const canUndo = useHistoryStore((s) => s.canUndo);
-  const canRedo = useHistoryStore((s) => s.canRedo);
+  const albumActiveSpreadId = useAlbumStore((s) => s.activeSpreadId);
+  const albumSaveStatus = useAlbumStore((s) => s.saveStatus);
+  const albumLastSavedAt = useAlbumStore((s) => s.lastSavedAt);
+  const albumUndo = useAlbumStore((s) => s.undo);
+  const albumRedo = useAlbumStore((s) => s.redo);
+
+  const carouselSaveStatus = useCarouselStore((s) => s.saveStatus);
+  const carouselLastSavedAt = useCarouselStore((s) => s.lastSavedAt);
+  const carouselUndo = useCarouselStore((s) => s.undo);
+  const carouselRedo = useCarouselStore((s) => s.redo);
+  const carouselCanUndo = useCarouselStore((s) => s.canUndo);
+  const carouselCanRedo = useCarouselStore((s) => s.canRedo);
+
+  const historyCanUndo = useHistoryStore((s) => s.canUndo);
+  const historyCanRedo = useHistoryStore((s) => s.canRedo);
+
+  const activeSpreadId = albumActiveSpreadId;
+  const saveStatus = isCarousel ? carouselSaveStatus : albumSaveStatus;
+  const lastSavedAt = isCarousel ? carouselLastSavedAt : albumLastSavedAt;
+  const undo = isCarousel ? carouselUndo : albumUndo;
+  const redo = isCarousel ? carouselRedo : albumRedo;
+  const canUndo = isCarousel ? carouselCanUndo : historyCanUndo;
+  const canRedo = isCarousel ? carouselCanRedo : historyCanRedo;
 
   const openAbout = useAppStore((s) => s.openAbout);
   const openSettings = useAppStore((s) => s.openSettings);
@@ -373,7 +391,13 @@ export function AppTitleBar({
         {currentProject && (
           <div className={styles.projectTitleBadge}>
             <span
-              className={`${styles.statusDot} ${saveStatus === 'unsaved' ? styles.statusDotUnsaved : ''}`}
+              className={`${styles.statusDot} ${
+                saveStatus === 'unsaved'
+                  ? styles.statusDotUnsaved
+                  : saveStatus === 'saving'
+                  ? styles.statusDotSaving
+                  : ''
+              }`}
               title={
                 saveStatus === 'unsaved'
                   ? 'Unsaved changes (⌘S to save)'
