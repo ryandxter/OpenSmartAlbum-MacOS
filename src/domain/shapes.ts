@@ -368,6 +368,10 @@ export function getShapeSvgPath(
       return createHeartSvgPath(w, h);
     case 'custom_svg':
       if (customSvgPath && customSvgPath.trim().length > 0) {
+        if (customSvgPath.trim().startsWith('<svg')) {
+          const normalized = normalizeCustomSvgMask(customSvgPath, w, h);
+          if (normalized?.pathData) return normalized.pathData;
+        }
         return customSvgPath;
       }
       return `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z`;
@@ -893,3 +897,583 @@ export function drawShapeToContext(
 
   c.closePath();
 }
+
+export interface NormalizedSvgResult {
+  pathData: string;
+  viewBox: { x: number; y: number; width: number; height: number };
+}
+
+/**
+ * Transforms an SVG path string by scale and translation offsets.
+ */
+function transformSvgPath(
+  pathData: string,
+  scale: number,
+  offsetX: number,
+  offsetY: number,
+  originX: number,
+  originY: number
+): string {
+  const tokenRegex = /([a-df-z])|([-+]?(?:\d*\.\d+|\d+)(?:[eE][-+]?\d+)?)/gi;
+  const tokens: string[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = tokenRegex.exec(pathData)) !== null) {
+    if (m[0]) tokens.push(m[0]);
+  }
+
+  const result: string[] = [];
+  let i = 0;
+  let curCmd = '';
+
+  const fmt = (n: number) => Number(n.toFixed(2)).toString();
+  const nextToken = (): string => (i < tokens.length ? tokens[i++]! : '');
+  const nextNum = (): number => parseFloat(nextToken() || '0');
+  const hasNextNum = (): boolean => i < tokens.length && !/^[a-zA-Z]$/.test(tokens[i] ?? '');
+
+  while (i < tokens.length) {
+    const t = tokens[i];
+    if (t && /^[a-zA-Z]$/.test(t)) {
+      curCmd = t;
+      result.push(curCmd);
+      i++;
+    }
+
+    switch (curCmd) {
+      case 'M': {
+        const x = nextNum();
+        const y = nextNum();
+        result.push(fmt(offsetX + (x - originX) * scale), fmt(offsetY + (y - originY) * scale));
+        while (hasNextNum()) {
+          const lx = nextNum();
+          const ly = nextNum();
+          result.push(fmt(offsetX + (lx - originX) * scale), fmt(offsetY + (ly - originY) * scale));
+        }
+        break;
+      }
+      case 'm': {
+        const x = nextNum();
+        const y = nextNum();
+        result.push(fmt(offsetX + (x - originX) * scale), fmt(offsetY + (y - originY) * scale));
+        while (hasNextNum()) {
+          const dx = nextNum();
+          const dy = nextNum();
+          result.push(fmt(dx * scale), fmt(dy * scale));
+        }
+        break;
+      }
+      case 'L': {
+        while (hasNextNum()) {
+          const x = nextNum();
+          const y = nextNum();
+          result.push(fmt(offsetX + (x - originX) * scale), fmt(offsetY + (y - originY) * scale));
+        }
+        break;
+      }
+      case 'l': {
+        while (hasNextNum()) {
+          const dx = nextNum();
+          const dy = nextNum();
+          result.push(fmt(dx * scale), fmt(dy * scale));
+        }
+        break;
+      }
+      case 'H': {
+        while (hasNextNum()) {
+          const x = nextNum();
+          result.push(fmt(offsetX + (x - originX) * scale));
+        }
+        break;
+      }
+      case 'h': {
+        while (hasNextNum()) {
+          const dx = nextNum();
+          result.push(fmt(dx * scale));
+        }
+        break;
+      }
+      case 'V': {
+        while (hasNextNum()) {
+          const y = nextNum();
+          result.push(fmt(offsetY + (y - originY) * scale));
+        }
+        break;
+      }
+      case 'v': {
+        while (hasNextNum()) {
+          const dy = nextNum();
+          result.push(fmt(dy * scale));
+        }
+        break;
+      }
+      case 'C': {
+        while (i + 5 < tokens.length && hasNextNum()) {
+          const x1 = nextNum();
+          const y1 = nextNum();
+          const x2 = nextNum();
+          const y2 = nextNum();
+          const x = nextNum();
+          const y = nextNum();
+          result.push(
+            fmt(offsetX + (x1 - originX) * scale),
+            fmt(offsetY + (y1 - originY) * scale),
+            fmt(offsetX + (x2 - originX) * scale),
+            fmt(offsetY + (y2 - originY) * scale),
+            fmt(offsetX + (x - originX) * scale),
+            fmt(offsetY + (y - originY) * scale)
+          );
+        }
+        break;
+      }
+      case 'c': {
+        while (i + 5 < tokens.length && hasNextNum()) {
+          const x1 = nextNum();
+          const y1 = nextNum();
+          const x2 = nextNum();
+          const y2 = nextNum();
+          const x = nextNum();
+          const y = nextNum();
+          result.push(
+            fmt(x1 * scale),
+            fmt(y1 * scale),
+            fmt(x2 * scale),
+            fmt(y2 * scale),
+            fmt(x * scale),
+            fmt(y * scale)
+          );
+        }
+        break;
+      }
+      case 'S': {
+        while (i + 3 < tokens.length && hasNextNum()) {
+          const x2 = nextNum();
+          const y2 = nextNum();
+          const x = nextNum();
+          const y = nextNum();
+          result.push(
+            fmt(offsetX + (x2 - originX) * scale),
+            fmt(offsetY + (y2 - originY) * scale),
+            fmt(offsetX + (x - originX) * scale),
+            fmt(offsetY + (y - originY) * scale)
+          );
+        }
+        break;
+      }
+      case 's': {
+        while (i + 3 < tokens.length && hasNextNum()) {
+          const x2 = nextNum();
+          const y2 = nextNum();
+          const x = nextNum();
+          const y = nextNum();
+          result.push(
+            fmt(x2 * scale),
+            fmt(y2 * scale),
+            fmt(x * scale),
+            fmt(y * scale)
+          );
+        }
+        break;
+      }
+      case 'Q': {
+        while (i + 3 < tokens.length && hasNextNum()) {
+          const x1 = nextNum();
+          const y1 = nextNum();
+          const x = nextNum();
+          const y = nextNum();
+          result.push(
+            fmt(offsetX + (x1 - originX) * scale),
+            fmt(offsetY + (y1 - originY) * scale),
+            fmt(offsetX + (x - originX) * scale),
+            fmt(offsetY + (y - originY) * scale)
+          );
+        }
+        break;
+      }
+      case 'q': {
+        while (i + 3 < tokens.length && hasNextNum()) {
+          const x1 = nextNum();
+          const y1 = nextNum();
+          const x = nextNum();
+          const y = nextNum();
+          result.push(
+            fmt(x1 * scale),
+            fmt(y1 * scale),
+            fmt(x * scale),
+            fmt(y * scale)
+          );
+        }
+        break;
+      }
+      case 'T': {
+        while (hasNextNum()) {
+          const x = nextNum();
+          const y = nextNum();
+          result.push(fmt(offsetX + (x - originX) * scale), fmt(offsetY + (y - originY) * scale));
+        }
+        break;
+      }
+      case 't': {
+        while (hasNextNum()) {
+          const x = nextNum();
+          const y = nextNum();
+          result.push(fmt(x * scale), fmt(y * scale));
+        }
+        break;
+      }
+      case 'A': {
+        while (i + 6 < tokens.length && hasNextNum()) {
+          const rx = nextNum();
+          const ry = nextNum();
+          const rot = nextToken();
+          const laf = nextToken();
+          const swp = nextToken();
+          const x = nextNum();
+          const y = nextNum();
+          result.push(
+            fmt(rx * scale),
+            fmt(ry * scale),
+            rot,
+            laf,
+            swp,
+            fmt(offsetX + (x - originX) * scale),
+            fmt(offsetY + (y - originY) * scale)
+          );
+        }
+        break;
+      }
+      case 'a': {
+        while (i + 6 < tokens.length && hasNextNum()) {
+          const rx = nextNum();
+          const ry = nextNum();
+          const rot = nextToken();
+          const laf = nextToken();
+          const swp = nextToken();
+          const dx = nextNum();
+          const dy = nextNum();
+          result.push(
+            fmt(rx * scale),
+            fmt(ry * scale),
+            rot,
+            laf,
+            swp,
+            fmt(dx * scale),
+            fmt(dy * scale)
+          );
+        }
+        break;
+      }
+      case 'Z':
+      case 'z': {
+        break;
+      }
+      default: {
+        i++;
+        break;
+      }
+    }
+  }
+
+  return result.join(' ');
+}
+
+/**
+ * Parses an SVG document, extracts and converts all vector primitives (<path>, <rect>,
+ * <circle>, <ellipse>, <polygon>, <polyline>) into a unified compound path, and normalizes
+ * coordinates using aspect-fit containment and centering within the frame.
+ */
+export function normalizeCustomSvgMask(
+  svgString: string,
+  targetWidth?: number,
+  targetHeight?: number
+): NormalizedSvgResult | null {
+  if (!svgString || typeof svgString !== 'string') return null;
+
+  try {
+    let vbX = 0;
+    let vbY = 0;
+    let vbW = 0;
+    let vbH = 0;
+    const subpaths: string[] = [];
+
+    if (typeof DOMParser !== 'undefined') {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(svgString, 'image/svg+xml');
+      const svg = doc.querySelector('svg');
+      if (!svg) return null;
+
+      const vbAttr = svg.getAttribute('viewBox');
+      if (vbAttr) {
+        const parts = vbAttr.trim().split(/[\s,]+/).map(Number);
+        if (
+          parts.length === 4 &&
+          parts.every(Number.isFinite) &&
+          parts[0] !== undefined &&
+          parts[1] !== undefined &&
+          parts[2] !== undefined &&
+          parts[3] !== undefined &&
+          parts[2] > 0 &&
+          parts[3] > 0
+        ) {
+          vbX = parts[0];
+          vbY = parts[1];
+          vbW = parts[2];
+          vbH = parts[3];
+        }
+      }
+
+      if (vbW === 0 || vbH === 0) {
+        const w = parseFloat(svg.getAttribute('width') || '0');
+        const h = parseFloat(svg.getAttribute('height') || '0');
+        if (w > 0 && h > 0) {
+          vbW = w;
+          vbH = h;
+        }
+      }
+
+      doc.querySelectorAll('path').forEach((p) => {
+        const d = p.getAttribute('d');
+        if (d && d.trim().length > 0) subpaths.push(d.trim());
+      });
+
+      doc.querySelectorAll('rect').forEach((r) => {
+        const x = parseFloat(r.getAttribute('x') || '0');
+        const y = parseFloat(r.getAttribute('y') || '0');
+        const w = parseFloat(r.getAttribute('width') || '0');
+        const h = parseFloat(r.getAttribute('height') || '0');
+        const rx = parseFloat(r.getAttribute('rx') || '0');
+        const ry = parseFloat(r.getAttribute('ry') || String(rx));
+        if (w > 0 && h > 0) {
+          if (rx > 0 || ry > 0) {
+            subpaths.push(
+              `M ${x + rx} ${y} L ${x + w - rx} ${y} A ${rx} ${ry} 0 0 1 ${x + w} ${y + ry} L ${x + w} ${y + h - ry} A ${rx} ${ry} 0 0 1 ${x + w - rx} ${y + h} L ${x + rx} ${y + h} A ${rx} ${ry} 0 0 1 ${x} ${y + h - ry} L ${x} ${y + ry} A ${rx} ${ry} 0 0 1 ${x + rx} ${y} Z`
+            );
+          } else {
+            subpaths.push(`M ${x} ${y} L ${x + w} ${y} L ${x + w} ${y + h} L ${x} ${y + h} Z`);
+          }
+        }
+      });
+
+      doc.querySelectorAll('circle').forEach((c) => {
+        const cx = parseFloat(c.getAttribute('cx') || '0');
+        const cy = parseFloat(c.getAttribute('cy') || '0');
+        const r = parseFloat(c.getAttribute('r') || '0');
+        if (r > 0) {
+          subpaths.push(`M ${cx - r} ${cy} A ${r} ${r} 0 1 0 ${cx + r} ${cy} A ${r} ${r} 0 1 0 ${cx - r} ${cy} Z`);
+        }
+      });
+
+      doc.querySelectorAll('ellipse').forEach((el) => {
+        const cx = parseFloat(el.getAttribute('cx') || '0');
+        const cy = parseFloat(el.getAttribute('cy') || '0');
+        const rx = parseFloat(el.getAttribute('rx') || '0');
+        const ry = parseFloat(el.getAttribute('ry') || '0');
+        if (rx > 0 && ry > 0) {
+          subpaths.push(`M ${cx - rx} ${cy} A ${rx} ${ry} 0 1 0 ${cx + rx} ${cy} A ${rx} ${ry} 0 1 0 ${cx - rx} ${cy} Z`);
+        }
+      });
+
+      doc.querySelectorAll('polygon').forEach((poly) => {
+        const rawPts = poly.getAttribute('points');
+        if (rawPts) {
+          const nums = rawPts.trim().split(/[\s,]+/).map(Number).filter(Number.isFinite);
+          if (nums.length >= 6 && nums[0] !== undefined && nums[1] !== undefined) {
+            let pStr = `M ${nums[0]} ${nums[1]}`;
+            for (let j = 2; j < nums.length; j += 2) {
+              const px = nums[j];
+              const py = nums[j + 1];
+              if (px !== undefined && py !== undefined) {
+                pStr += ` L ${px} ${py}`;
+              }
+            }
+            pStr += ' Z';
+            subpaths.push(pStr);
+          }
+        }
+      });
+
+      doc.querySelectorAll('polyline').forEach((poly) => {
+        const rawPts = poly.getAttribute('points');
+        if (rawPts) {
+          const nums = rawPts.trim().split(/[\s,]+/).map(Number).filter(Number.isFinite);
+          if (nums.length >= 4 && nums[0] !== undefined && nums[1] !== undefined) {
+            let pStr = `M ${nums[0]} ${nums[1]}`;
+            for (let j = 2; j < nums.length; j += 2) {
+              const px = nums[j];
+              const py = nums[j + 1];
+              if (px !== undefined && py !== undefined) {
+                pStr += ` L ${px} ${py}`;
+              }
+            }
+            subpaths.push(pStr);
+          }
+        }
+      });
+    } else {
+      // Node.js fallback using regex extraction
+      const vbMatch = svgString.match(/<svg[^>]*\bviewBox=["']([^"']+)["']/i);
+      if (vbMatch && vbMatch[1]) {
+        const parts = vbMatch[1].trim().split(/[\s,]+/).map(Number);
+        if (
+          parts.length === 4 &&
+          parts.every(Number.isFinite) &&
+          parts[0] !== undefined &&
+          parts[1] !== undefined &&
+          parts[2] !== undefined &&
+          parts[3] !== undefined &&
+          parts[2] > 0 &&
+          parts[3] > 0
+        ) {
+          vbX = parts[0];
+          vbY = parts[1];
+          vbW = parts[2];
+          vbH = parts[3];
+        }
+      }
+
+      if (vbW === 0 || vbH === 0) {
+        const wMatch = svgString.match(/<svg[^>]*\bwidth=["']([^"']+)["']/i);
+        const hMatch = svgString.match(/<svg[^>]*\bheight=["']([^"']+)["']/i);
+        if (wMatch && hMatch && wMatch[1] && hMatch[1]) {
+          const w = parseFloat(wMatch[1]);
+          const h = parseFloat(hMatch[1]);
+          if (w > 0 && h > 0) {
+            vbW = w;
+            vbH = h;
+          }
+        }
+      }
+
+      const pathRegex = /<path\b[^>]*\bd=["']([^"']+)["'][^>]*>/gi;
+      let pMatch: RegExpExecArray | null;
+      while ((pMatch = pathRegex.exec(svgString)) !== null) {
+        if (pMatch[1] && pMatch[1].trim().length > 0) {
+          subpaths.push(pMatch[1].trim());
+        }
+      }
+
+      const rectRegex = /<rect\b([^>]*)\/?>/gi;
+      let rMatch: RegExpExecArray | null;
+      while ((rMatch = rectRegex.exec(svgString)) !== null) {
+        const attrs = rMatch[1] ?? '';
+        const getAttr = (name: string) => {
+          const attrMatch = attrs.match(new RegExp(`\\b${name}=["']([^"']+)["']`, 'i'));
+          return attrMatch && attrMatch[1] ? parseFloat(attrMatch[1]) : 0;
+        };
+        const x = getAttr('x');
+        const y = getAttr('y');
+        const w = getAttr('width');
+        const h = getAttr('height');
+        const rx = getAttr('rx');
+        const ry = getAttr('ry') || rx;
+        if (w > 0 && h > 0) {
+          if (rx > 0 || ry > 0) {
+            subpaths.push(
+              `M ${x + rx} ${y} L ${x + w - rx} ${y} A ${rx} ${ry} 0 0 1 ${x + w} ${y + ry} L ${x + w} ${y + h - ry} A ${rx} ${ry} 0 0 1 ${x + w - rx} ${y + h} L ${x + rx} ${y + h} A ${rx} ${ry} 0 0 1 ${x} ${y + h - ry} L ${x} ${y + ry} A ${rx} ${ry} 0 0 1 ${x + rx} ${y} Z`
+            );
+          } else {
+            subpaths.push(`M ${x} ${y} L ${x + w} ${y} L ${x + w} ${y + h} L ${x} ${y + h} Z`);
+          }
+        }
+      }
+
+      const circleRegex = /<circle\b([^>]*)\/?>/gi;
+      let cMatch: RegExpExecArray | null;
+      while ((cMatch = circleRegex.exec(svgString)) !== null) {
+        const attrs = cMatch[1] ?? '';
+        const getAttr = (name: string) => {
+          const attrMatch = attrs.match(new RegExp(`\\b${name}=["']([^"']+)["']`, 'i'));
+          return attrMatch && attrMatch[1] ? parseFloat(attrMatch[1]) : 0;
+        };
+        const cx = getAttr('cx');
+        const cy = getAttr('cy');
+        const r = getAttr('r');
+        if (r > 0) {
+          subpaths.push(`M ${cx - r} ${cy} A ${r} ${r} 0 1 0 ${cx + r} ${cy} A ${r} ${r} 0 1 0 ${cx - r} ${cy} Z`);
+        }
+      }
+
+      const ellipseRegex = /<ellipse\b([^>]*)\/?>/gi;
+      let elMatch: RegExpExecArray | null;
+      while ((elMatch = ellipseRegex.exec(svgString)) !== null) {
+        const attrs = elMatch[1] ?? '';
+        const getAttr = (name: string) => {
+          const attrMatch = attrs.match(new RegExp(`\\b${name}=["']([^"']+)["']`, 'i'));
+          return attrMatch && attrMatch[1] ? parseFloat(attrMatch[1]) : 0;
+        };
+        const cx = getAttr('cx');
+        const cy = getAttr('cy');
+        const rx = getAttr('rx');
+        const ry = getAttr('ry');
+        if (rx > 0 && ry > 0) {
+          subpaths.push(`M ${cx - rx} ${cy} A ${rx} ${ry} 0 1 0 ${cx + rx} ${cy} A ${rx} ${ry} 0 1 0 ${cx - rx} ${cy} Z`);
+        }
+      }
+
+      const polyRegex = /<polygon\b[^>]*\bpoints=["']([^"']+)["'][^>]*\/?>/gi;
+      let polyMatch: RegExpExecArray | null;
+      while ((polyMatch = polyRegex.exec(svgString)) !== null) {
+        const rawPts = polyMatch[1];
+        if (rawPts) {
+          const nums = rawPts.trim().split(/[\s,]+/).map(Number).filter(Number.isFinite);
+          if (nums.length >= 6 && nums[0] !== undefined && nums[1] !== undefined) {
+            let pStr = `M ${nums[0]} ${nums[1]}`;
+            for (let j = 2; j < nums.length; j += 2) {
+              const px = nums[j];
+              const py = nums[j + 1];
+              if (px !== undefined && py !== undefined) {
+                pStr += ` L ${px} ${py}`;
+              }
+            }
+            pStr += ' Z';
+            subpaths.push(pStr);
+          }
+        }
+      }
+
+      const lineRegex = /<polyline\b[^>]*\bpoints=["']([^"']+)["'][^>]*\/?>/gi;
+      let lineMatch: RegExpExecArray | null;
+      while ((lineMatch = lineRegex.exec(svgString)) !== null) {
+        const rawPts = lineMatch[1];
+        if (rawPts) {
+          const nums = rawPts.trim().split(/[\s,]+/).map(Number).filter(Number.isFinite);
+          if (nums.length >= 4 && nums[0] !== undefined && nums[1] !== undefined) {
+            let pStr = `M ${nums[0]} ${nums[1]}`;
+            for (let j = 2; j < nums.length; j += 2) {
+              const px = nums[j];
+              const py = nums[j + 1];
+              if (px !== undefined && py !== undefined) {
+                pStr += ` L ${px} ${py}`;
+              }
+            }
+            subpaths.push(pStr);
+          }
+        }
+      }
+    }
+
+    if (subpaths.length === 0) return null;
+
+    const compoundPath = subpaths.join(' ');
+    const finalVbW = vbW || 100;
+    const finalVbH = vbH || 100;
+
+    if (targetWidth && targetHeight && targetWidth > 0 && targetHeight > 0) {
+      const scale = Math.min(targetWidth / finalVbW, targetHeight / finalVbH);
+      const offsetX = (targetWidth - finalVbW * scale) / 2;
+      const offsetY = (targetHeight - finalVbH * scale) / 2;
+      const scaledPath = transformSvgPath(compoundPath, scale, offsetX, offsetY, vbX, vbY);
+      return {
+        pathData: scaledPath,
+        viewBox: { x: 0, y: 0, width: targetWidth, height: targetHeight },
+      };
+    }
+
+    return {
+      pathData: compoundPath,
+      viewBox: { x: vbX, y: vbY, width: finalVbW, height: finalVbH },
+    };
+  } catch (err) {
+    console.error('Failed to parse SVG mask:', err);
+    return null;
+  }
+}
+
