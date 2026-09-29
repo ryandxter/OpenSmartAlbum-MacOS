@@ -770,8 +770,20 @@ export function WorkspaceLayout() {
       const mac = isMac();
       const cmdOrCtrl = mac ? e.metaKey : e.ctrlKey;
 
-      // In carousel mode: suppress all non-cmdOrCtrl single-key album shortcuts
-      // (Delete, T, L, G, R, S, Arrow, etc.) so they don't leak into album store.
+      // ISO-03: Carousel-exclusive single-key shortcuts — must be hoisted BEFORE the broad
+      // suppression guard below, or they will be silently swallowed without firing.
+      if (activeMode === 'carousel' && !cmdOrCtrl && !e.altKey && !e.shiftKey) {
+        if (e.key === 't' || e.key === 'T') {
+          e.preventDefault();
+          useCarouselStore.getState().addTextFrame();
+          showToast('✓ Added Text Frame to Slide');
+          return;
+        }
+        // Future carousel-exclusive single-key shortcuts go here (e.g. 'F' for filter)
+      }
+
+      // In carousel mode: suppress all remaining non-cmdOrCtrl single-key album shortcuts
+      // (Delete, L, G, R, S, Arrow, etc.) so they don't leak into album store.
       // Global shortcuts (Cmd+S, Cmd+Z, Cmd+E, F1, zoom) still pass through.
       if (activeMode === 'carousel' && !cmdOrCtrl && e.key !== 'F1' && e.key !== '?') {
         return;

@@ -52,7 +52,7 @@ export function AppTitleBar({
   onZoomChange,
   onFitToScreen,
   activeMode = 'print',
-  onModeSelect,
+  onModeSelect: _onModeSelect,
 }: AppTitleBarProps) {
   const currentProject = useProjectStore((s) => s.currentProject);
   const openNewProject = useProjectStore((s) => s.openNewProject);
@@ -447,13 +447,17 @@ export function AppTitleBar({
       <div className={styles.rightSection}>
         {currentProject && (
           <>
-            {/* Mode Switcher Segmented Shell (Phase 3 readiness) */}
-            <div className={styles.modeSwitcher} role="group" aria-label="Editor Mode">
+            {/* Project Type Badge — read-only; switching types requires File > Duplicate As */}
+            <div className={styles.modeSwitcher} role="group" aria-label="Project Type">
               <button
                 type="button"
                 className={`${styles.modeBtn} ${activeMode === 'print' ? styles.modeActive : ''}`}
-                onClick={() => onModeSelect?.('print')}
-                title="Print Album Mode"
+                disabled={activeMode !== 'print'}
+                title={
+                  activeMode === 'print'
+                    ? 'Print Album Project'
+                    : 'To change type, use File > Duplicate as Print Album'
+                }
               >
                 <BookOpen size={13} strokeWidth={1.5} />
                 <span>Print Album</span>
@@ -461,10 +465,12 @@ export function AppTitleBar({
               <button
                 type="button"
                 className={`${styles.modeBtn} ${activeMode === 'carousel' ? styles.modeActive : ''}`}
-                onClick={() => {
-                  onModeSelect?.('carousel');
-                }}
-                title="Instagram & Social Carousel Mode"
+                disabled={activeMode !== 'carousel'}
+                title={
+                  activeMode === 'carousel'
+                    ? 'Social Carousel Project'
+                    : 'To change type, use File > Duplicate as Social Carousel'
+                }
               >
                 <Layers size={13} strokeWidth={1.5} />
                 <span>Social Carousel</span>
@@ -504,19 +510,24 @@ export function AppTitleBar({
               </div>
             )}
 
-            {/* Add Text Tool */}
+            {/* Add Text Tool — routed by active mode */}
             <button
               type="button"
               className={styles.addTextBtn}
               onClick={() => {
-                if (!activeSpreadId) return;
-                const newId = addTextToSpread(activeSpreadId);
-                if (newId) {
-                  setEditingTextElementId(newId);
-                  showToast('✓ Added Text Box. Double-click or type to edit.');
+                if (activeMode === 'carousel') {
+                  useCarouselStore.getState().addTextFrame();
+                  showToast('✓ Added Text Frame to Slide');
+                } else {
+                  if (!activeSpreadId) return;
+                  const newId = addTextToSpread(activeSpreadId);
+                  if (newId) {
+                    setEditingTextElementId(newId);
+                    showToast('✓ Added Text Box. Double-click or type to edit.');
+                  }
                 }
               }}
-              title="Add Text Box (T)"
+              title={activeMode === 'carousel' ? 'Add Text (T)' : 'Add Text Box (T)'}
             >
               <Type size={13} strokeWidth={1.5} />
               <span>Add Text</span>
@@ -527,7 +538,7 @@ export function AppTitleBar({
               type="button"
               className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
               onClick={onOpenExportDialog}
-              title="Export Album for Print (⌘E)"
+              title={activeMode === 'carousel' ? 'Export Carousel Slides (⌘E)' : 'Export Album for Print (⌘E)'}
             >
               <Download size={13} strokeWidth={1.5} />
               <span>Export</span>
