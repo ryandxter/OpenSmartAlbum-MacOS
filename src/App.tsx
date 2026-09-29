@@ -10,6 +10,7 @@ import { ExitWarningModal } from './features/workspace/ExitWarningModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useProjectStore } from './stores/projectStore';
 import { useAlbumStore } from './stores/albumStore';
+import { useCarouselStore } from './stores/carouselStore';
 import { usePhotoStore } from './stores/photoStore';
 import { useAppStore } from './stores/appStore';
 import { isTauri } from './utils/platform';
@@ -21,9 +22,15 @@ export default function App() {
   const automaticUpdateChecks = useAppStore((s) => s.preferences.automaticUpdateChecks);
   const [pendingOpenPath, setPendingOpenPath] = useState<string | null>(null);
   const requestOpenFile = (path: string) => {
+    const project = useProjectStore.getState().currentProject;
+    const isCarousel = project?.canvasUnit === 'px' || (project as any)?.projectType === 'carousel';
+    const currentStatus = isCarousel
+      ? useCarouselStore.getState().saveStatus
+      : useAlbumStore.getState().saveStatus;
+
     if (useProjectStore.getState().isSaving) {
       useProjectStore.setState({ error: 'Wait for the current save to finish before opening another project.' });
-    } else if (useProjectStore.getState().currentProject && useAlbumStore.getState().saveStatus !== 'saved') {
+    } else if (project && currentStatus !== 'saved') {
       setPendingOpenPath(path);
     } else {
       void useProjectStore.getState().openProjectFromFile(path);
@@ -152,14 +159,26 @@ export default function App() {
     const syncUnsavedStatus = () => {
       import('@tauri-apps/api/core').then(({ invoke }) => {
         const project = useProjectStore.getState().currentProject;
-        const saveStatus = useAlbumStore.getState().saveStatus;
-        const isUnsaved = Boolean(project && (saveStatus !== 'saved' || useProjectStore.getState().isSaving || usePhotoStore.getState().isRemoving || usePhotoStore.getState().isRelinking));
+        const isCarousel = project?.canvasUnit === 'px' || (project as any)?.projectType === 'carousel';
+        const albumStatus = useAlbumStore.getState().saveStatus;
+        const carouselStatus = useCarouselStore.getState().saveStatus;
+        const currentStatus = isCarousel ? carouselStatus : albumStatus;
+
+        const isUnsaved = Boolean(
+          project && (
+            currentStatus !== 'saved' ||
+            useProjectStore.getState().isSaving ||
+            usePhotoStore.getState().isRemoving ||
+            usePhotoStore.getState().isRelinking
+          )
+        );
         invoke('set_unsaved_status', { unsaved: isUnsaved }).catch(() => {});
       });
     };
 
     syncUnsavedStatus();
     const unsubAlbum = useAlbumStore.subscribe(syncUnsavedStatus);
+    const unsubCarousel = useCarouselStore.subscribe(syncUnsavedStatus);
     const unsubProject = useProjectStore.subscribe(syncUnsavedStatus);
     const unsubPhotos = usePhotoStore.subscribe((state, previous) => {
       if (state.isRemoving !== previous.isRemoving || state.isRelinking !== previous.isRelinking) syncUnsavedStatus();
@@ -170,6 +189,7 @@ export default function App() {
       if (unlistenFn) unlistenFn();
       if (unlistenCloseWarning) unlistenCloseWarning();
       unsubAlbum();
+      unsubCarousel();
       unsubProject();
       unsubPhotos();
     };
@@ -189,7 +209,13 @@ export default function App() {
         confirmText="Save & Open" secondaryText="Don't Save" cancelText="Cancel" isLoading={isSaving}
         onConfirm={async () => {
           const result = await useProjectStore.getState().saveProject();
-          if (result.success && useAlbumStore.getState().saveStatus === 'saved' && pendingOpenPath) {
+          const currentProject = useProjectStore.getState().currentProject;
+          const isCarousel = currentProject?.canvasUnit === 'px' || (currentProject as any)?.projectType === 'carousel';
+          const isSaved = isCarousel
+            ? useCarouselStore.getState().saveStatus === 'saved'
+            : useAlbumStore.getState().saveStatus === 'saved';
+
+          if (result.success && isSaved && pendingOpenPath) {
             const path = pendingOpenPath;
             setPendingOpenPath(null);
             await useProjectStore.getState().openProjectFromFile(path);
