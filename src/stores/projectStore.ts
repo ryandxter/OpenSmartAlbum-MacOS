@@ -311,6 +311,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     } catch {}
 
     set({ currentProject: null });
+    // ISO-01: Reset activeMode on project close
+    try {
+      const { useAppStore } = await import('./appStore');
+      useAppStore.getState().setActiveMode('print');
+    } catch {}
     try {
       const { useAlbumStore } = await import('./albumStore');
       const { useCarouselStore } = await import('./carouselStore');
@@ -433,6 +438,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         error: null,
       }));
 
+      // ISO-01: Set activeMode immediately after project creation
+      const { useAppStore } = await import('./appStore');
+      useAppStore.getState().setActiveMode(isCarousel ? 'carousel' : 'print');
+      useAppStore.getState().resetViewportForMode(isCarousel ? 'carousel' : 'print');
+
       if (isCarousel) {
         const { useCarouselStore } = await import('./carouselStore');
         const ratio = settings.carouselRatio || (settings.canvas.width === 1080 && settings.canvas.height === 1350 ? '4:5' : settings.canvas.height === 1920 ? '9:16' : '1:1');
@@ -476,6 +486,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         isLoading: false,
         error: null,
       }));
+
+      // ISO-01: Set activeMode immediately after project creation (local fallback)
+      const { useAppStore: useAppStoreLocal } = await import('./appStore');
+      useAppStoreLocal.getState().setActiveMode(isCarousel ? 'carousel' : 'print');
+      useAppStoreLocal.getState().resetViewportForMode(isCarousel ? 'carousel' : 'print');
 
       if (isCarousel) {
         const { useCarouselStore } = await import('./carouselStore');
@@ -547,6 +562,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         }
 
         const isCarousel = project.canvasUnit === 'px' || project.projectType === 'carousel';
+        // ISO-01: Synchronously set activeMode BEFORE async loads so the correct canvas mounts immediately,
+        // preventing a flash of the wrong canvas before data arrives.
+        const { useAppStore } = await import('./appStore');
+        useAppStore.getState().setActiveMode(isCarousel ? 'carousel' : 'print');
+        useAppStore.getState().resetViewportForMode(isCarousel ? 'carousel' : 'print');
         if (isCarousel) {
           const { useCarouselStore } = await import('./carouselStore');
           const loaded = await useCarouselStore.getState().loadCarouselFromDb(project.id);
