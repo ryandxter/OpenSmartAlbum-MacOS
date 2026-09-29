@@ -137,6 +137,7 @@ pub fn run() {
             commands::project_commands::import_afsn_with_dialog,
             commands::project_commands::duplicate_project,
             commands::project_commands::check_path_exists,
+            commands::project_commands::save_project_thumbnail,
             commands::photo_commands::select_and_import_files,
             commands::photo_commands::select_and_import_folder,
             commands::photo_commands::pick_photo_files_dialog,

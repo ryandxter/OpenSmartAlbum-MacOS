@@ -605,3 +605,25 @@ pub fn check_path_exists(path: String) -> bool {
     }
     std::path::Path::new(&path).exists()
 }
+
+#[tauri::command]
+pub fn save_project_thumbnail(
+    app: tauri::AppHandle,
+    project_id: String,
+    base64_png: String,
+) -> Result<String, String> {
+    use base64::Engine;
+    let app_cache_dir = app.path().app_cache_dir().map_err(|e| e.to_string())?;
+    let thumb_dir = app_cache_dir.join("project_thumbnails");
+    std::fs::create_dir_all(&thumb_dir).map_err(|e| e.to_string())?;
+    let file_path = thumb_dir.join(format!("{}.png", project_id));
+
+    let data = base64_png
+        .strip_prefix("data:image/png;base64,")
+        .unwrap_or(&base64_png);
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(data)
+        .map_err(|e| e.to_string())?;
+    std::fs::write(&file_path, bytes).map_err(|e| e.to_string())?;
+    Ok(file_path.to_string_lossy().to_string())
+}
