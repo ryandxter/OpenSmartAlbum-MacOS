@@ -32,6 +32,9 @@ export interface ProjectSettings {
     type: 'solid';
     color: string;
   };
+  projectType?: 'print' | 'carousel';
+  carouselRatio?: '1:1' | '4:5' | '9:16';
+  carouselSlideCount?: number;
 }
 
 export interface Project {
@@ -43,6 +46,7 @@ export interface Project {
   canvasDpi: number;
   spacingValue: number;
   spacingUnit: Unit;
+  projectType?: 'print' | 'carousel';
   bleed?: number;
   marginEnabled?: boolean;
   marginValue?: number;

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Project, ProjectSettings } from '../domain/project';
 import { Unit } from '../domain/units';
 import { isAlbumDesignEqual } from '../domain/album';
+import { isCarouselEqual } from '../domain/carousel';
 import { usePhotoStore } from './photoStore';
 
 const persistProjectMargins = async (project: Project): Promise<void> => {
@@ -285,9 +286,22 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ currentProject: null });
     try {
       const { useAlbumStore } = await import('./albumStore');
+      const { useCarouselStore } = await import('./carouselStore');
       const { usePhotoStore } = await import('./photoStore');
       const { useEditorStore } = await import('./editorStore');
       useAlbumStore.setState({ currentAlbum: null, activeSpreadId: null, activeSpreadIndex: 0, saveStatus: 'saved' });
+      useCarouselStore.setState({
+        currentCarousel: null,
+        activeSlideIndex: 0,
+        selectedFrameId: null,
+        selectedFrameIds: [],
+        saveStatus: 'saved',
+        lastSavedAt: null,
+        past: [],
+        future: [],
+        canUndo: false,
+        canRedo: false,
+      });
       usePhotoStore.setState({
         photos: [],
         folders: [],
@@ -326,7 +340,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       }
     } catch (err) {
       console.warn('[AFSN] Could not load recent projects from Tauri, checking localStorage:', err);
-      if ('__TAURI_INTERNALS__' in window) return;
+      if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) return;
     }
 
     try {
@@ -351,8 +365,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
     set({ isLoading: true, error: null });
 
+    const isCarousel = settings.canvas.unit === 'px' || settings.projectType === 'carousel';
+
     const payload = {
-      name: settings.name.trim() || 'Untitled Album',
+      name: settings.name.trim() || (isCarousel ? 'Untitled Carousel' : 'Untitled Album'),
       canvasWidth: Number(settings.canvas.width),
       canvasHeight: Number(settings.canvas.height),
       canvasUnit: settings.canvas.unit,
@@ -390,11 +406,19 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         error: null,
       }));
 
-      // Initialize album for this new project
-      const { useAlbumStore } = await import('./albumStore');
-      useAlbumStore.getState().initializeAlbum(created);
-      await useAlbumStore.getState().saveAlbumToDb();
-      useAlbumStore.getState().setSaveStatus('unsaved');
+      if (isCarousel) {
+        const { useCarouselStore } = await import('./carouselStore');
+        const ratio = settings.carouselRatio || (settings.canvas.width === 1080 && settings.canvas.height === 1350 ? '4:5' : settings.canvas.height === 1920 ? '9:16' : '1:1');
+        const slideCount = settings.carouselSlideCount || 3;
+        useCarouselStore.getState().initializeCarousel(created.id, ratio as any, slideCount);
+        await useCarouselStore.getState().saveCarouselToDb();
+        useCarouselStore.getState().setSaveStatus('saved');
+      } else {
+        const { useAlbumStore } = await import('./albumStore');
+        useAlbumStore.getState().initializeAlbum(created);
+        await useAlbumStore.getState().saveAlbumToDb();
+        useAlbumStore.getState().setSaveStatus('unsaved');
+      }
 
       return created;
     } catch (tauriErr) {
@@ -404,6 +428,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const mockProject: Project = {
         id: 'proj-' + Date.now(),
         ...payload,
+        projectType: isCarousel ? 'carousel' : 'print',
         filePath: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -425,10 +450,19 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         error: null,
       }));
 
-      const { useAlbumStore } = await import('./albumStore');
-      useAlbumStore.getState().initializeAlbum(mockProject);
-      await useAlbumStore.getState().saveAlbumToDb();
-      useAlbumStore.getState().setSaveStatus('unsaved');
+      if (isCarousel) {
+        const { useCarouselStore } = await import('./carouselStore');
+        const ratio = settings.carouselRatio || (settings.canvas.width === 1080 && settings.canvas.height === 1350 ? '4:5' : settings.canvas.height === 1920 ? '9:16' : '1:1');
+        const slideCount = settings.carouselSlideCount || 3;
+        useCarouselStore.getState().initializeCarousel(mockProject.id, ratio as any, slideCount);
+        await useCarouselStore.getState().saveCarouselToDb();
+        useCarouselStore.getState().setSaveStatus('saved');
+      } else {
+        const { useAlbumStore } = await import('./albumStore');
+        useAlbumStore.getState().initializeAlbum(mockProject);
+        await useAlbumStore.getState().saveAlbumToDb();
+        useAlbumStore.getState().setSaveStatus('unsaved');
+      }
 
       return mockProject;
     }
@@ -452,13 +486,15 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       project = await invoke<Project | null>('get_project', { id });
     } catch (err) {
       console.warn('[AFSN] get_project via Tauri failed, checking state/localStorage:', err);
-      if ('__TAURI_INTERNALS__' in window) {
+      const hasTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+      if (hasTauri) {
         set({ isLoading: false, error: `Open failed: ${String(err)}` });
         return;
       }
     }
 
-    if (!project && !('__TAURI_INTERNALS__' in window)) {
+    const hasTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+    if (!project && !hasTauri) {
       project = get().recentProjects.find((p) => p.id === id) || null;
     }
 
@@ -469,16 +505,12 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         isLoading: false,
       }));
 
-      // Load Photos, Folders, and Album Structure for this Project
+      // Load Photos, Folders, and Project Structure for this Project
       try {
         const { usePhotoStore } = await import('./photoStore');
-        const { useAlbumStore } = await import('./albumStore');
         await usePhotoStore.getState().loadPhotos(project.id);
         await usePhotoStore.getState().loadFolders(project.id);
-        const loaded = await useAlbumStore.getState().loadAlbumFromDb(project.id);
-        if (!loaded) {
-          useAlbumStore.getState().initializeAlbum(project);
-        }
+
         let hasProjectFile = false;
         if (project.filePath && /\.afsn$/i.test(project.filePath)) {
           try {
@@ -486,13 +518,30 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
             hasProjectFile = await invoke<boolean>('check_path_exists', { path: project.filePath });
           } catch { /* Keep recovery data unsaved if the file cannot be verified. */ }
         }
-        if (hasUnsavedRecovery || !hasProjectFile) useAlbumStore.getState().setSaveStatus('unsaved');
+
+        const isCarousel = project.canvasUnit === 'px' || project.projectType === 'carousel';
+        if (isCarousel) {
+          const { useCarouselStore } = await import('./carouselStore');
+          const loaded = await useCarouselStore.getState().loadCarouselFromDb(project.id);
+          if (!loaded) {
+            useCarouselStore.getState().initializeCarousel(project.id);
+          }
+          useCarouselStore.getState().setSaveStatus(hasUnsavedRecovery || !hasProjectFile ? 'unsaved' : 'saved');
+        } else {
+          const { useAlbumStore } = await import('./albumStore');
+          const loaded = await useAlbumStore.getState().loadAlbumFromDb(project.id);
+          if (!loaded) {
+            useAlbumStore.getState().initializeAlbum(project);
+          }
+          if (hasUnsavedRecovery || !hasProjectFile) useAlbumStore.getState().setSaveStatus('unsaved');
+        }
+
         if (!project.filePath) {
           set({ error: 'This project is available as recovery data. Use Save As to save it to a project file.' });
         }
         await get().loadRecentProjects();
       } catch (e) {
-        console.error('[AFSN] Failed to load album/photos on openProjectById:', e);
+        console.error('[AFSN] Failed to load structure/photos on openProjectById:', e);
       }
     } else {
       set({ error: 'Project not found', isLoading: false });
@@ -504,6 +553,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const failed = { success: false, filePath: null, isSaveAs: false };
     if (usePhotoStore.getState().isImporting || usePhotoStore.getState().isRemoving || usePhotoStore.getState().isRelinking) return failed;
     if (!current || get().isSaving || get().isLoading || usePhotoStore.getState().isRemoving || usePhotoStore.getState().isRelinking) return failed;
+
+    const isCarousel = current.canvasUnit === 'px' || current.projectType === 'carousel';
+
     // Old database entries may still point at a ZIP opened by a previous release.
     const workingPath = current.filePath && /\.afsn$/i.test(current.filePath) ? current.filePath : null;
     if (!workingPath && !options.automatic) {
@@ -511,6 +563,56 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       return { success: Boolean(path), filePath: path, isSaveAs: true };
     }
     set({ isSaving: true, error: null });
+
+    if (isCarousel) {
+      const { useCarouselStore } = await import('./carouselStore');
+      const carouselStore = useCarouselStore.getState();
+      const carousel = carouselStore.currentCarousel;
+      try {
+        if (!carousel || carousel.projectId !== current.id) throw new Error('The active carousel is not ready to save.');
+        carouselStore.setSaveStatus('saving');
+        await persistProjectMargins(current);
+        await persistProjectSpacing(current);
+        if (!await carouselStore.saveCarouselToDb()) throw new Error('The recovery database could not be saved. Your project file was not changed.');
+        if (get().currentProject?.id !== current.id) return failed;
+        if (!workingPath) return failed;
+
+        const { invoke } = await import('@tauri-apps/api/core');
+        const exists = await invoke<boolean>('check_path_exists', { path: workingPath });
+        let savedPath = workingPath;
+        if (!exists) {
+          carouselStore.setSaveStatus('unsaved');
+          if (options.automatic) return failed;
+          const path = await invoke<string | null>('export_afsn_with_dialog', { projectId: current.id, suggestedName: current.name });
+          if (!path) return failed;
+          savedPath = path;
+          if (get().currentProject?.id === current.id) {
+            const saved = { ...get().currentProject!, filePath: path, name: path.replace(/^.*[\\/]/, '').replace(/\.afsn$/i, '') };
+            set((state) => ({
+              currentProject: saved,
+              recentProjects: [saved, ...state.recentProjects.filter((p) => p.id !== saved.id)].slice(0, 10),
+            }));
+            try { localStorage.setItem('afsn_recent_projects', JSON.stringify(get().recentProjects)); } catch {}
+          }
+        } else {
+          await invoke('export_afsn_package', { projectId: current.id, targetPath: workingPath });
+        }
+        if (get().currentProject?.id === current.id && isCarouselEqual(useCarouselStore.getState().currentCarousel, carousel)) {
+          useCarouselStore.getState().setSaveStatus('saved');
+        }
+        return { success: true, filePath: savedPath, isSaveAs: !exists };
+      } catch (error) {
+        if (get().currentProject?.id === current.id) {
+          useCarouselStore.getState().setSaveStatus('unsaved');
+          set({ error: `Save failed: ${String(error)}` });
+        }
+        return failed;
+      } finally {
+        if (!options.automatic || get().error) await get().loadRecentProjects();
+        set({ isSaving: false });
+      }
+    }
+
     const { useAlbumStore } = await import('./albumStore');
     const album = useAlbumStore.getState().currentAlbum;
     try {
@@ -561,7 +663,58 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   exportProjectAsAfsn: async () => {
     const current = get().currentProject;
     if (!current || get().isSaving || get().isLoading || usePhotoStore.getState().isRemoving || usePhotoStore.getState().isRelinking) return null;
+    const isCarousel = current.canvasUnit === 'px' || current.projectType === 'carousel';
     set({ isSaving: true, error: null });
+
+    if (isCarousel) {
+      const { useCarouselStore } = await import('./carouselStore');
+      const carousel = useCarouselStore.getState().currentCarousel;
+      try {
+        if (!carousel || carousel.projectId !== current.id) throw new Error('The active carousel is not ready to save.');
+        const { usePhotoStore } = await import('./photoStore');
+        if (usePhotoStore.getState().isImporting) throw new Error('Wait for photo import to finish before using Save As.');
+        await persistProjectMargins(current);
+        await persistProjectSpacing(current);
+        if (!await useCarouselStore.getState().saveCarouselToDb()) throw new Error('The recovery database could not be saved. Your project file was not changed.');
+        const { invoke } = await import('@tauri-apps/api/core');
+        let saved: Project | null;
+        if (current.filePath && /\.afsn$/i.test(current.filePath)) {
+          saved = await invoke<Project | null>('save_project_as_with_dialog', { projectId: current.id, suggestedName: current.name });
+        } else {
+          const path = await invoke<string | null>('export_afsn_with_dialog', { projectId: current.id, suggestedName: current.name });
+          saved = path ? { ...current, filePath: path, name: path.replace(/^.*[\\/]/, '').replace(/\.afsn$/i, '') } : null;
+        }
+        if (!saved) return null; // Cancel preserves the current identity and dirty state.
+        if (get().currentProject?.id !== current.id) return saved.filePath || null;
+        if (useCarouselStore.getState().currentCarousel !== carousel && saved.id !== current.id) {
+          set((state) => ({ recentProjects: [saved!, ...state.recentProjects.filter((p) => p.id !== saved!.id)].slice(0, 10),
+            error: 'A copy was saved. Newer edits remain in the current project; save again before switching to the copy.' }));
+          return saved.filePath || null;
+        }
+        set((state) => ({
+          currentProject: saved,
+          recentProjects: [saved!, ...state.recentProjects.filter((p) => p.id !== saved!.id)].slice(0, 10),
+        }));
+        try { localStorage.setItem('afsn_recent_projects', JSON.stringify(get().recentProjects)); } catch {}
+        if (saved.id !== current.id) {
+          await usePhotoStore.getState().loadPhotos(saved.id);
+          await usePhotoStore.getState().loadFolders(saved.id);
+          if (!await useCarouselStore.getState().loadCarouselFromDb(saved.id)) throw new Error('The saved copy could not be loaded.');
+        }
+        if (saved.id !== current.id || isCarouselEqual(useCarouselStore.getState().currentCarousel, carousel)) {
+          useCarouselStore.getState().setSaveStatus('saved');
+        }
+        return saved.filePath || null;
+      } catch (error) {
+        useCarouselStore.getState().setSaveStatus('unsaved');
+        set({ error: `Save As failed: ${String(error)}` });
+        return null;
+      } finally {
+        await get().loadRecentProjects();
+        set({ isSaving: false });
+      }
+    }
+
     const { useAlbumStore } = await import('./albumStore');
     const album = useAlbumStore.getState().currentAlbum;
     try {
@@ -614,16 +767,26 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   exportCompleteProjectPackageWithPhotos: async () => {
     const current = get().currentProject;
     if (!current || get().isSaving || get().isLoading || usePhotoStore.getState().isRemoving || usePhotoStore.getState().isRelinking) return null;
+    const isCarousel = current.canvasUnit === 'px' || current.projectType === 'carousel';
     set({ isSaving: true, error: null });
     try {
-      const { useAlbumStore } = await import('./albumStore');
       const { usePhotoStore } = await import('./photoStore');
       if (usePhotoStore.getState().isImporting) throw new Error('Wait for photo import to finish before exporting a package.');
       await persistProjectMargins(current);
       await persistProjectSpacing(current);
-      if (useAlbumStore.getState().currentAlbum?.projectId !== current.id || !await useAlbumStore.getState().saveAlbumToDb()) {
-        throw new Error('The current project could not be saved to the recovery database.');
+
+      if (isCarousel) {
+        const { useCarouselStore } = await import('./carouselStore');
+        if (useCarouselStore.getState().currentCarousel?.projectId !== current.id || !await useCarouselStore.getState().saveCarouselToDb()) {
+          throw new Error('The current project could not be saved to the recovery database.');
+        }
+      } else {
+        const { useAlbumStore } = await import('./albumStore');
+        if (useAlbumStore.getState().currentAlbum?.projectId !== current.id || !await useAlbumStore.getState().saveAlbumToDb()) {
+          throw new Error('The current project could not be saved to the recovery database.');
+        }
       }
+
       const { invoke } = await import('@tauri-apps/api/core');
       return await invoke<string | null>('export_bundled_package_with_dialog', { projectId: current.id, suggestedName: current.name });
     } catch (error) {
@@ -654,12 +817,19 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           localStorage.setItem('afsn_recent_projects', JSON.stringify(get().recentProjects));
         } catch {}
 
-        // Load imported photos, folders, and album structure
+        // Load imported photos, folders, and project structure
         const { usePhotoStore } = await import('./photoStore');
-        const { useAlbumStore } = await import('./albumStore');
         await usePhotoStore.getState().loadPhotos(project.id);
         await usePhotoStore.getState().loadFolders(project.id);
-        await useAlbumStore.getState().loadAlbumFromDb(project.id);
+
+        const isCarousel = project.canvasUnit === 'px' || project.projectType === 'carousel';
+        if (isCarousel) {
+          const { useCarouselStore } = await import('./carouselStore');
+          await useCarouselStore.getState().loadCarouselFromDb(project.id);
+        } else {
+          const { useAlbumStore } = await import('./albumStore');
+          await useAlbumStore.getState().loadAlbumFromDb(project.id);
+        }
         return true;
       }
     } catch (err) {
@@ -697,12 +867,19 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           localStorage.setItem('afsn_recent_projects', JSON.stringify(get().recentProjects));
         } catch {}
 
-        // Load imported photos, folders, and album structure
+        // Load imported photos, folders, and project structure
         const { usePhotoStore } = await import('./photoStore');
-        const { useAlbumStore } = await import('./albumStore');
         await usePhotoStore.getState().loadPhotos(project.id);
         await usePhotoStore.getState().loadFolders(project.id);
-        await useAlbumStore.getState().loadAlbumFromDb(project.id);
+
+        const isCarousel = project.canvasUnit === 'px' || project.projectType === 'carousel';
+        if (isCarousel) {
+          const { useCarouselStore } = await import('./carouselStore');
+          await useCarouselStore.getState().loadCarouselFromDb(project.id);
+        } else {
+          const { useAlbumStore } = await import('./albumStore');
+          await useAlbumStore.getState().loadAlbumFromDb(project.id);
+        }
         return true;
       }
     } catch (err) {
