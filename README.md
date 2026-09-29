@@ -7,12 +7,12 @@
 # OpenSmartAlbum for macOS
 ### Professional, Offline-First Photo Album & Instagram Panorama Suite
 
-[![Release](https://img.shields.io/badge/Release-v1.2.4-0A84FF.svg?style=for-the-badge&logo=github)](https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases)
+[![Release](https://img.shields.io/badge/Release-v1.3.0-0A84FF.svg?style=for-the-badge&logo=github)](https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases)
 [![Platform](https://img.shields.io/badge/Platform-macOS%2013%2B%20%7C%20Apple%20Silicon%20%26%20Intel-000000.svg?style=for-the-badge&logo=apple)](https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131.svg?style=for-the-badge&logo=tauri)](https://tauri.app/)
 [![Rust](https://img.shields.io/badge/Rust-Rayon%20Engine-DEA584.svg?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
 [![React](https://img.shields.io/badge/React-18%20%2B%20Konva-61DAFB.svg?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![E2E Tests](https://img.shields.io/badge/E2E%20Tests-42%2F42%20Passed-34C759.svg?style=for-the-badge&logo=playwright)](https://github.com/ryandxter/OpenSmartAlbum-MacOS)
+[![Vector Engine](https://img.shields.io/badge/Vector%20Fillet-Figma--Grade-FF6154.svg?style=for-the-badge&logo=figma)](https://github.com/ryandxter/OpenSmartAlbum-MacOS)
 
 <p align="center">
   <b>Pilih Bahasa / Select Language:</b><br/>
@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases"><img src="https://img.shields.io/badge/⬇️_Download_Latest_.DMG_(v1.2.4)-Apple_Silicon_&_Intel-2ea44f?style=for-the-badge&logo=apple" alt="Download DMG" /></a>
+  <a href="https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases"><img src="https://img.shields.io/badge/⬇️_Download_Latest_.DMG_(v1.3.0)-Apple_Silicon_&_Intel-2ea44f?style=for-the-badge&logo=apple" alt="Download DMG" /></a>
 </p>
 
 > [!IMPORTANT]
@@ -51,7 +51,7 @@
   <a href="#en-overview">Overview</a> •
   <a href="#en-install">Installation</a> •
   <a href="#en-features">Features</a> •
-  <a href="#en-v124">v1.2.4 Update</a> •
+  <a href="#en-v130">v1.3.0 Update</a> •
   <a href="#en-presets">Presets</a> •
   <a href="#en-shortcuts">Shortcuts</a> •
   <a href="#en-faq">FAQ</a> •
@@ -156,16 +156,17 @@ Export formats ready for professional lab printing or digital client delivery:
 
 ---
 
-<a name="en-v124"></a>
-## 🚀 What's New in v1.2.4
+<a name="en-v130"></a>
+## 🚀 What's New in v1.3.0: Workspace Isolation, Carousel Persistence & Vector Shape Polish
 
 | Feature / Fix | Description | Status |
 | :--- | :--- | :---: |
-| **Rubberband Marquee** | Real-time 2D AABB bounding-box selection in filmstrip library | ✅ Complete |
-| **WebKit Drag Fix** | Replaced in-memory canvas with DOM ghost badge to prevent drag drops dropping out | ✅ Complete |
-| **Draggable Batch Handle** | `[::: Drag All]` bar directly drops multi-photo batches onto spreads | ✅ Complete |
-| **Format Safety** | Eliminated crash when importing photos missing MIME headers | ✅ Complete |
-| **Automated E2E Suite** | 42/42 Playwright headless tests verified across all 11 presets & shapes | ✅ Verified |
+| **Carousel Persistence** | Full SQLite v16 schema, `.afsn` archive round-trip, dirty state tracking & macOS window close sheet | ✅ Complete |
+| **Workspace Isolation** | Global `activeMode` hoisting, independent viewport zooms (`printZoom` vs `carouselZoom`), mode-guarded shortcuts | ✅ Complete |
+| **Batch Drop In-Bounds** | WebKit in-bounds ghost badge preventing snapshot clipping, atomic single-transaction placement | ✅ Complete |
+| **Vector Fillet Engine** | Figma-grade vertex tangent fillet circular arcs ($\theta = \arccos(\hat{u} \cdot \hat{v})$) with dynamic self-intersection clamp | ✅ Complete |
+| **Polygon Corner Radii** | Unlocked Inspector radius sliders for Hexagon, Octagon, Star, Scallop, Heart; independent tip/valley star controls | ✅ Complete |
+| **Compound SVG Normalizer** | DOMParser multi-primitive merging, viewBox extraction, aspect-fit contain & Rust export parity | ✅ Complete |
 
 ---
 
@@ -303,7 +304,7 @@ npm run tauri build -- --target aarch64-apple-darwin
   <a href="#id-ringkasan">Ringkasan</a> •
   <a href="#id-instalasi">Instalasi</a> •
   <a href="#id-fitur">Fitur Unggulan</a> •
-  <a href="#id-v124">Pembaruan v1.2.4</a> •
+  <a href="#id-v130">Pembaruan v1.3.0</a> •
   <a href="#id-format">Format & Preset</a> •
   <a href="#id-pintasan">Pintasan Keyboard</a> •
   <a href="#id-faq">Tanya Jawab</a> •
@@ -405,16 +406,17 @@ Format hasil akhir siap kirim ke lab percetakan profesional:
 
 ---
 
-<a name="id-v124"></a>
-## 🚀 Pembaruan v1.2.4
+<a name="id-v130"></a>
+## 🚀 Pembaruan v1.3.0: Isolasi Workspace, Persistensi Carousel & Polish Vektor
 
 | Fitur / Perbaikan | Keterangan | Status |
 | :--- | :--- | :---: |
-| **Rubberband Marquee** | Seleksi drag area kotak 2D AABB langsung di galeri filmstrip | ✅ Selesai |
-| **Perbaikan WebKit Drag** | Mengganti canvas memory dengan badge DOM untuk mencegah drop terputus | ✅ Selesai |
-| **Handle Tarik Batch** | Tombol `[::: Drag All]` untuk melepas banyak foto sekaligus | ✅ Selesai |
-| **Keamanan Format** | Menghilangkan crash saat foto yang diimpor tidak memiliki header MIME | ✅ Selesai |
-| **Uji Otomatis E2E** | 42/42 pengujian Playwright headless lulus 100% pada seluruh 11 preset | ✅ Terverifikasi |
+| **Persistensi Carousel Penuh** | Skema SQLite v16, arsip `.afsn`, pelacak dirty changes & proteksi tutup jendela macOS | ✅ Selesai |
+| **Isolasi Workspace & Sinkronisasi** | Hoisting `activeMode`, zoom kanvas independen (`printZoom` vs `carouselZoom`), isolasi shortcut | ✅ Selesai |
+| **Keandalan Drag Multi-Foto** | Badge drag DOM in-bounds mencegah clipping WebKit, penempatan frame batch atomik | ✅ Selesai |
+| **Engine Vertex Fillet Vektor** | Lengkungan fillet tangen matematis ($\theta = \arccos(\hat{u} \cdot \hat{v})$) dengan dynamic clamp | ✅ Selesai |
+| **Radius Sudut Poligon di Inspector** | Slider radius aktif untuk Hexagon, Octagon, Bintang, Scallop, Hati; kontrol terpisah ujung/lembah bintang | ✅ Selesai |
+| **Normalizer Compound SVG** | Penggabungan multiprimitif DOMParser, ekstraksi viewBox, fit aspek rasio & parity ekspor Rust | ✅ Selesai |
 
 ---
 
