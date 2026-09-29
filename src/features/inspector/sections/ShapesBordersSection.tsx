@@ -229,6 +229,29 @@ export function ShapesBordersSection({ onToast, activeMode = 'print' }: ShapesBo
             <span>Circle</span>
           </button>
 
+          {/* VEC-04: Dedicated Oval shape preset immediately adjacent to Circle */}
+          <button
+            type="button"
+            className={`${styles.actionBtn} ${currentShape === 'oval' ? styles.iconBtnActive : ''}`}
+            onClick={() => handleShapeSelect('oval')}
+            title="Oval / Ellipse Frame"
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ display: 'block' }}
+            >
+              <ellipse cx="12" cy="12" rx="10" ry="6" />
+            </svg>
+            <span>Oval</span>
+          </button>
+
           <button
             type="button"
             className={`${styles.actionBtn} ${currentShape === 'hexagon' ? styles.iconBtnActive : ''}`}
