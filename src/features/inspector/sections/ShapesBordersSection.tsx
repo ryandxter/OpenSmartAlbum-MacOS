@@ -322,8 +322,8 @@ export function ShapesBordersSection({ onToast, activeMode = 'print' }: ShapesBo
         />
       </div>
 
-      {/* 2. Corner Radii (For Rectangle / Rounded) */}
-      {(currentShape === 'rectangle' || currentShape === 'rounded') && (
+      {/* 2. Corner Radii (For Rectangle, Rounded, Polygons & Decorative Shapes) */}
+      {currentShape !== 'circle' && currentShape !== 'oval' && currentShape !== 'custom_svg' && (
         <>
           <div className={styles.divider} />
           <div className={styles.propGroup}>
