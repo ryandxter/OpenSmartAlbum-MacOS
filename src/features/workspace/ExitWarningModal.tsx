@@ -45,7 +45,12 @@ export function ExitWarningModal() {
       message="Save your changes before exiting?"
       onConfirm={async () => {
         const result = await useProjectStore.getState().saveProject();
-        if (result.success && useAlbumStore.getState().saveStatus === 'saved') await handleForceExit();
+        const current = useProjectStore.getState().currentProject;
+        const isCarousel = current?.canvasUnit === 'px' || current?.projectType === 'carousel';
+        const isSaved = isCarousel
+          ? (await import('../../stores/carouselStore')).useCarouselStore.getState().saveStatus === 'saved'
+          : useAlbumStore.getState().saveStatus === 'saved';
+        if (result.success && isSaved) await handleForceExit();
       }}
       onSecondary={handleForceExit}
       secondaryText="Exit Without Saving"
