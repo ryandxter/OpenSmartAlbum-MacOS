@@ -21,6 +21,7 @@ import { generateDynamicVariations } from '../domain/layout/generator';
 import { AdaptivePhoto } from '../domain/adaptiveLayout';
 import { generateAutoFlowPlan } from '../domain/storytelling/autoFlowEngine';
 import type { Photo } from '../domain/photo';
+import type { PhotoFrameElement } from '../domain/editor';
 
 let carouselDbWriteQueue: Promise<unknown> = Promise.resolve();
 export function persistCarouselInOrder<T>(write: () => Promise<T>): Promise<T> {
@@ -1013,20 +1014,51 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     const targetSlide = currentCarousel.slides[activeSlideIndex];
     if (!targetSlide) return;
 
-    const activeFrames = targetSlide.elements.filter(
-      (el): el is CarouselPhotoFrame => el.type === 'photo' && Boolean(el.filePath)
+    const lockedFrames = targetSlide.elements.filter(
+      (el): el is CarouselPhotoFrame => el.type === 'photo' && Boolean(el.locked)
     );
-    if (activeFrames.length === 0) return;
+    const excludedFrames = targetSlide.elements.filter(
+      (el): el is CarouselPhotoFrame => el.type === 'photo' && !el.locked && Boolean(el.excludeFromAdaptiveLayout)
+    );
+    const participatingFrames = targetSlide.elements.filter(
+      (el): el is CarouselPhotoFrame => el.type === 'photo' && Boolean(el.filePath) && !el.locked && !el.excludeFromAdaptiveLayout
+    );
+    if (participatingFrames.length === 0) return;
 
-    // ISO-05: Build style map from existing frames keyed by photoId (stable key that follows the photo).
+    // ISO-05: Build style map from participating frames keyed by photoId (stable key that follows the photo).
     // When the layout cycles, geometry changes but visual styles must travel with the photo.
     const styleByPhotoId = new Map<string, FrameStyleSnapshot>(
-      activeFrames.map((f) => [f.photoId || f.id, extractFrameStyle(f)])
+      participatingFrames.map((f) => [f.photoId || f.id, extractFrameStyle(f)])
     );
 
-    pushHistory();
+    const slideStartX = activeSlideIndex * currentCarousel.slideWidthPx;
+    const localObstacles: PhotoFrameElement[] = [...lockedFrames, ...excludedFrames].map((f) => ({
+      id: f.id,
+      type: 'photo',
+      photoId: f.photoId || null,
+      filePath: f.filePath || '',
+      fileName: f.fileName || '',
+      previewPath: f.previewPath || '',
+      thumbnailPath: f.thumbnailPath || '',
+      x: f.x - slideStartX,
+      y: f.y,
+      width: f.width,
+      height: f.height,
+      rotation: f.rotation || 0,
+      zIndex: f.zIndex || 1,
+      cropX: f.cropX || 0,
+      cropY: f.cropY || 0,
+      cropScale: f.cropScale || 1.0,
+      cropRotation: f.cropRotation || 0,
+      borderEnabled: Boolean(f.borderEnabled),
+      borderWidth: f.borderWidth || 0,
+      borderColor: f.borderColor || '#FFFFFF',
+      opacity: f.opacity || 1.0,
+      locked: f.locked,
+      excludeFromAdaptiveLayout: f.excludeFromAdaptiveLayout,
+    }));
 
-    const photos: AdaptivePhoto[] = activeFrames.map((f) => ({
+    const photos: AdaptivePhoto[] = participatingFrames.map((f) => ({
       id: f.id,
       photoId: f.photoId,
       filePath: f.filePath,
@@ -1042,11 +1074,14 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         containerHeight: currentCarousel.slideHeightPx,
         spacing: 16,
         isSpread: false,
+        lockedElements: localObstacles,
       },
       photos
     );
 
     if (variations.length === 0) return;
+
+    pushHistory();
 
     const currentIndex = slideLayoutIndices[activeSlideIndex] ?? 0;
     const nextIndex =
@@ -1056,8 +1091,6 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
 
     const chosen = variations[nextIndex] || variations[0];
     if (!chosen) return;
-
-    const slideStartX = activeSlideIndex * currentCarousel.slideWidthPx;
 
     const newPhotoElements: CarouselPhotoFrame[] = chosen.rects.map((rect, i) => {
       const photoIdx =
@@ -1094,7 +1127,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
       idx === activeSlideIndex
         ? {
             ...s,
-            elements: [...newPhotoElements, ...nonPhotoElements],
+            elements: [...lockedFrames, ...excludedFrames, ...newPhotoElements, ...nonPhotoElements],
           }
         : s
     );
@@ -1117,19 +1150,50 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     const targetSlide = currentCarousel.slides[slideIndex];
     if (!targetSlide) return;
 
-    const activeFrames = targetSlide.elements.filter(
-      (el): el is CarouselPhotoFrame => el.type === 'photo' && Boolean(el.filePath)
+    const lockedFrames = targetSlide.elements.filter(
+      (el): el is CarouselPhotoFrame => el.type === 'photo' && Boolean(el.locked)
     );
-    if (activeFrames.length === 0) return;
+    const excludedFrames = targetSlide.elements.filter(
+      (el): el is CarouselPhotoFrame => el.type === 'photo' && !el.locked && Boolean(el.excludeFromAdaptiveLayout)
+    );
+    const participatingFrames = targetSlide.elements.filter(
+      (el): el is CarouselPhotoFrame => el.type === 'photo' && Boolean(el.filePath) && !el.locked && !el.excludeFromAdaptiveLayout
+    );
+    if (participatingFrames.length === 0) return;
 
     // ISO-05: Build style map keyed by photoId before generating new layout.
     const styleByPhotoId = new Map<string, FrameStyleSnapshot>(
-      activeFrames.map((f) => [f.photoId || f.id, extractFrameStyle(f)])
+      participatingFrames.map((f) => [f.photoId || f.id, extractFrameStyle(f)])
     );
 
-    pushHistory();
+    const slideStartX = slideIndex * currentCarousel.slideWidthPx;
+    const localObstacles: PhotoFrameElement[] = [...lockedFrames, ...excludedFrames].map((f) => ({
+      id: f.id,
+      type: 'photo',
+      photoId: f.photoId || null,
+      filePath: f.filePath || '',
+      fileName: f.fileName || '',
+      previewPath: f.previewPath || '',
+      thumbnailPath: f.thumbnailPath || '',
+      x: f.x - slideStartX,
+      y: f.y,
+      width: f.width,
+      height: f.height,
+      rotation: f.rotation || 0,
+      zIndex: f.zIndex || 1,
+      cropX: f.cropX || 0,
+      cropY: f.cropY || 0,
+      cropScale: f.cropScale || 1.0,
+      cropRotation: f.cropRotation || 0,
+      borderEnabled: Boolean(f.borderEnabled),
+      borderWidth: f.borderWidth || 0,
+      borderColor: f.borderColor || '#FFFFFF',
+      opacity: f.opacity || 1.0,
+      locked: f.locked,
+      excludeFromAdaptiveLayout: f.excludeFromAdaptiveLayout,
+    }));
 
-    const photos: AdaptivePhoto[] = activeFrames.map((f) => ({
+    const photos: AdaptivePhoto[] = participatingFrames.map((f) => ({
       id: f.id,
       photoId: f.photoId,
       filePath: f.filePath,
@@ -1145,6 +1209,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         containerHeight: currentCarousel.slideHeightPx,
         spacing: 16,
         isSpread: false,
+        lockedElements: localObstacles,
       },
       photos
     );
@@ -1154,7 +1219,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     const chosen = variations[clampedIndex] || variations[0];
     if (!chosen) return;
 
-    const slideStartX = slideIndex * currentCarousel.slideWidthPx;
+    pushHistory();
 
     const newPhotoElements: CarouselPhotoFrame[] = chosen.rects.map((rect, i) => {
       const photoIdx =
@@ -1190,7 +1255,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
       idx === slideIndex
         ? {
             ...s,
-            elements: [...newPhotoElements, ...nonPhotoElements],
+            elements: [...lockedFrames, ...excludedFrames, ...newPhotoElements, ...nonPhotoElements],
           }
         : s
     );
@@ -1312,13 +1377,16 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     const slide = currentCarousel.slides[slideIndex];
     if (!slide) return;
 
-    const photoFrames = slide.elements.filter((el): el is CarouselPhotoFrame => el.type === 'photo');
-    if (photoFrames.length <= 1) return;
+    const eligibleFrames = slide.elements.filter(
+      (el): el is CarouselPhotoFrame =>
+        el.type === 'photo' && Boolean(el.filePath) && !el.locked && !el.excludeFromAdaptiveLayout
+    );
+    if (eligibleFrames.length <= 1) return;
 
     pushHistory();
 
     // Extract photo payloads
-    const payloads = photoFrames.map((f) => ({
+    const payloads = eligibleFrames.map((f) => ({
       photoId: f.photoId,
       filePath: f.filePath,
       fileName: f.fileName,
@@ -1328,21 +1396,51 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     }));
 
     // Fisher-Yates shuffle
-    for (let i = payloads.length - 1; i > 0; i--) {
+    const shuffled = [...payloads];
+    for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      const tempI = payloads[i];
-      const tempJ = payloads[j];
+      const tempI = shuffled[i];
+      const tempJ = shuffled[j];
       if (tempI && tempJ) {
-        payloads[i] = tempJ;
-        payloads[j] = tempI;
+        shuffled[i] = tempJ;
+        shuffled[j] = tempI;
       }
+    }
+
+    // Force shift if identical
+    const isIdentical = shuffled.every(
+      (s, idx) => s && payloads[idx] && s.filePath === payloads[idx]?.filePath
+    );
+    if (isIdentical && shuffled.length > 1) {
+      const first = shuffled.shift();
+      if (first !== undefined) shuffled.push(first);
     }
 
     let pIdx = 0;
     const updatedElements = slide.elements.map((el) => {
-      if (el.type !== 'photo') return el;
-      const p = payloads[pIdx++];
-      return p ? { ...el, ...p, cropX: 0, cropY: 0, cropScale: 1.0 } : el;
+      if (
+        el.type === 'photo' &&
+        Boolean(el.filePath) &&
+        !el.locked &&
+        !el.excludeFromAdaptiveLayout
+      ) {
+        const newP = shuffled[pIdx++];
+        if (newP) {
+          return {
+            ...el,
+            photoId: newP.photoId,
+            filePath: newP.filePath,
+            fileName: newP.fileName,
+            previewPath: newP.previewPath ?? el.previewPath,
+            thumbnailPath: newP.thumbnailPath ?? el.thumbnailPath,
+            photoAspect: newP.photoAspect ?? el.photoAspect,
+            cropX: 0,
+            cropY: 0,
+            cropScale: 1.0,
+          };
+        }
+      }
+      return el;
     });
 
     const updatedSlides = currentCarousel.slides.map((s, idx) =>
@@ -1683,7 +1781,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
       }
     }
 
-    if (!frameA || !frameB) return;
+    if (!frameA || !frameB || frameA.locked || frameB.locked) return;
 
     pushHistory();
 

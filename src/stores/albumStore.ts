@@ -1552,10 +1552,12 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
     if (!targetSpread || targetSpread.elements.length === 0) return;
 
     const lockedElements = targetSpread.elements.filter((el): el is PhotoFrameElement => el.type === 'photo' && Boolean(el.locked));
-    const unlockedElements = targetSpread.elements.filter((el): el is PhotoFrameElement => el.type === 'photo' && !el.locked);
+    const excludedElements = targetSpread.elements.filter((el): el is PhotoFrameElement => el.type === 'photo' && !el.locked && Boolean(el.excludeFromAdaptiveLayout));
+    const unlockedElements = targetSpread.elements.filter((el): el is PhotoFrameElement => el.type === 'photo' && !el.locked && !el.excludeFromAdaptiveLayout);
+    const obstacleElements = [...lockedElements, ...excludedElements];
     const textElements = targetSpread.elements.filter((el) => el.type === 'text');
 
-    // If all photo elements are locked, no changes can be made
+    // If all photo elements are locked or excluded, no changes can be made
     if (unlockedElements.length === 0) return;
 
     const unlockedPhotos: AdaptivePhoto[] = unlockedElements.map((el) => ({
@@ -1589,7 +1591,7 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
         safeMarginBottom: dims.safeMarginBottom,
         safeMarginOutside: dims.safeMarginOutside,
         safeMarginSpine: dims.safeMarginSpine,
-        lockedElements,
+        lockedElements: obstacleElements,
       },
       unlockedPhotos
     );
@@ -1615,7 +1617,7 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
       project.borderColor
     );
 
-    const newElements = [...lockedElements, ...newUnlockedElements, ...textElements];
+    const newElements = [...lockedElements, ...excludedElements, ...newUnlockedElements, ...textElements];
 
     if (isCover) {
       set({
@@ -1694,10 +1696,12 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
     if (!targetSpread || targetSpread.elements.length === 0) return;
 
     const lockedElements = targetSpread.elements.filter((el): el is PhotoFrameElement => el.type === 'photo' && Boolean(el.locked));
-    const unlockedElements = targetSpread.elements.filter((el): el is PhotoFrameElement => el.type === 'photo' && !el.locked);
+    const excludedElements = targetSpread.elements.filter((el): el is PhotoFrameElement => el.type === 'photo' && !el.locked && Boolean(el.excludeFromAdaptiveLayout));
+    const unlockedElements = targetSpread.elements.filter((el): el is PhotoFrameElement => el.type === 'photo' && !el.locked && !el.excludeFromAdaptiveLayout);
+    const obstacleElements = [...lockedElements, ...excludedElements];
     const textElements = targetSpread.elements.filter((el) => el.type === 'text');
 
-    // If all photo elements are locked, no changes can be made
+    // If all photo elements are locked or excluded, no changes can be made
     if (unlockedElements.length === 0) return;
 
     const unlockedPhotos: AdaptivePhoto[] = unlockedElements.map((el) => ({
@@ -1731,7 +1735,7 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
         safeMarginSpine: dims.safeMarginSpine,
         gutterWidth: dims.gutterWidth,
         spacing: dims.spacing,
-        lockedElements,
+        lockedElements: obstacleElements,
       },
       unlockedPhotos
     );
@@ -1751,7 +1755,7 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
       project.borderColor
     );
 
-    const newElements = [...lockedElements, ...newUnlockedElements, ...textElements];
+    const newElements = [...lockedElements, ...excludedElements, ...newUnlockedElements, ...textElements];
 
     if (isCover) {
       set({

@@ -57,6 +57,7 @@ export interface PhotoFrameElement {
   opacity: number;
   locked?: boolean;
   isMissing?: boolean;
+  excludeFromAdaptiveLayout?: boolean;
 }
 
 /**

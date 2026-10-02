@@ -201,7 +201,7 @@ export function findOptimalPhotoSlotMapping(
  * Partitions a single page box into K geometric frame rects with exact inter-frame spacing.
  * Strictly guarantees that all frames stay 100% inside the given box boundary.
  */
-export function partitionPageBoxIntoKRects(
+function rawPartitionPageBoxIntoKRects(
   box: RectBounds,
   count: number,
   spacing: number,
@@ -754,7 +754,7 @@ function recursiveBspPartition(
   splitVertical = true
 ): RectBounds[] {
   if (count <= 1) return [{ ...box }];
-  if (count <= 6) return partitionPageBoxIntoKRects(box, count, spacing, splitVertical ? 0 : 1);
+  if (count <= 6) return rawPartitionPageBoxIntoKRects(box, count, spacing, splitVertical ? 0 : 1);
 
   const leftCount = Math.floor(count / 2);
   const rightCount = count - leftCount;
@@ -784,6 +784,25 @@ function recursiveBspPartition(
 }
 
 /**
+ * Partitions a single page box into K geometric frame rects with exact inter-frame spacing.
+ * Strictly guarantees that all frames stay 100% inside the given box boundary and dimensions >= 10px.
+ */
+export function partitionPageBoxIntoKRects(
+  box: RectBounds,
+  count: number,
+  spacing: number,
+  variantIndex = 0
+): RectBounds[] {
+  const rects = rawPartitionPageBoxIntoKRects(box, count, spacing, variantIndex);
+  return rects.map((r) => ({
+    x: round4(r.x),
+    y: round4(r.y),
+    width: Math.max(10, round4(r.width)),
+    height: Math.max(10, round4(r.height)),
+  }));
+}
+
+/**
  * Generates rich, dynamic, multi-photo adaptive layout variations for ANY photo count N,
  * automatically scoring and sorting them by visual aspect-ratio harmony and minimal crop penalty.
  */
@@ -800,16 +819,76 @@ function rectsIntersect(
 }
 
 /**
- * Computes all maximal unoccupied rectangular sub-boxes inside a page container
- * that do not intersect any locked frame using 2D Spatial Subtraction (Maximal Empty Rectangles).
+ * Calculates the Axis-Aligned Bounding Box (AABB) for an element with an optional rotation angle.
  */
-function computeFreePageSubBoxes(
+export function getRotatedAABB(element: {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation?: number;
+}): RectBounds {
+  const rot = ((element.rotation || 0) * Math.PI) / 180;
+  if (Math.abs(rot) < 0.001) {
+    return {
+      x: round4(element.x),
+      y: round4(element.y),
+      width: round4(element.width),
+      height: round4(element.height),
+    };
+  }
+  const cos = Math.abs(Math.cos(rot));
+  const sin = Math.abs(Math.sin(rot));
+  const newW = element.width * cos + element.height * sin;
+  const newH = element.width * sin + element.height * cos;
+  const cx = element.x + element.width / 2;
+  const cy = element.y + element.height / 2;
+  return {
+    x: round4(cx - newW / 2),
+    y: round4(cy - newH / 2),
+    width: round4(newW),
+    height: round4(newH),
+  };
+}
+
+/**
+ * Calculates the geometric intersection box of an obstacle with a page boundary box.
+ * Returns null if the obstacle does not intersect the page area.
+ */
+export function getClampedIntersection(box: RectBounds, obstacle: RectBounds): RectBounds | null {
+  const x1 = Math.max(box.x, obstacle.x);
+  const y1 = Math.max(box.y, obstacle.y);
+  const x2 = Math.min(box.x + box.width, obstacle.x + obstacle.width);
+  const y2 = Math.min(box.y + box.height, obstacle.y + obstacle.height);
+  if (x2 <= x1 + 0.01 || y2 <= y1 + 0.01) return null;
+  return {
+    x: round4(x1),
+    y: round4(y1),
+    width: round4(x2 - x1),
+    height: round4(y2 - y1),
+  };
+}
+
+/**
+ * Computes all maximal unoccupied rectangular sub-boxes inside a page container
+ * that do not intersect any locked or excluded frame using 2D Spatial Subtraction (Maximal Empty Rectangles).
+ */
+export function computeFreePageSubBoxes(
   pageArea: RectBounds,
   lockedFrames: PhotoFrameElement[],
   spacing: number
 ): RectBounds[] {
-  const intersectingLocked = lockedFrames.filter((f) => rectsIntersect(f, pageArea));
-  if (intersectingLocked.length === 0) {
+  // Map all lockedFrames through getRotatedAABB and getClampedIntersection
+  const obstacles: RectBounds[] = [];
+  for (const locked of lockedFrames) {
+    const aabb = getRotatedAABB(locked);
+    const clamped = getClampedIntersection(pageArea, aabb);
+    if (clamped) {
+      obstacles.push(clamped);
+    }
+  }
+
+  if (obstacles.length === 0) {
     return [{ ...pageArea }];
   }
 
@@ -817,19 +896,19 @@ function computeFreePageSubBoxes(
   const minDimension = Math.max(spacing * 1.5, Math.min(pageArea.width, pageArea.height) * 0.05);
   let candidateBoxes: RectBounds[] = [{ ...pageArea }];
 
-  for (const locked of intersectingLocked) {
+  for (const obstacle of obstacles) {
     const nextBoxes: RectBounds[] = [];
 
     for (const box of candidateBoxes) {
-      if (!rectsIntersect(box, locked)) {
-        // Box is completely unaffected by this locked frame
+      if (!rectsIntersect(box, obstacle)) {
+        // Box is completely unaffected by this obstacle
         nextBoxes.push(box);
         continue;
       }
 
-      // Box intersects locked frame: slice box into up to 4 maximal sub-rectangles
-      // 1. Top Slice (above locked frame)
-      const topH = round4(locked.y - spacing - box.y);
+      // Box intersects obstacle: slice box into up to 4 maximal sub-rectangles
+      // 1. Top Slice (above obstacle)
+      const topH = round4(obstacle.y - spacing - box.y);
       if (topH >= minDimension) {
         nextBoxes.push({
           x: box.x,
@@ -839,8 +918,8 @@ function computeFreePageSubBoxes(
         });
       }
 
-      // 2. Bottom Slice (below locked frame)
-      const bottomY = round4(locked.y + locked.height + spacing);
+      // 2. Bottom Slice (below obstacle)
+      const bottomY = round4(obstacle.y + obstacle.height + spacing);
       const bottomH = round4(box.y + box.height - bottomY);
       if (bottomH >= minDimension) {
         nextBoxes.push({
@@ -851,8 +930,8 @@ function computeFreePageSubBoxes(
         });
       }
 
-      // 3. Left Slice (left of locked frame)
-      const leftW = round4(locked.x - spacing - box.x);
+      // 3. Left Slice (left of obstacle)
+      const leftW = round4(obstacle.x - spacing - box.x);
       if (leftW >= minDimension) {
         nextBoxes.push({
           x: box.x,
@@ -862,8 +941,8 @@ function computeFreePageSubBoxes(
         });
       }
 
-      // 4. Right Slice (right of locked frame)
-      const rightX = round4(locked.x + locked.width + spacing);
+      // 4. Right Slice (right of obstacle)
+      const rightX = round4(obstacle.x + obstacle.width + spacing);
       const rightW = round4(box.x + box.width - rightX);
       if (rightW >= minDimension) {
         nextBoxes.push({
@@ -991,7 +1070,7 @@ export function getAdaptiveLayoutCacheStats(): {
 
 export function getRawPartitionCacheKey(params: TemplateParams, photoCount: number): string {
   const lockedSig = (params.lockedElements || [])
-    .map((l) => `${round4(l.x)},${round4(l.y)},${round4(l.width)},${round4(l.height)}`)
+    .map((l) => `${round4(l.x)},${round4(l.y)},${round4(l.width)},${round4(l.height)},${round4(l.rotation || 0)}`)
     .sort()
     .join(';');
   return [
@@ -1023,14 +1102,14 @@ export function scoreAndSortVariations(
   locked: PhotoFrameElement[] = []
 ): AdaptiveLayoutVariation[] {
   const fingerprint = getPhotosFingerprint(photos);
-  // Mathematical guarantee: Exclude any variation where any rect intersects or covers a locked frame
+  // Mathematical guarantee: Exclude any variation where any rect intersects or covers a locked/excluded frame
   const nonColliding = locked.length > 0
     ? rawVariations.filter((v) =>
-        v.rects.every((r) => locked.every((l) => !rectsIntersect(r, l)))
+        v.rects.every((r) => locked.every((l) => !rectsIntersect(r, getRotatedAABB(l))))
       )
     : rawVariations;
 
-  const sourceVariations = nonColliding.length > 0 ? nonColliding : rawVariations;
+  const sourceVariations = nonColliding;
 
   const enriched = sourceVariations.map((v) => {
     const matchRes = findOptimalPhotoSlotMapping(photos, v.rects);
@@ -1071,17 +1150,21 @@ export function computeRawLayoutPartitions(
 
     if (isCover) {
       const freeCoverBoxes = computeFreePageSubBoxes(spreadArea, locked, spacing);
+      const minDimension = Math.max(spacing * 1.5, Math.min(spreadArea.width, spreadArea.height) * 0.05);
       for (const [bIdx, box] of freeCoverBoxes.entries()) {
+        if (box.width < minDimension || box.height < minDimension) continue;
         const maxVariants = count === 1 ? 3 : count === 2 ? 6 : count === 3 ? 8 : 6;
         for (let v = 0; v < maxVariants; v++) {
           const rects = partitionPageBoxIntoKRects(box, count, spacing, v);
-          variations.push({
-            id: `cover_zone_${bIdx + 1}_var${v + 1}`,
-            name: `Cover Unlocked Zone ${bIdx + 1} (${count} Photo${count > 1 ? 's' : ''})`,
-            description: `Arranged cleanly around locked cover elements.`,
-            rects,
-            tags: ['cover', 'unlocked', `${count}p`],
-          });
+          if (rects.length === count && rects.every((r) => r.width >= 10 && r.height >= 10)) {
+            variations.push({
+              id: `cover_zone_${bIdx + 1}_var${v + 1}`,
+              name: `Cover Unlocked Zone ${bIdx + 1} (${count} Photo${count > 1 ? 's' : ''})`,
+              description: `Arranged cleanly around locked cover elements.`,
+              rects,
+              tags: ['cover', 'unlocked', `${count}p`],
+            });
+          }
         }
       }
       return variations;
@@ -1091,22 +1174,26 @@ export function computeRawLayoutPartitions(
     const freeLeftBoxes = computeFreePageSubBoxes(leftPageArea, locked, spacing);
     const freeRightBoxes = computeFreePageSubBoxes(rightPageArea, locked, spacing);
     const allFreeBoxes = [...freeLeftBoxes, ...freeRightBoxes];
+    const minDimension = Math.max(spacing * 1.5, Math.min(leftPageArea.width, leftPageArea.height) * 0.05);
 
     // 1. Single Box placement: Place ALL count photos inside any single valid free box
     // (e.g. all in bottom zone below locked photo, or all on right page)
     allFreeBoxes.forEach((box, bIdx) => {
+      if (box.width < minDimension || box.height < minDimension) return;
       const isLeft = box.x < leftPageArea.x + leftPageArea.width;
       const zoneName = isLeft ? 'Left Page Available Space' : 'Right Page Available Space';
       const maxVariants = count === 1 ? 4 : count === 2 ? 6 : count === 3 ? 8 : count === 4 ? 8 : 6;
       for (let v = 0; v < maxVariants; v++) {
         const rects = partitionPageBoxIntoKRects(box, count, spacing, v);
-        variations.push({
-          id: `single_zone_${bIdx + 1}_var${v + 1}`,
-          name: `${zoneName} (${count} Photo${count > 1 ? 's' : ''} - Var ${v + 1})`,
-          description: `Arranged cleanly inside available space (${zoneName}) without overlapping locked photos.`,
-          rects,
-          tags: ['unlocked-zone', `${count}p`],
-        });
+        if (rects.length === count && rects.every((r) => r.width >= 10 && r.height >= 10)) {
+          variations.push({
+            id: `single_zone_${bIdx + 1}_var${v + 1}`,
+            name: `${zoneName} (${count} Photo${count > 1 ? 's' : ''} - Var ${v + 1})`,
+            description: `Arranged cleanly inside available space (${zoneName}) without overlapping locked photos.`,
+            rects,
+            tags: ['unlocked-zone', `${count}p`],
+          });
+        }
       }
     });
 
@@ -1118,6 +1205,7 @@ export function computeRawLayoutPartitions(
           const boxA = allFreeBoxes[i];
           const boxB = allFreeBoxes[j];
           if (!boxA || !boxB) continue;
+          if (boxA.width < minDimension || boxA.height < minDimension || boxB.width < minDimension || boxB.height < minDimension) continue;
           if (rectsIntersect(boxA, boxB)) continue;
 
           for (let nA = 1; nA < count; nA++) {
@@ -1134,7 +1222,7 @@ export function computeRawLayoutPartitions(
               const rectsB = partitionPageBoxIntoKRects(boxB, nB, spacing, vB);
 
               const allRects = [...rectsA, ...rectsB];
-              if (allRects.length === count) {
+              if (allRects.length === count && allRects.every((r) => r.width >= 10 && r.height >= 10)) {
                 const isALeft = boxA.x < leftPageArea.x + leftPageArea.width;
                 const isBLeft = boxB.x < leftPageArea.x + leftPageArea.width;
                 const zoneDesc =
@@ -1167,6 +1255,7 @@ export function computeRawLayoutPartitions(
             const boxB = allFreeBoxes[j];
             const boxC = allFreeBoxes[k];
             if (!boxA || !boxB || !boxC) continue;
+            if (boxA.width < minDimension || boxA.height < minDimension || boxB.width < minDimension || boxB.height < minDimension || boxC.width < minDimension || boxC.height < minDimension) continue;
             if (rectsIntersect(boxA, boxB) || rectsIntersect(boxA, boxC) || rectsIntersect(boxB, boxC)) continue;
 
             for (let nA = 1; nA <= count - 2; nA++) {
@@ -1176,7 +1265,7 @@ export function computeRawLayoutPartitions(
                 const rectsB = partitionPageBoxIntoKRects(boxB, nB, spacing, 0);
                 const rectsC = partitionPageBoxIntoKRects(boxC, nC, spacing, 0);
                 const allRects = [...rectsA, ...rectsB, ...rectsC];
-                if (allRects.length === count) {
+                if (allRects.length === count && allRects.every((r) => r.width >= 10 && r.height >= 10)) {
                   variations.push({
                     id: `split_free3_${nA}_${nB}_${nC}_i${i}_j${j}_k${k}`,
                     name: `Spread Multi-Zone (${nA}+${nB}+${nC} Photos)`,
@@ -1204,6 +1293,13 @@ export function computeRawLayoutPartitions(
               const boxD = allFreeBoxes[l];
               if (!boxA || !boxB || !boxC || !boxD) continue;
               if (
+                boxA.width < minDimension || boxA.height < minDimension ||
+                boxB.width < minDimension || boxB.height < minDimension ||
+                boxC.width < minDimension || boxC.height < minDimension ||
+                boxD.width < minDimension || boxD.height < minDimension
+              )
+                continue;
+              if (
                 rectsIntersect(boxA, boxB) ||
                 rectsIntersect(boxA, boxC) ||
                 rectsIntersect(boxA, boxD) ||
@@ -1218,7 +1314,7 @@ export function computeRawLayoutPartitions(
               const rectsC = partitionPageBoxIntoKRects(boxC, 1, spacing, 0);
               const rectsD = partitionPageBoxIntoKRects(boxD, count - 3, spacing, 0);
               const allRects = [...rectsA, ...rectsB, ...rectsC, ...rectsD];
-              if (allRects.length === count) {
+              if (allRects.length === count && allRects.every((r) => r.width >= 10 && r.height >= 10)) {
                 variations.push({
                   id: `split_free4_i${i}_j${j}_k${k}_l${l}`,
                   name: `Spread Multi-Zone Quad (${count} Photos)`,
@@ -1526,7 +1622,7 @@ export function shuffleElementsPhotos(elements: PhotoFrameElement[]): PhotoFrame
   }> = [];
 
   elements.forEach((el, idx) => {
-    if (!el.locked) {
+    if (!el.locked && !el.excludeFromAdaptiveLayout) {
       unlockedIndices.push(idx);
       unlockedPayloads.push({
         photoId: el.photoId ?? null,

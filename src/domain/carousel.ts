@@ -80,6 +80,7 @@ export interface CarouselPhotoFrame {
   cornerRadiusTr?: number;
   cornerRadiusBr?: number;
   cornerRadiusBl?: number;
+  excludeFromAdaptiveLayout?: boolean;
 }
 
 export interface CarouselTextFrame {

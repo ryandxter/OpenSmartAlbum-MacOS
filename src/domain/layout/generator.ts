@@ -1,5 +1,5 @@
 import { RectBounds } from '../templates';
-import { AdaptivePhoto, AdaptiveLayoutVariation, getPhotosFingerprint } from '../adaptiveLayout';
+import { AdaptivePhoto, AdaptiveLayoutVariation, getPhotosFingerprint, generateAdaptiveLayoutVariations } from '../adaptiveLayout';
 import { PhotoFrameElement } from '../editor';
 import { partitionBsp, generateBspVariants } from './bspEngine';
 import { normalizeEqualHeightRow, normalizeEqualWidthColumn } from './rowColumnNormalizer';
@@ -38,6 +38,25 @@ export function generateDynamicVariations(
 ): AdaptiveLayoutVariation[] {
   const n = photos.length;
   if (n === 0) return [];
+
+  if (options.lockedElements && options.lockedElements.length > 0) {
+    return generateAdaptiveLayoutVariations(
+      {
+        spreadWidth: options.containerWidth,
+        spreadHeight: options.containerHeight,
+        isSpread: options.isSpread,
+        gutterWidth: options.gutterWidth ?? 0,
+        spacing: options.spacing,
+        safeMargin: options.safeMarginOutside ?? 0,
+        safeMarginTop: options.safeMarginTop,
+        safeMarginBottom: options.safeMarginBottom,
+        safeMarginOutside: options.safeMarginOutside,
+        safeMarginSpine: options.safeMarginSpine,
+        lockedElements: options.lockedElements,
+      },
+      photos
+    );
+  }
 
   const hasHeroTarget = Boolean(options.heroPhotoId || photos.some((p) => p.isHero));
 
