@@ -8,13 +8,17 @@ import { useCarouselStore } from '../../stores/carouselStore';
 import { usePhotoStore } from '../../stores/photoStore';
 import {
   CarouselPhotoFrame,
+  CarouselTextFrame,
   getCarouselTotalWidth,
   getSlideXOffset,
   getSlideIndexAtX,
 } from '../../domain/carousel';
 import { drawShapeToContext, getShapeSvgPath } from '../../domain/shapes';
 import { calculateImageOffset } from '../../domain/editor';
+import { DEFAULT_TEXT_STYLE } from '../../domain/text';
 import { DividerOverlayLayer } from '../editor/DividerOverlayLayer';
+import { TextInlineEditor } from '../editor/TextInlineEditor';
+import { CarouselTextNode } from './CarouselTextNode';
 import { extractCanvasDividers, findPhotoSwapTarget, RectFrameInput } from '../../domain/layout/dividerGraph';
 import styles from './CarouselCanvas.module.css';
 
@@ -642,6 +646,13 @@ export function CarouselCanvas({
     ? currentCarousel.slides.flatMap((s) => s.elements.filter((el): el is CarouselPhotoFrame => el.type === 'photo'))
     : [];
 
+  const allTextFrames: CarouselTextFrame[] = currentCarousel
+    ? currentCarousel.slides.flatMap((s) => s.elements.filter((el): el is CarouselTextFrame => el.type === 'text'))
+    : [];
+
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
+  const editingTextFrame = allTextFrames.find((f) => f.id === editingTextId) || null;
+
   const [hoveredSwapTargetFrameId, setHoveredSwapTargetFrameId] = useState<string | null>(null);
 
   const carouselPhotoFrames: RectFrameInput[] = useMemo(() => {
@@ -691,6 +702,39 @@ export function CarouselCanvas({
 
   const getCarouselContextMenuItems = (): ContextMenuItem[] => {
     if (!contextMenu.frameId) return [];
+
+    // Check if target is a text frame
+    const targetTextFrame = allTextFrames.find((f) => f.id === contextMenu.frameId);
+    if (targetTextFrame) {
+      return [
+        {
+          id: 'edit-text',
+          label: 'Edit Text',
+          onClick: () => {
+            setEditingTextId(targetTextFrame.id);
+          },
+        },
+        {
+          id: 'toggle-lock',
+          label: targetTextFrame.locked ? 'Unlock Text Box' : 'Lock Text Box',
+          onClick: () => {
+            useCarouselStore.getState().updateTextFrame(targetTextFrame.id, { locked: !targetTextFrame.locked });
+          },
+        },
+        { id: 'divider-text', label: '', divider: true },
+        {
+          id: 'delete-text',
+          label: 'Delete Text Box',
+          icon: <Trash2 size={14} />,
+          danger: true,
+          onClick: () => {
+            useCarouselStore.getState().deleteSelectedFrames();
+            onToast?.('Deleted text frame');
+          },
+        },
+      ];
+    }
+
     const targetFrame = allFrames.find((f) => f.id === contextMenu.frameId);
     if (!targetFrame) return [];
 
@@ -1094,6 +1138,107 @@ export function CarouselCanvas({
               />
             ))}
 
+            {/* Interactive Text Nodes */}
+            {allTextFrames.map((textFrame) => (
+              <CarouselTextNode
+                key={textFrame.id}
+                frame={textFrame}
+                isSelected={selectedFrameIds.includes(textFrame.id)}
+                isEditing={editingTextId === textFrame.id}
+                onSelect={(e) => {
+                  if (e) e.cancelBubble = true;
+                  const isShift = Boolean(e?.evt?.shiftKey);
+                  toggleFrameSelection(textFrame.id, isShift);
+                  if (currentCarousel) {
+                    const centerX = textFrame.x + textFrame.width / 2;
+                    const targetIdx = getSlideIndexAtX(currentCarousel, centerX);
+                    setActiveSlide(targetIdx);
+                  }
+                }}
+                onChange={(updates) => {
+                  useCarouselStore.getState().updateTextFrame(textFrame.id, updates);
+                }}
+                onDoubleClick={() => {
+                  setEditingTextId(textFrame.id);
+                }}
+                onContextMenu={(e) => {
+                  if (!selectedFrameIds.includes(textFrame.id)) {
+                    setSelectedFrameId(textFrame.id);
+                  }
+                  if (currentCarousel) {
+                    const centerX = textFrame.x + textFrame.width / 2;
+                    const targetIdx = getSlideIndexAtX(currentCarousel, centerX);
+                    setActiveSlide(targetIdx);
+                  }
+                  setContextMenu({
+                    isOpen: true,
+                    x: e.evt.clientX,
+                    y: e.evt.clientY,
+                    frameId: textFrame.id,
+                  });
+                }}
+                onDragStart={() => {
+                  if (selectedFrameIds.includes(textFrame.id) && selectedFrameIds.length > 1) {
+                    const initMap = new Map<string, { x: number; y: number }>();
+                    for (const id of selectedFrameIds) {
+                      const f = [...allFrames, ...allTextFrames].find((item) => item.id === id);
+                      if (f) initMap.set(id, { x: f.x, y: f.y });
+                    }
+                    dragInitialPositionsRef.current = initMap;
+                  } else {
+                    dragInitialPositionsRef.current.clear();
+                  }
+                }}
+                onDragMove={(e) => {
+                  const node = e.target;
+                  if (dragInitialPositionsRef.current.size > 1) {
+                    const initSelf = dragInitialPositionsRef.current.get(textFrame.id);
+                    if (initSelf) {
+                      const dx = node.x() - initSelf.x;
+                      const dy = node.y() - initSelf.y;
+                      dragInitialPositionsRef.current.forEach((initPos, otherId) => {
+                        if (otherId !== textFrame.id) {
+                          const otherNode = stageRef.current?.findOne(`#${otherId}`);
+                          if (otherNode) {
+                            otherNode.position({ x: initPos.x + dx, y: initPos.y + dy });
+                          }
+                        }
+                      });
+                      node.getLayer()?.batchDraw();
+                    }
+                  }
+                }}
+                onDragEnd={(e) => {
+                  const finalX = Math.round(e.target.x());
+                  const finalY = Math.round(e.target.y());
+                  if (dragInitialPositionsRef.current.size > 1) {
+                    const initSelf = dragInitialPositionsRef.current.get(textFrame.id);
+                    if (initSelf) {
+                      const dx = finalX - initSelf.x;
+                      const dy = finalY - initSelf.y;
+                      const batchUpdates: Array<{ id: string; updates: Partial<CarouselPhotoFrame> | Partial<CarouselTextFrame> }> = [];
+                      dragInitialPositionsRef.current.forEach((initPos, otherId) => {
+                        batchUpdates.push({
+                          id: otherId,
+                          updates: {
+                            x: Math.round(initPos.x + dx),
+                            y: Math.round(initPos.y + dy),
+                          },
+                        });
+                      });
+                      useCarouselStore.getState().batchUpdateFrames(batchUpdates);
+                      dragInitialPositionsRef.current.clear();
+                      return;
+                    }
+                  }
+                  useCarouselStore.getState().updateTextFrame(textFrame.id, {
+                    x: finalX,
+                    y: finalY,
+                  });
+                }}
+              />
+            ))}
+
             {/* Selection Transformer */}
             <Transformer
               ref={trRef}
@@ -1113,7 +1258,7 @@ export function CarouselCanvas({
               }}
               onTransformEnd={() => {
                 const nodes = trRef.current?.nodes() || [];
-                const updates: Array<{ id: string; updates: Partial<CarouselPhotoFrame> }> = [];
+                const updates: Array<{ id: string; updates: Partial<CarouselPhotoFrame> | Partial<CarouselTextFrame> }> = [];
                 for (const node of nodes) {
                   const id = node.id();
                   const scaleX = node.scaleX();
@@ -1273,6 +1418,64 @@ export function CarouselCanvas({
             </Layer>
           )}
         </Stage>
+
+        {/* Inline Text Editor Overlay for Carousel Text Frames */}
+        {editingTextFrame && (
+          <TextInlineEditor
+            key={editingTextFrame.id}
+            element={{
+              id: editingTextFrame.id,
+              type: 'text',
+              text: editingTextFrame.text,
+              x: editingTextFrame.x,
+              y: editingTextFrame.y,
+              width: editingTextFrame.width,
+              height: editingTextFrame.height,
+              rotation: editingTextFrame.rotation || 0,
+              opacity: editingTextFrame.opacity ?? 1,
+              locked: editingTextFrame.locked,
+              styledRanges: editingTextFrame.styledRanges,
+              style: {
+                ...DEFAULT_TEXT_STYLE,
+                fontFamily: editingTextFrame.fontFamily || 'SF Pro Display, system-ui, sans-serif',
+                fontSize: editingTextFrame.fontSize || 48,
+                fontWeight: (editingTextFrame.fontWeight as any) || '700',
+                fill: editingTextFrame.color || '#FFFFFF',
+                align: editingTextFrame.align || 'center',
+                lineHeight: editingTextFrame.lineHeight ?? 1.25,
+                letterSpacing: editingTextFrame.letterSpacing ?? 0,
+                ...(editingTextFrame.style || {}),
+              },
+            }}
+            stageRef={stageRef}
+            scaleFactor={scale}
+            canvasUnit="px"
+            dpi={72}
+            onCommit={(newText, newRanges, stylePatch) => {
+              const currentId = editingTextFrame.id;
+              if (currentId) {
+                useCarouselStore.getState().updateTextFrame(currentId, {
+                  text: newText,
+                  ...(newRanges !== undefined ? { styledRanges: newRanges } : {}),
+                  ...(stylePatch
+                    ? {
+                        style: { ...(editingTextFrame.style || {}), ...stylePatch },
+                        align: stylePatch.align ? (stylePatch.align as any) : editingTextFrame.align,
+                        color: stylePatch.fill || editingTextFrame.color,
+                        fontSize: stylePatch.fontSize || editingTextFrame.fontSize,
+                        fontFamily: stylePatch.fontFamily || editingTextFrame.fontFamily,
+                        fontWeight: stylePatch.fontWeight
+                          ? String(stylePatch.fontWeight)
+                          : editingTextFrame.fontWeight,
+                      }
+                    : {}),
+                });
+              }
+              setEditingTextId(null);
+            }}
+            onCancel={() => setEditingTextId(null)}
+          />
+        )}
       </div>
 
       <ContextMenu
