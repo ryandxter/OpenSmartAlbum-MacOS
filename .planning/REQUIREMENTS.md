@@ -32,17 +32,23 @@
 - [ ] **BOR-01**: Ultra-thin photo borders (0.02 - 0.1 mm/pt) render with exact proportional sub-pixel scaling in Export Preview, eliminating artificial 2-device-pixel minimum constraints.
 - [ ] **BOR-02**: Border rendering logic maintains strict visual parity across Editor Canvas, Page Navigator thumbnails, and Native Print/Export Preview.
 
+### 7. On-Device AI Face Detection & Studio Framing Engine (AI)
+- [ ] **AI-01**: Embed and execute lightweight YuNet ONNX model natively via Tauri Rust backend for on-device 5-landmark face detection (<10ms per photo).
+- [ ] **AI-02**: Compute face bounding boxes, eye-level line, and headroom clearance to automatically calculate optimal photo crop centering.
+- [ ] **AI-03**: Integrate with `adaptiveLayout.ts` and `KonvaEditorCanvas.tsx` so layout partitions and multi-photo placement preserve face landmarks and prevent accidental face/head clipping.
+- [ ] **AI-04**: Provide configurable studio preset framing rules (e.g. Pasfoto Formal, Wisuda UNY 50% Shoulder Framing, Portrait Studio) in inspector and contextual right-click actions.
+
 ---
 
 ## Future Requirements (Deferred to v1.5.0+)
-- **AI-01**: On-device YuNet face detection & 5-point landmark detection engine for smart photo framing rules (captured in `.planning/todos/pending/2026-10-02-integrasi-yunet-face-detection-ai-framing-rules.md`).
 - **PRF-01**: Client proofing export with interactive annotation markers and approval selection list.
+- **CLD-01**: Multi-branch studio preset sync with cloud databases.
 
 ---
 
 ## Out of Scope
-- Cloud synchronization or web-hosted real-time collaboration (offline-first architecture constraint).
-- Proprietary proprietary binary font format transcoding (all standard TTF/OTF/WOFF/WOFF2 system fonts supported natively).
+- Cloud-dependent AI inference (strict offline privacy guarantee; all ONNX inference runs locally on CPU/Metal).
+- Proprietary binary font format transcoding (all standard TTF/OTF/WOFF/WOFF2 system fonts supported natively).
 
 ---
 
@@ -55,3 +61,4 @@
 | GUD-01..GUD-02, NAV-01..NAV-02 | Phase 20: Quick Guides & Snapping Popover + Direct Drawer Wheel Scroll | Pending |
 | LAY-01..LAY-04 | Phase 21: Visual Studio Layers Management & Reordering Panel | Pending |
 | BOR-01..BOR-02 | Phase 22: Sub-Pixel Hairline Border Scaling Parity | Pending |
+| AI-01..AI-04 | Phase 23: On-Device AI Face Detection & Studio Framing Engine (YuNet) | Pending |

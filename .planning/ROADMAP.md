@@ -2,7 +2,7 @@
 
 ## Milestone v1.4.0: Workflow & Canvas Precision Suite
 
-**Milestone Goal:** Deliver studio-grade canvas precision and workflow parity: Direct-Canvas Rich Text Color/Hex bar (v1.2.1 parity), Decorative/Overlay Exclusion in Adaptive Layout (v1.1.17 parity), Quick Guides & Snapping popover, Trackpad/wheel horizontal scrolling drawer, Visual Layers management & reordering panel, and sub-pixel hairline border scaling parity.
+**Milestone Goal:** Deliver studio-grade canvas precision, direct rich text formatting, workflow parity, and on-device AI face-aware studio auto-framing.
 
 ---
 
@@ -15,6 +15,7 @@
 | **Phase 20** | **Quick Guides & Snapping Popover + Direct Drawer Wheel Scroll** | Quick-access Guides & Snapping popover beside Spread/Post counter in bottom bar; smooth direct horizontal mouse-wheel and trackpad scrolling in thumbnail drawer. | `GUD-01`, `GUD-02`, `NAV-01`, `NAV-02` | 1. Settings button beside counter opens popover.<br>2. Toggle guides, bleed, safe margins, and snap threshold directly.<br>3. Vertical wheel delta scrolls thumbnail drawer horizontally without Shift. |
 | **Phase 21** | **Visual Studio Layers Management & Reordering Panel** | Dedicated Studio Layers panel in Inspector/Sidebar with drag-and-drop z-index reordering, multi-selection block drag, midpoint insertion indicator, and lock/hide controls. | `LAY-01`, `LAY-02`, `LAY-03`, `LAY-04` | 1. Studio Layers panel displays all spread elements with type icons.<br>2. Drag-to-reorder updates z-index with single history transaction.<br>3. Multi-selected cards reorder together.<br>4. Lock and hide toggles immediately reflect on canvas. |
 | **Phase 22** | **Sub-Pixel Hairline Border Scaling Parity** | Exact proportional scaling and sub-pixel rendering for ultra-thin borders (0.02 - 0.1 mm) across Editor Canvas, Page Navigator thumbnails, and Native Print/Export Preview. | `BOR-01`, `BOR-02` | 1. Micro-borders render proportionally in Export Preview without artificial 2px floor.<br>2. Canvas and thumbnails match high-resolution export geometry exactly. |
+| **Phase 23** | **On-Device AI Face Detection & Studio Framing Engine (YuNet)** | High-speed on-device face & landmark detection via YuNet ONNX in Rust backend, smart headroom/shoulder auto-framing presets (e.g. Pasfoto, Wisuda UNY), and face-aware crop preservation in adaptive layout. | `AI-01`, `AI-02`, `AI-03`, `AI-04` | 1. Rust backend runs YuNet ONNX inference in <10ms.<br>2. Face bounding boxes and 5 landmarks returned to canvas.<br>3. Auto-crop centers faces with correct headroom.<br>4. Studio preset framing rules apply cleanly. |
 
 ---
 
@@ -61,3 +62,12 @@
 - **Success Criteria:**
   1. Micro-borders render proportionally in Export Preview without artificial 2px floor.
   2. Canvas and thumbnails match high-resolution export geometry exactly.
+
+#### Phase 23: On-Device AI Face Detection & Studio Framing Engine (YuNet)
+- **Goal:** Empower the layout engine with on-device face detection and institutional/studio portrait framing rules.
+- **Requirements:** `AI-01`, `AI-02`, `AI-03`, `AI-04`
+- **Success Criteria:**
+  1. Lightweight YuNet ONNX model embedded in Tauri Rust backend executes face detection in <10ms.
+  2. Detects face bounding box and 5 landmarks (eyes, nose, mouth corners) offline with zero cloud dependency.
+  3. Automatically centers and frames portraits with configurable studio rules (e.g. 50% shoulder framing, 10% headroom clearance).
+  4. Adaptive layout variations prioritize face visibility and prevent face decapitation during slot mapping.
