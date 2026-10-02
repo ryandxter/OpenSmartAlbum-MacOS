@@ -25,6 +25,7 @@ export interface TextStyle {
   fontStyle: 'normal' | 'italic';
   textDecoration: 'none' | 'underline' | 'line-through';
   fill: string; // hex or rgba
+  highlight?: string;
   align: 'left' | 'center' | 'right';
   verticalAlign: 'top' | 'middle' | 'bottom';
   lineHeight: number; // multiplier, e.g. 1.25
@@ -61,6 +62,7 @@ export const DEFAULT_TEXT_STYLE: TextStyle = {
   fontStyle: 'normal',
   textDecoration: 'none',
   fill: '#1e293b', // Rich dark slate (or #ffffff for dark themes)
+  highlight: undefined,
   align: 'center',
   verticalAlign: 'middle',
   lineHeight: 1.3,

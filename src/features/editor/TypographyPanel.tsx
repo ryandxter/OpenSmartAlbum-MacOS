@@ -11,6 +11,7 @@ import {
   AlignVerticalJustifyCenter,
   AlignVerticalJustifyEnd,
   RotateCcw,
+  Ban,
 } from 'lucide-react';
 import { useEditorStore } from '../../stores/editorStore';
 import { useAlbumStore } from '../../stores/albumStore';
@@ -26,11 +27,13 @@ import {
   DEFAULT_TEXT_STYLE,
   StyledRange,
   applyStyleToRange,
+  applyHighlightToRange,
   removeStyleRange,
   updateRangesForTextChange,
 } from '../../domain/text';
 import { ColorPicker } from '../../components/ui/ColorPicker';
 import { NumberInput } from '../../components/ui/NumberInput';
+import { HIGHLIGHTER_PRESETS } from './TextFormatToolbar';
 
 interface TypographyPanelProps {
   element: TextNodeElement;
@@ -137,6 +140,28 @@ export function TypographyPanel({ element, onToast }: TypographyPanelProps) {
         panelTextareaRef.current.setSelectionRange(s, e);
       }
     }, 0);
+  };
+
+  const handleApplyHighlight = (color: string | undefined) => {
+    const el = panelTextareaRef.current;
+    if (el && el.selectionStart < el.selectionEnd) {
+      const s = el.selectionStart;
+      const e = el.selectionEnd;
+      const nextRanges = applyHighlightToRange(element.styledRanges, s, e, color);
+      updateTextElement(activeSpreadId, element.id, { styledRanges: nextRanges });
+      setTimeout(() => {
+        if (panelTextareaRef.current) {
+          panelTextareaRef.current.focus();
+          panelTextareaRef.current.setSelectionRange(s, e);
+        }
+      }, 0);
+    } else {
+      handleUpdateStyle({ highlight: color });
+    }
+  };
+
+  const handleClearHighlight = () => {
+    handleApplyHighlight(undefined);
   };
 
   const style = { ...DEFAULT_TEXT_STYLE, ...(element.style || {}) };
@@ -338,6 +363,48 @@ export function TypographyPanel({ element, onToast }: TypographyPanelProps) {
               }}
             >
               U
+            </button>
+            <button
+              type="button"
+              title="Highlight selection (Yellow)"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleApplyHighlight('#FEF08A');
+              }}
+              style={{
+                padding: '1px 5px',
+                fontSize: '10px',
+                fontWeight: 700,
+                color: '#18181b',
+                backgroundColor: '#FEF08A',
+                border: '1px solid rgba(0, 0, 0, 0.2)',
+                borderRadius: '3px',
+                cursor: 'pointer',
+              }}
+            >
+              H
+            </button>
+            <button
+              type="button"
+              title="Clear highlight on selection"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleClearHighlight();
+              }}
+              style={{
+                padding: '1px 4px',
+                fontSize: '10px',
+                color: '#ef4444',
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                borderRadius: '3px',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ban size={9} strokeWidth={2.5} />
             </button>
           </div>
         </div>
@@ -955,13 +1022,49 @@ export function TypographyPanel({ element, onToast }: TypographyPanelProps) {
         </div>
       </div>
 
-      {/* 6. Text Color Picker */}
-      <div>
-        <ColorPicker
-          value={style.fill || '#1e293b'}
-          onChange={(newColor) => handleUpdateStyle({ fill: newColor })}
-          label="Text Color"
-        />
+      {/* 6. Text Color & Highlight Pickers */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div>
+          <ColorPicker
+            value={style.fill || '#1e293b'}
+            onChange={(newColor) => handleUpdateStyle({ fill: newColor })}
+            label="Text Color"
+          />
+        </div>
+
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <span style={{ fontSize: '10px', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 600, letterSpacing: '0.5px' }}>
+              Text Highlight
+            </span>
+            {style.highlight && (
+              <button
+                type="button"
+                onClick={handleClearHighlight}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  fontSize: '10px',
+                  color: 'var(--color-danger, #ef4444)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '1px 4px',
+                }}
+                title="Clear highlight (Transparent)"
+              >
+                <Ban size={11} strokeWidth={2} />
+                <span>Clear</span>
+              </button>
+            )}
+          </div>
+          <ColorPicker
+            value={style.highlight || '#FEF08A'}
+            onChange={(newColor) => handleApplyHighlight(newColor)}
+            presetColors={HIGHLIGHTER_PRESETS.map((p) => p.color)}
+          />
+        </div>
       </div>
 
       {/* 7. Advanced Spacing: Line Height & Tracking */}
