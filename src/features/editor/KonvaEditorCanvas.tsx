@@ -1271,8 +1271,13 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
     y: number;
   } | null>(null);
   const [isShiftPressed, setIsShiftPressed] = useState(false);
+  const [isSwapHandleFocused, setIsSwapHandleFocused] = useState(false);
   const isAltPressedRef = useRef(false);
   const syncAltDragPreviewRef = useRef<(active: boolean) => void>(() => {});
+
+  useEffect(() => {
+    setIsSwapHandleFocused(false);
+  }, [selectedFrameIds, activeSpreadId]);
 
   useEffect(() => {
     const isTextInput = (target: EventTarget | null) => {
@@ -1792,8 +1797,16 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
   // Global Keyboard shortcuts for editor
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
-      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+      const target = e.target as HTMLElement;
+      const isEditingText = Boolean(
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.tagName === 'SELECT' ||
+        target?.isContentEditable ||
+        target?.closest?.('[contenteditable="true"]') ||
+        editingTextElementId !== null
+      );
+      if (isEditingText) return;
       if (!activeSpread) return;
 
       // Do not process canvas keyboard shortcuts if a modal/dialog is open
@@ -1929,10 +1942,28 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
             }
           }
         }
-      } else if (e.key.toLowerCase() === 's' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        if (selectedFrameIds.length === 2 && selectedFrameIds[0] && selectedFrameIds[1]) {
+      } else if (e.key.toLowerCase() === 's' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+        const selectedPhotos = (activeSpread.elements || []).filter(
+          (el): el is PhotoFrameElement =>
+            selectedFrameIds.includes(el.id) && el.type === 'photo' && Boolean(el.photoId) && !el.locked
+        );
+
+        if (selectedFrameIds.length === 2) {
           e.preventDefault();
-          swapFrames(activeSpread.id, selectedFrameIds[0], selectedFrameIds[1]);
+          if (selectedPhotos.length === 2 && selectedPhotos[0] && selectedPhotos[1]) {
+            swapFrames(activeSpread.id, selectedPhotos[0].id, selectedPhotos[1].id);
+            onToast?.('✓ Swapped 2 photos');
+          } else {
+            onToast?.('⚠️ Select 2 unlocked photo frames to swap');
+          }
+        } else if (selectedFrameIds.length === 1) {
+          e.preventDefault();
+          if (selectedPhotos.length === 1) {
+            setIsSwapHandleFocused(true);
+            onToast?.('⇄ Photo swap handle active — drag to another photo to swap');
+          } else {
+            onToast?.('⚠️ Photo swap handle is only available on unlocked photo frames');
+          }
         }
       } else if (e.key.toLowerCase() === 'r' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         if (selectedFrameIds.length > 0 && !editingCropFrameId) {
@@ -4517,20 +4548,20 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                     width={hoveredSwapFrame.width * scaleFactor}
                     height={hoveredSwapFrame.height * scaleFactor}
                     rotation={hoveredSwapFrame.rotation || 0}
-                    fill="rgba(245, 158, 11, 0.2)"
-                    stroke="#f59e0b"
+                    fill="rgba(56, 189, 248, 0.2)"
+                    stroke="#38bdf8"
                     strokeWidth={3}
                     dash={[8, 4]}
                     strokeScaleEnabled={false}
-                    shadowColor="rgba(245, 158, 11, 0.45)"
+                    shadowColor="rgba(56, 189, 248, 0.45)"
                     shadowBlur={8}
                   />
                   <Group x={badgeX} y={badgeY}>
                     <Rect
                       width={badgeWidth}
                       height={badgeHeight}
-                      fill="rgba(69, 39, 8, 0.96)"
-                      stroke="#f59e0b"
+                      fill="rgba(15, 23, 42, 0.96)"
+                      stroke="#38bdf8"
                       strokeWidth={1}
                       cornerRadius={5}
                       shadowColor="rgba(0, 0, 0, 0.6)"
@@ -4543,7 +4574,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                       text="Release"
                       align="center"
                       verticalAlign="middle"
-                      fill="#fde68a"
+                      fill="#38bdf8"
                       fontSize={10}
                       fontStyle="bold"
                       fontFamily="Inter, system-ui, -apple-system, sans-serif"
@@ -4608,12 +4639,12 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                   onDragEnd={handlePhotoSwapDragEnd}
                 >
                   <Circle
-                    radius={12}
+                    radius={isSwapHandleFocused ? 14 : 12}
                     fill="rgba(18, 20, 26, 0.9)"
-                    stroke="#f59e0b"
-                    strokeWidth={1.5}
-                    shadowColor="rgba(0, 0, 0, 0.65)"
-                    shadowBlur={6}
+                    stroke="#38bdf8"
+                    strokeWidth={isSwapHandleFocused ? 2.5 : 1.5}
+                    shadowColor={isSwapHandleFocused ? "#38bdf8" : "rgba(0, 0, 0, 0.65)"}
+                    shadowBlur={isSwapHandleFocused ? 12 : 6}
                     shadowOffset={{ x: 0, y: 2 }}
                   />
                   <KonvaText
@@ -4624,7 +4655,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                     text="⇄"
                     align="center"
                     verticalAlign="middle"
-                    fill="#fbbf24"
+                    fill="#38bdf8"
                     fontSize={15}
                     fontStyle="bold"
                     fontFamily="Inter, system-ui, -apple-system, sans-serif"

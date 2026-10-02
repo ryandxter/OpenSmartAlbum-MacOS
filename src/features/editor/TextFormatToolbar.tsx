@@ -21,6 +21,7 @@ export interface TextFormatToolbarProps {
   onApplyBaseStyle: (patch: Partial<TextStyle>) => void;
   onClearHighlight: () => void;
   onStartSamplingColor?: () => void;
+  onStopSamplingColor?: () => void;
   isSamplingColor?: boolean;
   disabled?: boolean;
   style?: React.CSSProperties;
@@ -109,6 +110,7 @@ export function TextFormatToolbar({
   onApplyBaseStyle,
   onClearHighlight,
   onStartSamplingColor,
+  onStopSamplingColor,
   isSamplingColor = false,
   disabled = false,
   style,
@@ -124,6 +126,11 @@ export function TextFormatToolbar({
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [showHighlightPicker, setShowHighlightPicker] = useState(false);
   const [samplingTarget, setSamplingTarget] = useState<'fill' | 'highlight' | null>(null);
+
+  const stopSampling = useCallback(() => {
+    setSamplingTarget(null);
+    onStopSamplingColor?.();
+  }, [onStopSamplingColor]);
 
   // Font size local input state
   const isFontSizeMixed = activeFormat.fontSize === 'MIXED';
@@ -292,14 +299,14 @@ export function TextFormatToolbar({
         }
       }
 
-      setSamplingTarget(null);
+      stopSampling();
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
         e.stopPropagation();
-        setSamplingTarget(null);
+        stopSampling();
       }
     };
 
@@ -312,7 +319,7 @@ export function TextFormatToolbar({
       window.removeEventListener('pointerdown', handlePointerDown, { capture: true });
       window.removeEventListener('keydown', handleKeyDown, { capture: true });
     };
-  }, [samplingTarget, onApplyRangeFormat]);
+  }, [samplingTarget, onApplyRangeFormat, stopSampling]);
 
   // Saturation / Value drag handler
   const handleSatBoxMouseDown = (

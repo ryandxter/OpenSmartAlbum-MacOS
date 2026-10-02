@@ -302,23 +302,23 @@ describe('ISO-05: Style preservation during layout cycling', () => {
   });
 
   it('cycleSlideLayout still changes frame geometry (x, y, width, height)', () => {
-    const beforeFrameA = useCarouselStore.getState().currentCarousel!.slides[0]!.elements.find(
-      (el) => el.type === 'photo' && (el as CarouselPhotoFrame).photoId === 'photo-a'
+    const beforeFrameB = useCarouselStore.getState().currentCarousel!.slides[0]!.elements.find(
+      (el) => el.type === 'photo' && (el as CarouselPhotoFrame).photoId === 'photo-b'
     ) as CarouselPhotoFrame;
 
     useCarouselStore.getState().cycleSlideLayout('next');
 
     const { currentCarousel } = useCarouselStore.getState();
-    const afterFrameA = currentCarousel!.slides[0]!.elements.find(
-      (el) => el.type === 'photo' && (el as CarouselPhotoFrame).photoId === 'photo-a'
+    const afterFrameB = currentCarousel!.slides[0]!.elements.find(
+      (el) => el.type === 'photo' && (el as CarouselPhotoFrame).photoId === 'photo-b'
     ) as CarouselPhotoFrame;
 
-    // Geometry must change (layout cycling changes positions)
+    // Geometry of unlocked frame must change (layout cycling changes positions around locked photo-a)
     const geometryChanged =
-      afterFrameA.x !== beforeFrameA.x ||
-      afterFrameA.y !== beforeFrameA.y ||
-      afterFrameA.width !== beforeFrameA.width ||
-      afterFrameA.height !== beforeFrameA.height;
+      afterFrameB.x !== beforeFrameB.x ||
+      afterFrameB.y !== beforeFrameB.y ||
+      afterFrameB.width !== beforeFrameB.width ||
+      afterFrameB.height !== beforeFrameB.height;
     expect(geometryChanged).toBe(true);
   });
 

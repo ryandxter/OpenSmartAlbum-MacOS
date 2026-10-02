@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
-import { Stage, Layer, Rect, Line, Text as KonvaText, Group, Image as KonvaImage, Transformer, Path as KonvaPath } from 'react-konva';
+import { Stage, Layer, Rect, Circle, Line, Text as KonvaText, Group, Image as KonvaImage, Transformer, Path as KonvaPath } from 'react-konva';
 import Konva from 'konva';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { Maximize2, Star, RotateCcw, Trash2 } from 'lucide-react';
@@ -299,6 +299,15 @@ export function CarouselCanvas({
   const setHeroPhotoOnSlide = useCarouselStore((s) => s.setHeroPhotoOnSlide);
 
   const dragInitialPositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const [isSwapHandleFocused, setIsSwapHandleFocused] = useState(false);
+  const [isSwapDragging, setIsSwapDragging] = useState(false);
+  const photoSwapHandleRef = useRef<Konva.Group>(null);
+  const photoSwapSourceIdRef = useRef<string | null>(null);
+  const photoSwapHandleOriginRef = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    setIsSwapHandleFocused(false);
+  }, [selectedFrameIds, activeSlideIndex]);
 
   const [contextMenu, setContextMenu] = useState<{
     isOpen: boolean;
@@ -499,16 +508,18 @@ export function CarouselCanvas({
     };
   }, []);
 
-  // Carousel-specific keyboard shortcuts (Delete, Escape, Arrow nudge, Cmd+A)
+  // Carousel-specific keyboard shortcuts (Delete, Escape, Arrow nudge, Cmd+A, Shortcut S)
   // These must live here so keyboard actions route to carousel store, not album store.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.tagName === 'SELECT' ||
-        target.isContentEditable
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.tagName === 'SELECT' ||
+        target?.isContentEditable ||
+        target?.closest?.('[contenteditable="true"]') ||
+        editingTextId !== null
       ) return;
       if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
 
@@ -526,8 +537,22 @@ export function CarouselCanvas({
         return;
       }
 
-      // Escape → deselect all frames
+      // Escape → deselect all frames / cancel active swap drag
       if (e.key === 'Escape') {
+        if (photoSwapSourceIdRef.current) {
+          const origin = photoSwapHandleOriginRef.current;
+          const handle = photoSwapHandleRef.current;
+          if (origin && handle) {
+            handle.position(origin);
+            handle.getLayer()?.batchDraw();
+          }
+          photoSwapSourceIdRef.current = null;
+          photoSwapHandleOriginRef.current = null;
+          setIsSwapDragging(false);
+          setHoveredSwapTargetFrameId(null);
+          stageRef.current?.container().style.setProperty('cursor', 'default');
+          return;
+        }
         useCarouselStore.getState().setSelectedFrameIds([]);
         return;
       }
@@ -537,6 +562,37 @@ export function CarouselCanvas({
         e.preventDefault();
         useCarouselStore.getState().selectAllFramesOnSlide();
         onToast?.('Selected all photos on slide');
+        return;
+      }
+
+      // Shortcut 'S' for Photo Swap
+      if (e.key.toLowerCase() === 's' && !cmdOrCtrl && !e.altKey && !e.shiftKey) {
+        const { selectedFrameIds: selIds, currentCarousel: cc } = useCarouselStore.getState();
+        if (!cc) return;
+
+        const activeSlide = cc.slides[activeSlideIndex];
+        const selectedPhotos = (activeSlide?.elements || []).filter(
+          (el): el is CarouselPhotoFrame =>
+            selIds.includes(el.id) && el.type === 'photo' && Boolean(el.filePath) && !el.locked
+        );
+
+        if (selIds.length === 2) {
+          e.preventDefault();
+          if (selectedPhotos.length === 2 && selectedPhotos[0] && selectedPhotos[1]) {
+            useCarouselStore.getState().swapFrames(selectedPhotos[0].id, selectedPhotos[1].id);
+            onToast?.('✓ Swapped 2 photos');
+          } else {
+            onToast?.('⚠️ Select 2 unlocked photo frames to swap');
+          }
+        } else if (selIds.length === 1) {
+          e.preventDefault();
+          if (selectedPhotos.length === 1) {
+            setIsSwapHandleFocused(true);
+            onToast?.('⇄ Photo swap handle active — drag to another photo to swap');
+          } else {
+            onToast?.('⚠️ Photo swap handle is only available on unlocked photo frames');
+          }
+        }
         return;
       }
 
@@ -577,7 +633,7 @@ export function CarouselCanvas({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [activeSlideIndex]);
 
   // Global mouse up for pan release safety
   useEffect(() => {
@@ -684,6 +740,76 @@ export function CarouselCanvas({
     if (!hoveredDropReplaceFrameId) return null;
     return allFrames.find((f) => f.id === hoveredDropReplaceFrameId) || null;
   }, [allFrames, hoveredDropReplaceFrameId]);
+
+  const selectedPhotosOnSlide = (currentCarousel?.slides[activeSlideIndex]?.elements || []).filter(
+    (el): el is CarouselPhotoFrame =>
+      selectedFrameIds.includes(el.id) && el.type === 'photo' && Boolean(el.filePath) && !el.locked
+  );
+  const swapHandleFrame = selectedFrameIds.length === 1 && !editingTextId && selectedPhotosOnSlide.length === 1
+    ? selectedPhotosOnSlide[0]
+    : undefined;
+
+  const handlePhotoSwapDragStart = (e: Konva.KonvaEventObject<DragEvent>) => {
+    e.cancelBubble = true;
+    if (!swapHandleFrame) return;
+    photoSwapSourceIdRef.current = swapHandleFrame.id;
+    photoSwapHandleOriginRef.current = {
+      x: e.currentTarget.x(),
+      y: e.currentTarget.y(),
+    };
+    setIsSwapDragging(true);
+    setHoveredSwapTargetFrameId(null);
+    stageRef.current?.container().style.setProperty('cursor', 'grabbing');
+  };
+
+  const handlePhotoSwapDragMove = (e: Konva.KonvaEventObject<DragEvent>) => {
+    e.cancelBubble = true;
+    const sourceId = photoSwapSourceIdRef.current;
+    if (!sourceId || !currentCarousel) return;
+
+    const stage = e.currentTarget.getStage();
+    const pointer = stage?.getPointerPosition();
+    if (!pointer) return;
+
+    const canvasX = (pointer.x - stagePos.x) / scale;
+    const canvasY = (pointer.y - stagePos.y) / scale;
+
+    const target = findPhotoSwapTarget(carouselPhotoFrames, { x: canvasX, y: canvasY }, sourceId);
+    setHoveredSwapTargetFrameId(target?.id || null);
+  };
+
+  const handlePhotoSwapDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
+    e.cancelBubble = true;
+    const sourceId = photoSwapSourceIdRef.current;
+    const origin = photoSwapHandleOriginRef.current;
+    const handle = photoSwapHandleRef.current;
+
+    const stage = e.currentTarget.getStage();
+    const pointer = stage?.getPointerPosition();
+    let targetFrame: RectFrameInput | null = null;
+    if (pointer && sourceId) {
+      const canvasX = (pointer.x - stagePos.x) / scale;
+      const canvasY = (pointer.y - stagePos.y) / scale;
+      targetFrame = findPhotoSwapTarget(carouselPhotoFrames, { x: canvasX, y: canvasY }, sourceId);
+    }
+
+    if (sourceId && targetFrame && targetFrame.id !== sourceId) {
+      useCarouselStore.getState().swapFrames(sourceId, targetFrame.id);
+      useCarouselStore.getState().setSelectedFrameId(targetFrame.id);
+      onToast?.('✓ Swapped photos');
+    }
+
+    if (origin && handle) {
+      handle.position(origin);
+      handle.getLayer()?.batchDraw();
+    }
+
+    photoSwapSourceIdRef.current = null;
+    photoSwapHandleOriginRef.current = null;
+    setIsSwapDragging(false);
+    setHoveredSwapTargetFrameId(null);
+    stageRef.current?.container().style.setProperty('cursor', 'default');
+  };
 
   // Update Transformer selection (supports multi-selection)
   useEffect(() => {
@@ -1334,6 +1460,63 @@ export function CarouselCanvas({
                 onToast?.(`Resized ${updates.length} frame${updates.length !== 1 ? 's' : ''}`);
               }}
             />
+
+            {/* Direct on-canvas photo swap handle */}
+            {swapHandleFrame && !isSwapDragging && (
+              <Group
+                key={`photo-swap-handle-${swapHandleFrame.id}`}
+                ref={photoSwapHandleRef}
+                name="photo-swap-handle"
+                x={swapHandleFrame.x + swapHandleFrame.width / 2}
+                y={swapHandleFrame.y + swapHandleFrame.height / 2}
+                draggable
+                dragDistance={3}
+                onMouseDown={(e) => {
+                  e.cancelBubble = true;
+                }}
+                onClick={(e) => {
+                  e.cancelBubble = true;
+                }}
+                onTap={(e) => {
+                  e.cancelBubble = true;
+                }}
+                onMouseEnter={() => {
+                  stageRef.current?.container().style.setProperty('cursor', 'grab');
+                }}
+                onMouseLeave={() => {
+                  if (!photoSwapSourceIdRef.current) {
+                    stageRef.current?.container().style.setProperty('cursor', 'default');
+                  }
+                }}
+                onDragStart={handlePhotoSwapDragStart}
+                onDragMove={handlePhotoSwapDragMove}
+                onDragEnd={handlePhotoSwapDragEnd}
+              >
+                <Circle
+                  radius={isSwapHandleFocused ? 14 : 12}
+                  fill="rgba(18, 20, 26, 0.9)"
+                  stroke="#38bdf8"
+                  strokeWidth={isSwapHandleFocused ? 2.5 : 1.5}
+                  shadowColor={isSwapHandleFocused ? '#38bdf8' : 'rgba(0, 0, 0, 0.65)'}
+                  shadowBlur={isSwapHandleFocused ? 12 : 6}
+                  shadowOffset={{ x: 0, y: 2 }}
+                />
+                <KonvaText
+                  x={-12}
+                  y={-8}
+                  width={24}
+                  height={16}
+                  text="⇄"
+                  align="center"
+                  verticalAlign="middle"
+                  fill="#38bdf8"
+                  fontSize={15}
+                  fontStyle="bold"
+                  fontFamily="Inter, system-ui, -apple-system, sans-serif"
+                  listening={false}
+                />
+              </Group>
+            )}
           </Layer>
 
           {/* Layer 3: Slice Boundary Guides & Slide Number Badges (Overlay) */}

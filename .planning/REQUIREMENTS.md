@@ -10,9 +10,9 @@
 - [x] **TXT-05**: Inline text formatting changes synchronize bidirectionally with the Inspector's TypographyPanel and record into Undo/Redo history.
 
 ### 2. Adaptive Layout Decorative & Overlay Exclusion (EXC)
-- [ ] **EXC-01**: User can toggle `excludeFromAdaptiveLayout` on photo frames (logos, watermarks, stamps) so they are preserved in place during Spacebar layout shuffle and auto-layout generation while remaining fully editable.
-- [ ] **EXC-02**: Adaptive layout engine calculates available zones around excluded and locked frames without geometric collision or unwanted empty gaps.
-- [ ] **EXC-03**: Pressing keyboard shortcut `S` with a single photo frame selected reveals/activates its photo swap handle, and pressing `S` with two photo frames selected immediately swaps their photos.
+- [x] **EXC-01**: User can toggle `excludeFromAdaptiveLayout` on photo frames (logos, watermarks, stamps) so they are preserved in place during Spacebar layout shuffle and auto-layout generation while remaining fully editable.
+- [x] **EXC-02**: Adaptive layout engine calculates available zones around excluded and locked frames without geometric collision or unwanted empty gaps.
+- [x] **EXC-03**: Pressing keyboard shortcut `S` with a single photo frame selected reveals/activates its photo swap handle, and pressing `S` with two photo frames selected immediately swaps their photos.
 
 ### 3. Quick Guides & Snapping Popover (GUD)
 - [ ] **GUD-01**: User can open a dedicated Guides & Snapping quick popover from a settings button located beside the Spread/Post counter in the bottom navigator bar.
@@ -57,7 +57,7 @@
 | Requirement | Phase | Status |
 | :--- | :--- | :--- |
 | TXT-01..TXT-05 | Phase 18: Direct-Canvas Rich Text Color Bar & Inline Hex Editor | Complete |
-| EXC-01..EXC-03 | Phase 19: Adaptive Layout Decorative Exclusion & Photo Swap Shortcut | Pending |
+| EXC-01..EXC-03 | Phase 19: Adaptive Layout Decorative Exclusion & Photo Swap Shortcut | Complete |
 | GUD-01..GUD-02, NAV-01..NAV-02 | Phase 20: Quick Guides & Snapping Popover + Direct Drawer Wheel Scroll | Pending |
 | LAY-01..LAY-04 | Phase 21: Visual Studio Layers Management & Reordering Panel | Pending |
 | BOR-01..BOR-02 | Phase 22: Sub-Pixel Hairline Border Scaling Parity | Pending |

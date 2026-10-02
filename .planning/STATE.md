@@ -2,41 +2,43 @@
 gsd_state_version: "1.0"
 milestone: v1.4.0
 milestone_name: Workflow & Canvas Precision Suite
-status: planning
-last_updated: "2026-10-02T08:39:07.320Z"
+status: executing
+last_updated: "2026-10-02T09:49:00.000Z"
 last_activity: 2026-10-02
 progress:
-  total_phases: 0
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_phases: 6
+  completed_phases: 2
+  total_plans: 15
+  completed_plans: 5
+  percent: 33
 ---
 
-# Project State: OpenSmartAlbum-MacOS Milestone v1.3.0
+# Project State: OpenSmartAlbum-MacOS Milestone v1.4.0
 
 ## Project Reference
 
 See: `.planning/PROJECT.md` & `.planning/ROADMAP.md`
 
-**Core value:** Solid workspace mode isolation, complete SQLite and package persistence for Social Carousel, resilient multi-photo drag-and-drop, and Figma-grade polygon corner radius fillets.  
-**Current status:** ✅ Milestone v1.3.0 completed & shipped (4/4 phases, 11/11 plans). Archived in `.planning/milestones/`.
+**Core value:** Studio-grade canvas precision, direct rich text formatting, workflow parity across Print Album and Social Carousel engines, and on-device AI face-aware studio auto-framing.  
+**Current status:** In Progress (Phases 18 & 19 Complete, Phase 20 Queued)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-10-02 — Milestone v1.4.0 started
+Phase: Phase 20 — Quick Guides & Snapping Popover + Direct Drawer Wheel Scroll
+Plan: Ready for Research / Plan
+Status: Ready for Phase 20 execution
+Last activity: 2026-10-02 — Phase 19 Completed & Verified
 
-## Milestone v1.3.0 Summary (Shipped 2026-09-29)
+## Milestone v1.4.0 Execution Summary
 
 | Phase | Status | Requirements | Plans | Target Deliverables |
 |---|---|---|---|---|
-| Phase 14: Carousel Canvas Multi-Photo Drag-and-Drop & Filmstrip Context Routing | COMPLETED | CAR-01..CAR-04 | 2/2 | `.stageWrapper` drop listener, in-bounds ghost badge, atomic batch placement, mode-aware context menu & double-click |
-| Phase 15: Social Carousel Full SQLite & Package Persistence | COMPLETED | PERS-01..PERS-04 | 3/3 | SQLite v16 carousel schema, IPC save/load, `.afsn` archive, dirty tracking, window close guard, slide thumbnail caching |
-| Phase 16: Workspace Isolation & Mode State Synchronization | COMPLETED | ISO-01..ISO-05 | 3/3 | Global `activeMode` in `appStore`, isolated zoom levels, mode-guarded titlebar/shortcuts, slide coordinate preservation, layout style preservation |
-| Phase 17: Vector Shape Mask Corner Radii & Polygon Tangent Fillets | COMPLETED | VEC-01..VEC-04 | 3/3 | Unlocked Inspector corner radius, vertex fillet tangent arc math in `shapes.ts`, SVG viewBox normalization, Oval preset |
+| **Phase 18: Direct-Canvas Rich Text Color Bar & Inline Hex Editor** | COMPLETED | TXT-01..TXT-05 | 3/3 | Docked TextFormatToolbar, Hex inputs, background highlights, zero-blur focus, dual-engine Konva & Carousel parity |
+| **Phase 19: Adaptive Layout Decorative Exclusion & Photo Swap Shortcut** | COMPLETED | EXC-01..EXC-03 | 2/2 | `excludeFromAdaptiveLayout`, 2D spatial subtraction obstacles, Inspector shield toggle, dual-engine shortcut `S` swap handle parity |
+| **Phase 20: Quick Guides & Snapping Popover + Direct Drawer Wheel Scroll** | QUEUED | GUD-01..GUD-02, NAV-01..NAV-02 | 0/2 | Dedicated Guides & Snapping popover beside counter, direct vertical mouse-wheel horizontal scrolling without Shift |
+| **Phase 21: Visual Studio Layers Management & Reordering Panel** | PENDING | LAY-01..LAY-04 | 0/3 | Visual Studio Layers inspector tab, drag-and-drop z-index reordering, multi-selection block drag, midpoint insertion indicator |
+| **Phase 22: Sub-Pixel Hairline Border Scaling Parity** | PENDING | BOR-01..BOR-02 | 0/2 | Exact sub-pixel border scaling in preview/export without 2px floor, cross-engine canvas/thumbnail/export parity |
+| **Phase 23: On-Device AI Face Detection & Studio Framing Engine (YuNet)** | PENDING | AI-01..AI-04 | 0/3 | Lightweight YuNet ONNX in Tauri Rust backend (<10ms), 5 landmarks, studio auto-framing presets (Pasfoto, Wisuda UNY, Portrait) |
 
 ## Shipped Milestones Summary
 

@@ -14,6 +14,7 @@ import {
   Unlock,
   Crop,
   RotateCw as RefreshIcon,
+  Shield,
 } from 'lucide-react';
 import { useEditorStore } from '../../../stores/editorStore';
 import { useAlbumStore } from '../../../stores/albumStore';
@@ -22,6 +23,8 @@ import { useCarouselStore } from '../../../stores/carouselStore';
 import { NumberInput } from '../../../components/ui/NumberInput';
 import { getMaxGapForUnit } from '../../../domain/units';
 import { getAllAlbumSpreads } from '../../../domain/album';
+import type { PhotoFrameElement } from '../../../domain/editor';
+import type { CarouselPhotoFrame } from '../../../domain/carousel';
 import styles from '../InspectorShared.module.css';
 
 interface LayoutSpacingSectionProps {
@@ -57,7 +60,9 @@ export function LayoutSpacingSection({ onToast, activeMode = 'print' }: LayoutSp
   const currentCarousel = useCarouselStore((s) => s.currentCarousel);
   const activeSlideIndex = useCarouselStore((s) => s.activeSlideIndex);
   const selectedCarouselFrameId = useCarouselStore((s) => s.selectedFrameId);
+  const selectedCarouselFrameIds = useCarouselStore((s) => s.selectedFrameIds);
   const updateCarouselPhotoFrame = useCarouselStore((s) => s.updatePhotoFrame);
+  const batchUpdateCarouselFrames = useCarouselStore((s) => s.batchUpdateFrames);
   const updateSlideBackground = useCarouselStore((s) => s.updateSlideBackground);
 
   const [isRatioLocked, setIsRatioLocked] = useState(true);
@@ -68,6 +73,50 @@ export function LayoutSpacingSection({ onToast, activeMode = 'print' }: LayoutSp
     }
 
     const activeSlide = currentCarousel.slides[activeSlideIndex] || currentCarousel.slides[0];
+    const selectedCarouselPhotos = (activeSlide?.elements || []).filter(
+      (el): el is CarouselPhotoFrame => selectedCarouselFrameIds.includes(el.id) && el.type === 'photo'
+    );
+
+    // Multi-Selection Mode in Carousel (>= 2 frames)
+    if (selectedCarouselFrameIds.length >= 2 && selectedCarouselPhotos.length > 0) {
+      const allExcluded = selectedCarouselPhotos.every((f) => f.excludeFromAdaptiveLayout);
+      return (
+        <div>
+          {/* Layout Constraints & Decorative Exclusion */}
+          <div className={styles.propGroup}>
+            <div className={styles.groupHeader}>
+              <span className={styles.label}>Layout Constraints</span>
+              <span className={styles.subLabel}>{selectedCarouselPhotos.length} photos</span>
+            </div>
+            <button
+              type="button"
+              className={`${styles.actionBtn} ${allExcluded ? styles.iconBtnActive : ''}`}
+              onClick={() => {
+                const nextState = !allExcluded;
+                batchUpdateCarouselFrames(
+                  selectedCarouselPhotos.map((f) => ({
+                    id: f.id,
+                    updates: { excludeFromAdaptiveLayout: nextState },
+                  }))
+                );
+                onToast?.(
+                  nextState
+                    ? '🛡️ Excluded selected frames from auto-layout'
+                    : '✓ Included selected frames in auto-layout'
+                );
+              }}
+              title="Keep these frames stationary at their positions during Spacebar layout cycling"
+            >
+              <Shield size={13} strokeWidth={1.5} />
+              <span>
+                {allExcluded ? 'Include All in Auto-Layout' : 'Exclude All from Auto-Layout'}
+              </span>
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     const selectedCarouselFrame = activeSlide?.elements.find((el) => el.id === selectedCarouselFrameId);
 
     if (selectedCarouselFrame && selectedCarouselFrame.type === 'photo') {
@@ -194,6 +243,30 @@ export function LayoutSpacingSection({ onToast, activeMode = 'print' }: LayoutSp
                 <span>Reset Crop</span>
               </button>
             </div>
+          </div>
+
+          {/* Carousel Layout Constraints */}
+          <div className={styles.propGroup}>
+            <div className={styles.groupHeader}>
+              <span className={styles.label}>Layout Constraints</span>
+            </div>
+            <button
+              type="button"
+              className={`${styles.actionBtn} ${f.excludeFromAdaptiveLayout ? styles.iconBtnActive : ''}`}
+              onClick={() => {
+                const nextState = !f.excludeFromAdaptiveLayout;
+                updateCarouselPhotoFrame(f.id, { excludeFromAdaptiveLayout: nextState });
+                onToast?.(
+                  nextState
+                    ? '🛡️ Excluded from adaptive layout cycling'
+                    : '✓ Included in adaptive layout cycling'
+                );
+              }}
+              title="Keep this frame stationary at its position during Spacebar layout cycling"
+            >
+              <Shield size={13} strokeWidth={1.5} />
+              <span>{f.excludeFromAdaptiveLayout ? 'Excluded from Auto-Layout' : 'Exclude from Auto-Layout'}</span>
+            </button>
           </div>
         </div>
       );
@@ -452,6 +525,41 @@ export function LayoutSpacingSection({ onToast, activeMode = 'print' }: LayoutSp
             </button>
           </div>
         </div>
+
+        {/* Layout Constraints & Decorative Exclusion */}
+        {(() => {
+          const photoElements = selectedElements.filter((item): item is PhotoFrameElement => item.type === 'photo');
+          if (photoElements.length === 0) return null;
+          const allExcluded = photoElements.every((item) => item.excludeFromAdaptiveLayout);
+
+          return (
+            <div className={styles.propGroup}>
+              <div className={styles.groupHeader}>
+                <span className={styles.label}>Layout Constraints</span>
+                <span className={styles.subLabel}>{photoElements.length} photos</span>
+              </div>
+              <button
+                type="button"
+                className={`${styles.actionBtn} ${allExcluded ? styles.iconBtnActive : ''}`}
+                onClick={() => {
+                  const nextState = !allExcluded;
+                  for (const item of photoElements) {
+                    updateFrameGeometry(activeSpreadId, item.id, { excludeFromAdaptiveLayout: nextState });
+                  }
+                  onToast?.(
+                    nextState
+                      ? '🛡️ Excluded selected frames from auto-layout'
+                      : '✓ Included selected frames in auto-layout'
+                  );
+                }}
+                title="Keep these frames stationary at their positions during Spacebar layout cycling"
+              >
+                <Shield size={13} strokeWidth={1.5} />
+                <span>{allExcluded ? 'Include All in Auto-Layout' : 'Exclude All from Auto-Layout'}</span>
+              </button>
+            </div>
+          );
+        })()}
       </div>
     );
   }
@@ -609,6 +717,32 @@ export function LayoutSpacingSection({ onToast, activeMode = 'print' }: LayoutSp
               title="Center Photo and Reset Crop Zoom"
             >
               <span>↺ Reset Crop (Zoom 1.0x)</span>
+            </button>
+          </div>
+        )}
+
+        {/* Layout Constraints & Decorative Exclusion */}
+        {isPhoto && (
+          <div className={styles.propGroup}>
+            <div className={styles.groupHeader}>
+              <span className={styles.label}>Layout Constraints</span>
+            </div>
+            <button
+              type="button"
+              className={`${styles.actionBtn} ${el.excludeFromAdaptiveLayout ? styles.iconBtnActive : ''}`}
+              onClick={() => {
+                const nextState = !el.excludeFromAdaptiveLayout;
+                updateFrameGeometry(activeSpreadId, el.id, { excludeFromAdaptiveLayout: nextState });
+                onToast?.(
+                  nextState
+                    ? '🛡️ Excluded from adaptive layout cycling'
+                    : '✓ Included in adaptive layout cycling'
+                );
+              }}
+              title="Keep this frame stationary at its position during Spacebar layout cycling and templates (ideal for logos, stamps, watermarks)"
+            >
+              <Shield size={13} strokeWidth={1.5} />
+              <span>{el.excludeFromAdaptiveLayout ? 'Excluded from Auto-Layout' : 'Exclude from Auto-Layout'}</span>
             </button>
           </div>
         )}
