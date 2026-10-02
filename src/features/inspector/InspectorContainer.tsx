@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import {
   SlidersHorizontal,
+  Layers,
   Wand2,
   Lock,
   ChevronRight,
@@ -10,9 +11,11 @@ import {
 } from 'lucide-react';
 import { useAlbumStore } from '../../stores/albumStore';
 import { useEditorStore } from '../../stores/editorStore';
+import { useCarouselStore } from '../../stores/carouselStore';
 import { getAllAlbumSpreads } from '../../domain/album';
 import { TemplatesPanel } from '../templates/TemplatesPanel';
 import { LockedPhotosPanel } from '../editor/LockedPhotosPanel';
+import { StudioLayersPanel } from './layers/StudioLayersPanel';
 import { AccordionSection } from './AccordionSection';
 import { useAccordionState } from './useAccordionState';
 import { LayoutSpacingSection } from './sections/LayoutSpacingSection';
@@ -32,7 +35,10 @@ export function InspectorContainer({ onClose, onToast, activeMode }: InspectorCo
   const activeSpreadId = useAlbumStore((s) => s.activeSpreadId);
   const selectedFrameIds = useEditorStore((s) => s.selectedFrameIds);
 
-  const [activeTab, setActiveTab] = useState<'properties' | 'smart_layout' | 'locks'>('properties');
+  const currentCarousel = useCarouselStore((s) => s.currentCarousel);
+  const activeSlideIndex = useCarouselStore((s) => s.activeSlideIndex);
+
+  const [activeTab, setActiveTab] = useState<'properties' | 'layers' | 'smart_layout' | 'locks'>('properties');
   const contentRef = useRef<HTMLDivElement>(null);
 
   const { isOpen, toggleSection } = useAccordionState([
@@ -44,7 +50,17 @@ export function InspectorContainer({ onClose, onToast, activeMode }: InspectorCo
 
   const allSpreads = currentAlbum ? getAllAlbumSpreads(currentAlbum) : [];
   const activeSpread = allSpreads.find((s) => s.id === activeSpreadId) || allSpreads[0];
-  const lockCount = (activeSpread?.elements || []).filter((f) => f.locked).length;
+
+  const carouselElements = currentCarousel?.slides[activeSlideIndex]?.elements || [];
+  const printElements = activeSpread?.elements || [];
+
+  const lockCount = activeMode === 'carousel'
+    ? carouselElements.filter((f) => f.locked).length
+    : printElements.filter((f) => f.locked).length;
+
+  const layerCount = activeMode === 'carousel'
+    ? carouselElements.length
+    : printElements.length;
 
   // Auto-scroll to top whenever selection changes in properties tab
   useEffect(() => {
@@ -75,7 +91,20 @@ export function InspectorContainer({ onClose, onToast, activeMode }: InspectorCo
             <SlidersHorizontal size={15} strokeWidth={1.5} />
           </button>
 
-          {/* Tab 2: Smart Layout */}
+          {/* Tab 2: Visual Studio Layers */}
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'layers'}
+            className={`${styles.tabBtn} ${activeTab === 'layers' ? styles.tabBtnActive : ''}`}
+            onClick={() => setActiveTab('layers')}
+            title="Visual Layers & Z-Order Management (⌥2)"
+          >
+            <Layers size={15} strokeWidth={1.5} />
+            {layerCount > 0 && <span className={styles.layerBadge}>{layerCount}</span>}
+          </button>
+
+          {/* Tab 3: Smart Layout */}
           <button
             type="button"
             role="tab"
@@ -87,7 +116,7 @@ export function InspectorContainer({ onClose, onToast, activeMode }: InspectorCo
             <Wand2 size={15} strokeWidth={1.5} />
           </button>
 
-          {/* Tab 3: Locked Elements */}
+          {/* Tab 4: Locked Elements */}
           <button
             type="button"
             role="tab"
@@ -115,7 +144,9 @@ export function InspectorContainer({ onClose, onToast, activeMode }: InspectorCo
 
       {/* Tab Contents */}
       <div className={styles.content} ref={contentRef}>
-        {activeTab === 'smart_layout' ? (
+        {activeTab === 'layers' ? (
+          <StudioLayersPanel mode={activeMode} />
+        ) : activeTab === 'smart_layout' ? (
           <TemplatesPanel onApplyToast={(msg) => onToast?.(msg)} activeMode={activeMode} />
         ) : activeTab === 'locks' ? (
           <LockedPhotosPanel onToast={(msg) => onToast?.(msg)} />

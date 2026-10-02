@@ -126,7 +126,7 @@ function MiniSpreadPreview({ spread, project }: MiniSpreadPreviewProps) {
       {/* Real-time Rendered Photo & Text Elements */}
       <div style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none' }}>
         {alignPreviewElementBounds({
-          elements: spread.elements || [],
+          elements: (spread.elements || []).filter((el) => !el.hidden),
           projection,
           singlePageW: dims.pageWidth,
           singlePageH: dims.pageHeight,

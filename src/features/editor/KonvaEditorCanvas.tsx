@@ -1667,7 +1667,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
   }, [activeSpread?.elements, selectedFrameIds]);
 
   const transformableSelectedFrames = useMemo(
-    () => selectedFramesList.filter((element) => !element.locked),
+    () => selectedFramesList.filter((element) => !element.locked && !element.hidden),
     [selectedFramesList]
   );
   const transformableSelectedFrameIds = useMemo(
@@ -3172,6 +3172,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
           {/* Layer 2: Interactive Photo Frames & Text Nodes */}
           <Layer>
             {(activeSpread.elements || []).map((element) => {
+              if (element.hidden) return null;
               if (element.type === 'text') {
                 const textEl = element as TextNodeElement;
                 const isSelected = selectedFrameIds.includes(textEl.id);

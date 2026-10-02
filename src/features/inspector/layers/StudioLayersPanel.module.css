@@ -1,0 +1,213 @@
+.layersContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--color-bg-secondary, #1e1e22);
+}
+
+.header {
+  padding: 8px 10px 10px 10px;
+  border-bottom: 1px solid var(--color-border, #2e2e33);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--color-bg-secondary, #1e1e22);
+  flex-shrink: 0;
+}
+
+.headerTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.contextBadge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-secondary, #a1a1aa);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.headerIcon {
+  color: var(--color-text-muted, #71717a);
+}
+
+.batchActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.headerActionBtn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--color-text-muted, #71717a);
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.headerActionBtn:hover {
+  background: var(--color-surface-hover, #38383f);
+  color: var(--color-text-primary, #f4f4f5);
+  border-color: var(--color-border, #2e2e33);
+}
+
+.lockActive {
+  color: var(--color-warning, #f59e0b) !important;
+}
+
+.searchBar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 26px;
+  background: var(--color-bg-primary, #18181b);
+  border: 1px solid var(--color-border, #2e2e33);
+  border-radius: 4px;
+  padding: 0 6px;
+}
+
+.searchIcon {
+  color: var(--color-text-muted, #71717a);
+  margin-right: 6px;
+}
+
+.searchInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  font-size: 11.5px;
+  color: var(--color-text-primary, #f4f4f5);
+  outline: none;
+}
+
+.searchInput::placeholder {
+  color: var(--color-text-muted, #71717a);
+}
+
+.clearSearchBtn {
+  background: transparent;
+  border: none;
+  color: var(--color-text-muted, #71717a);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+}
+
+.selectionBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 26px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  padding: 0 8px;
+}
+
+.selectedCountBadge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-primary, #f4f4f5);
+}
+
+.selectionActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stepperBtn {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: var(--color-text-secondary, #a1a1aa);
+  cursor: pointer;
+}
+
+.stepperBtn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--color-text-primary, #f4f4f5);
+}
+
+.listContainer {
+  position: relative;
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Insertion Line Indicator */
+.insertionLine {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  height: 2px;
+  background-color: var(--color-accent, #ffffff);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.45);
+  border-radius: 1px;
+  z-index: 1000;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: top 60ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.insertionLine::before {
+  content: '';
+  position: absolute;
+  left: -3px;
+  top: -2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--color-text-muted, #71717a);
+}
+
+.emptyIcon {
+  margin-bottom: 10px;
+  opacity: 0.4;
+}
+
+.emptyTitle {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary, #a1a1aa);
+  margin-bottom: 4px;
+}
+
+.emptySubtitle {
+  font-size: 10.5px;
+  max-width: 180px;
+  line-height: 1.3;
+}

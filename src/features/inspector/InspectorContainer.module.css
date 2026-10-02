@@ -55,12 +55,11 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-.lockBadge {
+.lockBadge,
+.layerBadge {
   position: absolute;
   top: -2px;
   right: -2px;
-  background: #f59e0b;
-  color: #000000;
   font-size: 9px;
   font-weight: 800;
   min-width: 14px;
@@ -71,6 +70,16 @@
   align-items: center;
   justify-content: center;
   box-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+}
+
+.lockBadge {
+  background: #f59e0b;
+  color: #000000;
+}
+
+.layerBadge {
+  background: #3b82f6;
+  color: #ffffff;
 }
 
 .closeBtn {

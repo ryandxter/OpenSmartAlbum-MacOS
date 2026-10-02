@@ -813,11 +813,16 @@ export function CarouselCanvas({
     stageRef.current?.container().style.setProperty('cursor', 'default');
   };
 
-  // Update Transformer selection (supports multi-selection)
+  // Update Transformer selection (supports multi-selection, ignoring locked/hidden)
   useEffect(() => {
     if (!trRef.current || !stageRef.current) return;
     if (selectedFrameIds.length > 0) {
-      const nodes = selectedFrameIds
+      const allElements = [...allFrames, ...allTextFrames];
+      const transformableIds = selectedFrameIds.filter((id) => {
+        const el = allElements.find((item) => item.id === id);
+        return el && !el.locked && !el.hidden;
+      });
+      const nodes = transformableIds
         .map((id) => stageRef.current?.findOne(`#${id}`))
         .filter(Boolean) as Konva.Node[];
       trRef.current.nodes(nodes);
@@ -826,7 +831,7 @@ export function CarouselCanvas({
     }
     trRef.current.nodes([]);
     trRef.current.getLayer()?.batchDraw();
-  }, [selectedFrameIds]);
+  }, [selectedFrameIds, allFrames, allTextFrames]);
 
   const getCarouselContextMenuItems = (): ContextMenuItem[] => {
     if (!contextMenu.frameId) return [];
@@ -1154,7 +1159,9 @@ export function CarouselCanvas({
 
           {/* Layer 2: Interactive Photo Frames (Seamless across slides) */}
           <Layer>
-            {allFrames.map((frame) => (
+            {allFrames.map((frame) => {
+              if (frame.hidden) return null;
+              return (
               <CarouselFrameNode
                 key={frame.id}
                 frame={frame}
@@ -1264,10 +1271,13 @@ export function CarouselCanvas({
                   setHoveredSwapTargetFrameId(null);
                 }}
               />
-            ))}
+              );
+            })}
 
             {/* Interactive Text Nodes */}
-            {allTextFrames.map((textFrame) => (
+            {allTextFrames.map((textFrame) => {
+              if (textFrame.hidden) return null;
+              return (
               <CarouselTextNode
                 key={textFrame.id}
                 frame={textFrame}
@@ -1365,7 +1375,8 @@ export function CarouselCanvas({
                   });
                 }}
               />
-            ))}
+              );
+            })}
 
             {/* Selection Transformer */}
             <Transformer

@@ -121,7 +121,7 @@ export function SlideNavigator({ onOpenSimulator }: SlideNavigatorProps) {
 
   const allFrames: CarouselPhotoFrame[] = useMemo(() => {
     if (!currentCarousel) return [];
-    return currentCarousel.slides.flatMap((s) => s.elements.filter((el): el is CarouselPhotoFrame => el.type === 'photo'));
+    return currentCarousel.slides.flatMap((s) => s.elements.filter((el): el is CarouselPhotoFrame => el.type === 'photo' && !el.hidden));
   }, [currentCarousel]);
 
   // Direct Smart Horizontal Wheel Scrolling for Carousel Slide Track
@@ -158,7 +158,7 @@ export function SlideNavigator({ onOpenSimulator }: SlideNavigatorProps) {
       <div ref={slidesTrackRef} className={styles.slidesTrack}>
         {slides.map((slide, idx) => {
           const isActive = activeSlideIndex === idx;
-          const photoCount = slide.elements.filter((el) => el.type === 'photo').length;
+          const photoCount = slide.elements.filter((el) => el.type === 'photo' && !el.hidden).length;
 
           return (
             <div

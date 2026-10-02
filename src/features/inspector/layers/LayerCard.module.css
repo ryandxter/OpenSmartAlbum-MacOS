@@ -1,0 +1,170 @@
+.card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 8px;
+  border-radius: var(--radius-md, 6px);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 100ms ease, border-color 100ms ease;
+}
+
+.card:hover {
+  background-color: var(--color-surface-hover, rgba(255, 255, 255, 0.05));
+  border-color: var(--color-border-subtle, rgba(255, 255, 255, 0.08));
+}
+
+.selected {
+  background-color: var(--color-accent-subtle, rgba(255, 255, 255, 0.09)) !important;
+  border-color: var(--color-accent-border, rgba(255, 255, 255, 0.22)) !important;
+  box-shadow: inset 2px 0 0 var(--color-accent, #ffffff);
+}
+
+.multiSelected {
+  background-color: rgba(255, 255, 255, 0.07) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  box-shadow: inset 2px 0 0 rgba(255, 255, 255, 0.6);
+}
+
+.dragging {
+  opacity: 0.3;
+  border: 1px dashed var(--color-accent, #ffffff);
+}
+
+.hiddenState {
+  opacity: 0.5;
+}
+
+.lockedState .layerTitle {
+  color: var(--color-text-secondary, #a1a1aa);
+}
+
+.dragGrip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  color: var(--color-text-muted, #71717a);
+  opacity: 0.25;
+  cursor: grab;
+  transition: opacity 100ms ease;
+}
+
+.card:hover .dragGrip {
+  opacity: 0.9;
+}
+
+.card:active .dragGrip {
+  cursor: grabbing;
+}
+
+.infoCol {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.layerTitle {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-primary, #f4f4f5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.layerSubtitle {
+  font-size: 10px;
+  color: var(--color-text-muted, #71717a);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.renameInput {
+  height: 20px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--color-text-primary, #f4f4f5);
+  background: var(--color-bg-primary, #18181b);
+  border: 1px solid var(--color-accent, #ffffff);
+  border-radius: 3px;
+  padding: 0 4px;
+  outline: none;
+}
+
+.excBadge {
+  font-size: 8.5px;
+  font-weight: 700;
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--color-warning, #f59e0b);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 0 3px;
+  border-radius: 2px;
+  line-height: 1.2;
+}
+
+.quickActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 100ms ease;
+}
+
+.card:hover .quickActions,
+.selected .quickActions,
+.multiSelected .quickActions {
+  opacity: 1;
+}
+
+/* Permanently show locked or hidden buttons when active */
+.hiddenState .quickActions,
+.lockedState .quickActions {
+  opacity: 1;
+}
+
+.actionBtn {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--color-text-muted, #71717a);
+  cursor: pointer;
+  transition: background 100ms, color 100ms;
+}
+
+.actionBtn:hover {
+  background: var(--color-surface-active, #44444c);
+  color: var(--color-text-primary, #f4f4f5);
+}
+
+.actionActive {
+  color: var(--color-text-secondary, #a1a1aa);
+}
+
+.lockActive {
+  color: var(--color-warning, #f59e0b) !important;
+}
+
+.deleteBtn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--color-danger, #ef4444);
+}

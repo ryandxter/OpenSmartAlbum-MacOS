@@ -109,6 +109,7 @@ export const ExportSpreadPreview: React.FC<ExportSpreadPreviewProps> = ({
   // Filter and project elements visible in current viewMode
   const visibleElements = useMemo(() => {
     return (spread.elements || []).filter((el) => {
+      if (el.hidden) return false;
       if (viewMode === 'spread') return true;
       if (viewMode === 'left-page') {
         // Must overlap left page: x < singlePageW
