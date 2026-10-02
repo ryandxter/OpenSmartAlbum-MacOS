@@ -64,3 +64,8 @@ Next Step: Run `/gsd-new-milestone` to define requirements and roadmap for the n
 - Phases 01-05: Core Architecture, Layout Engine, Photo Ingestion, Inspector & Styling, Export & Print PDF.
 
 </details>
+
+## Accumulated Context
+
+### Pending Todos
+- [2026-10-02] [ai] Integrasi YuNet Face Detection & AI Framing Rules — [todo file](.planning/todos/pending/2026-10-02-integrasi-yunet-face-detection-ai-framing-rules.md)
