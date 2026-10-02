@@ -8,7 +8,9 @@ import {
   Plus,
   X,
   LayoutGrid,
+  SlidersHorizontal,
 } from 'lucide-react';
+import { QuickGuidesPopover } from '../editor/QuickGuidesPopover';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useAlbumStore } from '../../stores/albumStore';
 import { useEditorStore } from '../../stores/editorStore';
@@ -296,6 +298,9 @@ export function PageNavigator() {
   const [spreadsToDelete, setSpreadsToDelete] = useState<Spread[] | null>(null);
   const [draggedSpreadIndex, setDraggedSpreadIndex] = useState<number | null>(null);
   const [dragOverSpreadIndex, setDragOverSpreadIndex] = useState<number | null>(null);
+  const [isGuidesPopoverOpen, setIsGuidesPopoverOpen] = useState(false);
+  const guidesBtnRef = useRef<HTMLButtonElement>(null);
+  const drawerListRef = useRef<HTMLDivElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const isDrawerHoveredRef = useRef(false);
   const [contextMenu, setContextMenu] = useState<{
@@ -309,6 +314,37 @@ export function PageNavigator() {
     y: 0,
     targetSpread: null,
   });
+
+  // Direct Smart Horizontal Wheel Scrolling for Spread Drawer
+  useEffect(() => {
+    const el = drawerListRef.current;
+    if (!el) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // 1. Guard against zoom / modifier shortcuts
+      if (e.ctrlKey || e.metaKey) return;
+
+      // 2. Convert vertical wheel rotation to horizontal scroll
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        e.preventDefault();
+
+        // 3. Normalize delta across deltaModes (pixel vs line vs page)
+        let delta = e.deltaY;
+        if (e.deltaMode === 1) {
+          delta *= 40; // DOM_DELTA_LINE (standard mouse wheel notches)
+        } else if (e.deltaMode === 2) {
+          delta *= 800; // DOM_DELTA_PAGE
+        }
+
+        el.scrollLeft += delta;
+      }
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+    };
+  }, [isSpreadDrawerOpen]);
 
   // Keyboard navigation & multi-selection shortcuts
   useEffect(() => {
@@ -597,7 +633,7 @@ export function PageNavigator() {
             </button>
           </div>
 
-          <div className={styles.drawerList}>
+          <div ref={drawerListRef} className={styles.drawerList}>
             {allSpreads.map((spread, index) => {
               const isActive = activeSpreadId === spread.id;
               const isSelected = selectedSpreadIds.includes(spread.id);
@@ -776,6 +812,29 @@ export function PageNavigator() {
             <span>Next</span>
             <ChevronRight size={13} strokeWidth={1.75} />
           </button>
+
+          {/* Quick Guides & Snapping Trigger Button */}
+          <div style={{ position: 'relative' }}>
+            <button
+              ref={guidesBtnRef}
+              type="button"
+              className={`${styles.navBtn} ${isGuidesPopoverOpen ? styles.navBtnActive : ''}`}
+              onClick={() => setIsGuidesPopoverOpen((prev) => !prev)}
+              title="Canvas Guides & Snapping Settings"
+              aria-haspopup="dialog"
+              aria-expanded={isGuidesPopoverOpen}
+            >
+              <SlidersHorizontal size={13} strokeWidth={1.5} />
+            </button>
+
+            <QuickGuidesPopover
+              mode="print"
+              isOpen={isGuidesPopoverOpen}
+              onClose={() => setIsGuidesPopoverOpen(false)}
+              anchorRef={guidesBtnRef}
+              align="center"
+            />
+          </div>
         </div>
 
         <div className={styles.divider} />

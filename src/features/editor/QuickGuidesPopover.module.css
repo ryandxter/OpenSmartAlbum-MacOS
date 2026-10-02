@@ -1,0 +1,252 @@
+.popoverContainer {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  width: 310px;
+  max-height: 480px;
+  background: var(--color-bg-surface, #1E1E22);
+  border: 1px solid var(--color-border-subtle, #2E2E33);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(16px);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+  animation: popoverFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes popoverFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.align_center {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.align_left {
+  left: 0;
+}
+
+.align_right {
+  right: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-border-subtle, #2E2E33);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.headerTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.headerIcon {
+  color: var(--color-accent, #38bdf8);
+}
+
+.headerTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary, #F4F4F5);
+}
+
+.closeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary, #A1A1AA);
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.closeBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text-primary, #F4F4F5);
+}
+
+.scrollBody {
+  padding: 10px 14px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.scrollBody::-webkit-scrollbar {
+  width: 4px;
+}
+
+.scrollBody::-webkit-scrollbar-thumb {
+  background: var(--color-border-subtle, #2E2E33);
+  border-radius: 2px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sectionLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary, #71717A);
+  margin-bottom: 2px;
+}
+
+.itemsList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.itemRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.itemRow:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.itemTitle {
+  font-size: 12px;
+  color: var(--color-text-primary, #E4E4E7);
+}
+
+.itemDesc {
+  font-size: 10px;
+  color: var(--color-text-secondary, #A1A1AA);
+}
+
+.divider {
+  height: 1px;
+  background: var(--color-border-subtle, #2E2E33);
+  margin: 2px 0;
+}
+
+.masterRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--color-border-subtle, #2E2E33);
+  cursor: pointer;
+}
+
+.masterRow:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.masterInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.masterTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.masterIcon {
+  color: #ec4899;
+}
+
+.thresholdSection {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.subLabel {
+  font-size: 11px;
+  color: var(--color-text-secondary, #A1A1AA);
+}
+
+.pillsContainer {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+
+.levelPill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 2px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border-subtle, #2E2E33);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.levelPill:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--color-text-secondary, #71717A);
+}
+
+.levelPillActive {
+  background: var(--color-accent-subtle, rgba(56, 189, 248, 0.15)) !important;
+  border-color: var(--color-accent, #38bdf8) !important;
+}
+
+.pillLevel {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-primary, #F4F4F5);
+}
+
+.pillName {
+  font-size: 8.5px;
+  color: var(--color-text-secondary, #A1A1AA);
+}
+
+.activeLevelMetric {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: var(--color-text-secondary, #A1A1AA);
+  padding: 4px 6px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.metricBadge {
+  font-weight: 600;
+  color: var(--color-accent, #38bdf8);
+}

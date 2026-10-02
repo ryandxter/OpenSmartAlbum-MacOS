@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Plus,
   Copy,
@@ -6,7 +6,9 @@ import {
   Smartphone,
   ChevronLeft,
   ChevronRight,
+  SlidersHorizontal,
 } from 'lucide-react';
+import { QuickGuidesPopover } from '../editor/QuickGuidesPopover';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useCarouselStore } from '../../stores/carouselStore';
 import {
@@ -104,6 +106,10 @@ export function SlideNavigator({ onOpenSimulator }: SlideNavigatorProps) {
   const reorderSlide = useCarouselStore((s) => s.reorderSlide);
   const setRatio = useCarouselStore((s) => s.setRatio);
 
+  const [isGuidesPopoverOpen, setIsGuidesPopoverOpen] = useState(false);
+  const guidesBtnRef = useRef<HTMLButtonElement>(null);
+  const slidesTrackRef = useRef<HTMLDivElement>(null);
+
   const slides = currentCarousel?.slides || [];
   const totalSlides = slides.length;
   const isAtMax = totalSlides >= MAX_CAROUSEL_SLIDES;
@@ -118,10 +124,38 @@ export function SlideNavigator({ onOpenSimulator }: SlideNavigatorProps) {
     return currentCarousel.slides.flatMap((s) => s.elements.filter((el): el is CarouselPhotoFrame => el.type === 'photo'));
   }, [currentCarousel]);
 
+  // Direct Smart Horizontal Wheel Scrolling for Carousel Slide Track
+  useEffect(() => {
+    const el = slidesTrackRef.current;
+    if (!el) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) return;
+
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        e.preventDefault();
+
+        let delta = e.deltaY;
+        if (e.deltaMode === 1) {
+          delta *= 40;
+        } else if (e.deltaMode === 2) {
+          delta *= 800;
+        }
+
+        el.scrollLeft += delta;
+      }
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
+
   return (
     <nav className={styles.navigatorContainer} aria-label="Carousel Slide Navigator">
       {/* Slides Thumbnail Track */}
-      <div className={styles.slidesTrack}>
+      <div ref={slidesTrackRef} className={styles.slidesTrack}>
         {slides.map((slide, idx) => {
           const isActive = activeSlideIndex === idx;
           const photoCount = slide.elements.filter((el) => el.type === 'photo').length;
@@ -249,6 +283,29 @@ export function SlideNavigator({ onOpenSimulator }: SlideNavigatorProps) {
         </button>
 
         <div style={{ width: 1, height: 24, backgroundColor: 'var(--color-border-subtle, #2E2E33)' }} />
+
+        {/* Quick Guides & Snapping Trigger Button */}
+        <div style={{ position: 'relative' }}>
+          <button
+            ref={guidesBtnRef}
+            type="button"
+            className={`${styles.actionBtn} ${isGuidesPopoverOpen ? styles.actionBtnActive : ''}`}
+            onClick={() => setIsGuidesPopoverOpen((prev) => !prev)}
+            title="Slide Guides & Snapping Settings"
+            aria-haspopup="dialog"
+            aria-expanded={isGuidesPopoverOpen}
+          >
+            <SlidersHorizontal size={13} strokeWidth={1.5} />
+          </button>
+
+          <QuickGuidesPopover
+            mode="carousel"
+            isOpen={isGuidesPopoverOpen}
+            onClose={() => setIsGuidesPopoverOpen(false)}
+            anchorRef={guidesBtnRef}
+            align="center"
+          />
+        </div>
 
         {/* Phone Swipe Simulator Preview Button */}
         <button

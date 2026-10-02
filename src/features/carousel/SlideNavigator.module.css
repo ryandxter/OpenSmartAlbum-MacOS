@@ -7,8 +7,9 @@
   border-top: 1px solid var(--color-border-subtle, #2E2E33);
   padding: 0 16px;
   user-select: none;
-  overflow-x: auto;
+  overflow: visible;
   gap: 12px;
+  position: relative;
 }
 
 .navigatorContainer::-webkit-scrollbar {
@@ -94,6 +95,12 @@
 .actionBtn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.actionBtnActive {
+  background-color: rgba(56, 189, 248, 0.15) !important;
+  border-color: var(--color-accent, #38bdf8) !important;
+  color: var(--color-accent, #38bdf8) !important;
 }
 
 .previewBtn {
