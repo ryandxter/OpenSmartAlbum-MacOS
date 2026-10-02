@@ -30,8 +30,8 @@
 - [x] **LAY-04**: User can toggle lock/unlock and visibility (hide/show) directly on individual layer cards.
 
 ### 6. Sub-Pixel Hairline Border Scaling Parity (BOR)
-- [ ] **BOR-01**: Ultra-thin photo borders (0.02 - 0.1 mm/pt) render with exact proportional sub-pixel scaling in Export Preview, eliminating artificial 2-device-pixel minimum constraints.
-- [ ] **BOR-02**: Border rendering logic maintains strict visual parity across Editor Canvas, Page Navigator thumbnails, and Native Print/Export Preview.
+- [x] **BOR-01**: Ultra-thin photo borders (0.02 - 0.1 mm/pt) render with exact proportional sub-pixel scaling in Export Preview, eliminating artificial 2-device-pixel minimum constraints.
+- [x] **BOR-02**: Border rendering logic maintains strict visual parity across Editor Canvas, Page Navigator thumbnails, and Native Print/Export Preview.
 
 ### 7. On-Device AI Face Detection & Studio Framing Engine (AI)
 - [ ] **AI-01**: Embed and execute lightweight YuNet ONNX model natively via Tauri Rust backend for on-device 5-landmark face detection (<10ms per photo).
@@ -61,5 +61,5 @@
 | EXC-01..EXC-03 | Phase 19: Adaptive Layout Decorative Exclusion & Photo Swap Shortcut | Complete |
 | GUD-01..GUD-02, NAV-01..NAV-02 | Phase 20: Quick Guides & Snapping Popover + Direct Drawer Wheel Scroll | Complete |
 | LAY-01..LAY-04 | Phase 21: Visual Studio Layers Management & Reordering Panel | Complete |
-| BOR-01..BOR-02 | Phase 22: Sub-Pixel Hairline Border Scaling Parity | Pending |
+| BOR-01..BOR-02 | Phase 22: Sub-Pixel Hairline Border Scaling Parity | Complete |
 | AI-01..AI-04 | Phase 23: On-Device AI Face Detection & Studio Framing Engine (YuNet) | Pending |
