@@ -3,8 +3,8 @@ use std::path::Path;
 use image::{ImageBuffer, RgbaImage};
 use serde::{Deserialize, Serialize};
 
-use super::{encode_jpeg_with_dpi, parse_hex_color};
-use super::psd_writer::generate_shape_mask;
+use super::{compute_rect_border_alpha, encode_jpeg_with_dpi, parse_hex_color};
+use super::psd_writer::{compute_corner_alpha, generate_shape_mask};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -27,7 +27,7 @@ pub struct CarouselSlidePayload {
     pub elements: Vec<CarouselElementPayload>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CarouselElementPayload {
     pub id: String,
@@ -46,7 +46,20 @@ pub struct CarouselElementPayload {
     pub crop_scale: Option<f64>,
     pub rotation: Option<f64>,
     pub corner_radius: Option<f64>,
+    pub corner_radius_tl: Option<f64>,
+    pub corner_radius_tr: Option<f64>,
+    pub corner_radius_br: Option<f64>,
+    pub corner_radius_bl: Option<f64>,
     pub shape_type: Option<String>,
+    pub custom_svg_path: Option<String>,
+    #[serde(default)]
+    pub border_enabled: Option<bool>,
+    #[serde(default)]
+    pub border_width: Option<f64>,
+    pub border_color: Option<String>,
+    pub border_style: Option<String>,
+    #[serde(default)]
+    pub opacity: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -159,22 +172,35 @@ pub fn render_carousel_panorama(payload: &CarouselPayload) -> RgbaImage {
             target_h,
         );
 
-        let Some(mut rendered_photo) = photo_img else {
+        let Some(rendered_photo) = photo_img else {
             continue;
         };
 
-        // Apply optional corner radius or non-rectangular shape mask
-        let cr = elem.corner_radius.unwrap_or(0.0);
+        let r_tl = elem.corner_radius_tl.or(elem.corner_radius).unwrap_or(0.0).max(0.0);
+        let r_tr = elem.corner_radius_tr.or(elem.corner_radius).unwrap_or(0.0).max(0.0);
+        let r_br = elem.corner_radius_br.or(elem.corner_radius).unwrap_or(0.0).max(0.0);
+        let r_bl = elem.corner_radius_bl.or(elem.corner_radius).unwrap_or(0.0).max(0.0);
+        let has_corner_radius = r_tl > 0.5 || r_tr > 0.5 || r_br > 0.5 || r_bl > 0.5;
+
+        let border_enabled = elem.border_enabled.unwrap_or(false);
+        let border_width = elem.border_width.unwrap_or(0.0);
+        let has_border = border_enabled && border_width > 0.0;
+        let border_px = if has_border { border_width } else { 0.0 };
+        let border_color_str = elem.border_color.as_deref().unwrap_or("#FFFFFF");
+        let border_color = parse_hex_color(border_color_str);
+        let elem_opacity = elem.opacity.unwrap_or(1.0).clamp(0.0, 1.0);
+        let frame_w_f = target_w as f64;
+        let frame_h_f = target_h as f64;
+        let inner_w = (frame_w_f - 2.0 * border_px).max(0.0);
+        let inner_h = (frame_h_f - 2.0 * border_px).max(0.0);
+        let inner_r_tl = (r_tl - border_px).max(0.0);
+        let inner_r_tr = (r_tr - border_px).max(0.0);
+        let inner_r_br = (r_br - border_px).max(0.0);
+        let inner_r_bl = (r_bl - border_px).max(0.0);
+
         let shape = elem.shape_type.as_deref();
-        if let Some(mask) = generate_shape_mask(shape, None, (cr, cr, cr, cr), target_w, target_h) {
-            for y in 0..target_h {
-                for x in 0..target_w {
-                    let mask_alpha = mask.get_pixel(x, y)[0] as f64 / 255.0;
-                    let p = rendered_photo.get_pixel_mut(x, y);
-                    p[3] = ((p[3] as f64) * mask_alpha).round() as u8;
-                }
-            }
-        }
+        let custom_svg = elem.custom_svg_path.as_deref();
+        let shape_mask = generate_shape_mask(shape, custom_svg, (r_tl, r_tr, r_br, r_bl), target_w, target_h);
 
         // Composite onto master continuous canvas
         let dest_base_x = elem.x.round() as i64;
@@ -194,20 +220,94 @@ pub fn render_carousel_panorama(payload: &CarouselPayload) -> RgbaImage {
                     continue;
                 }
 
-                let src = rendered_photo.get_pixel(fx, fy);
-                let alpha = src[3] as f64 / 255.0;
-                if alpha < 0.001 {
+                let shape_alpha = if let Some(ref m) = shape_mask {
+                    m.get_pixel(fx, fy)[0] as f64 / 255.0
+                } else {
+                    1.0
+                };
+
+                let corner_alpha = if has_corner_radius {
+                    compute_corner_alpha(
+                        fx as f64 + 0.5,
+                        fy as f64 + 0.5,
+                        frame_w_f,
+                        frame_h_f,
+                        r_tl,
+                        r_tr,
+                        r_br,
+                        r_bl,
+                    )
+                } else {
+                    1.0
+                };
+
+                if corner_alpha < 0.001 || shape_alpha < 0.001 {
                     continue;
                 }
 
-                if alpha > 0.999 {
-                    canvas.put_pixel(dx as u32, dy as u32, *src);
+                let border_alpha = if !has_border || border_px <= 0.0 {
+                    0.0
+                } else if !has_corner_radius {
+                    compute_rect_border_alpha(fx as f64 + 0.5, fy as f64 + 0.5, frame_w_f, frame_h_f, border_px)
+                } else {
+                    let px_center_x = fx as f64 + 0.5;
+                    let px_center_y = fy as f64 + 0.5;
+                    if border_px < 1.0 {
+                        let outer_alpha = corner_alpha;
+                        if outer_alpha > 0.0 {
+                            let dist_to_edge = (px_center_x.min(frame_w_f - px_center_x)).min(px_center_y.min(frame_h_f - px_center_y));
+                            if dist_to_edge < 1.0 {
+                                (border_px * outer_alpha).clamp(0.0, 1.0)
+                            } else {
+                                0.0
+                            }
+                        } else {
+                            0.0
+                        }
+                    } else {
+                        let inner_alpha = if inner_w > 0.0 && inner_h > 0.0
+                            && px_center_x >= border_px && px_center_x < frame_w_f - border_px
+                            && px_center_y >= border_px && px_center_y < frame_h_f - border_px {
+                            compute_corner_alpha(
+                                px_center_x - border_px, px_center_y - border_px,
+                                inner_w, inner_h, inner_r_tl, inner_r_tr, inner_r_br, inner_r_bl,
+                            )
+                        } else {
+                            0.0
+                        };
+                        (corner_alpha - inner_alpha).clamp(0.0, 1.0)
+                    }
+                };
+
+                let p = rendered_photo.get_pixel(fx, fy);
+                let photo_alpha = p[3] as f64 / 255.0 * corner_alpha * shape_alpha;
+                let source_alpha = border_alpha + photo_alpha * (1.0 - border_alpha);
+                let effective_alpha = (source_alpha * elem_opacity).clamp(0.0, 1.0);
+                if effective_alpha < 0.001 {
+                    continue;
+                }
+
+                let source_color = if border_alpha > 0.0 {
+                    let photo_weight = photo_alpha * (1.0 - border_alpha);
+                    [
+                        ((border_color[0] as f64 * border_alpha + p[0] as f64 * photo_weight) / source_alpha).round() as u8,
+                        ((border_color[1] as f64 * border_alpha + p[1] as f64 * photo_weight) / source_alpha).round() as u8,
+                        ((border_color[2] as f64 * border_alpha + p[2] as f64 * photo_weight) / source_alpha).round() as u8,
+                    ]
+                } else {
+                    [p[0], p[1], p[2]]
+                };
+
+                if effective_alpha > 0.999 {
+                    canvas.put_pixel(dx as u32, dy as u32, image::Rgba([
+                        source_color[0], source_color[1], source_color[2], 255,
+                    ]));
                 } else {
                     let dst = canvas.get_pixel_mut(dx as u32, dy as u32);
-                    let inv = 1.0 - alpha;
-                    dst[0] = ((src[0] as f64 * alpha) + (dst[0] as f64 * inv)).round() as u8;
-                    dst[1] = ((src[1] as f64 * alpha) + (dst[1] as f64 * inv)).round() as u8;
-                    dst[2] = ((src[2] as f64 * alpha) + (dst[2] as f64 * inv)).round() as u8;
+                    let inv = 1.0 - effective_alpha;
+                    dst[0] = ((source_color[0] as f64 * effective_alpha) + (dst[0] as f64 * inv)).round() as u8;
+                    dst[1] = ((source_color[1] as f64 * effective_alpha) + (dst[1] as f64 * inv)).round() as u8;
+                    dst[2] = ((source_color[2] as f64 * effective_alpha) + (dst[2] as f64 * inv)).round() as u8;
                     dst[3] = 255;
                 }
             }
@@ -397,6 +497,78 @@ mod tests {
         assert_eq!(pano_img.height(), 200);
 
         // Clean up
+        let _ = fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_carousel_slicer_panorama_with_border() {
+        let temp_dir = std::env::temp_dir().join(format!("carousel_border_test_{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&temp_dir).unwrap();
+        let photo_path = temp_dir.join("black_photo.png");
+        let black_img: RgbaImage = ImageBuffer::from_pixel(100, 100, Rgba([0, 0, 0, 255]));
+        black_img.save(&photo_path).unwrap();
+
+        let payload = CarouselPayload {
+            project_id: "test-carousel-border".to_string(),
+            project_name: "Border Test".to_string(),
+            ratio: "1:1".to_string(),
+            slide_width_px: 200,
+            slide_height_px: 200,
+            total_slides: 1,
+            slides: vec![
+                CarouselSlidePayload {
+                    id: "s1".to_string(),
+                    slide_index: 0,
+                    background_color: "#FFFFFF".to_string(),
+                    elements: vec![
+                        CarouselElementPayload {
+                            id: "frame-1".to_string(),
+                            file_path: Some(photo_path.to_string_lossy().to_string()),
+                            preview_path: None,
+                            name: None,
+                            hidden: Some(false),
+                            x: 20.0,
+                            y: 20.0,
+                            width: 100.0,
+                            height: 100.0,
+                            crop_x: None,
+                            crop_y: None,
+                            crop_scale: None,
+                            rotation: None,
+                            corner_radius: None,
+                            corner_radius_tl: None,
+                            corner_radius_tr: None,
+                            corner_radius_br: None,
+                            corner_radius_bl: None,
+                            shape_type: None,
+                            custom_svg_path: None,
+                            border_enabled: Some(true),
+                            border_width: Some(4.0),
+                            border_color: Some("#FF0000".to_string()), // Red border
+                            border_style: Some("solid".to_string()),
+                            opacity: Some(1.0),
+                        }
+                    ],
+                }
+            ],
+        };
+
+        let pano = render_carousel_panorama(&payload);
+        assert_eq!(pano.width(), 200);
+        assert_eq!(pano.height(), 200);
+
+        // Check border pixel at frame edge (x=21, y=21) -> Should be red
+        let border_pixel = pano.get_pixel(21, 21);
+        assert_eq!(border_pixel[0], 255, "Red channel must be 255 for border pixel");
+        assert_eq!(border_pixel[1], 0, "Green channel must be 0 for red border");
+        assert_eq!(border_pixel[2], 0, "Blue channel must be 0 for red border");
+
+        // Check photo interior pixel (x=40, y=40) -> Should be black photo
+        let photo_pixel = pano.get_pixel(40, 40);
+        assert_eq!(photo_pixel[0], 0, "Interior pixel should be black photo");
+        assert_eq!(photo_pixel[1], 0);
+        assert_eq!(photo_pixel[2], 0);
+
         let _ = fs::remove_dir_all(&temp_dir);
     }
 }

@@ -296,6 +296,7 @@ fn test_live_e2e_export_print_album_and_carousel() {
                         rotation: None,
                         corner_radius: Some(16.0),
                         shape_type: None,
+                        ..Default::default()
                     }
                 ],
             },
@@ -321,6 +322,7 @@ fn test_live_e2e_export_print_album_and_carousel() {
                         rotation: None,
                         corner_radius: Some(8.0),
                         shape_type: None,
+                        ..Default::default()
                     },
                     CarouselElementPayload {
                         id: "el2b".to_string(),
@@ -338,6 +340,7 @@ fn test_live_e2e_export_print_album_and_carousel() {
                         rotation: None,
                         corner_radius: Some(8.0),
                         shape_type: None,
+                        ..Default::default()
                     },
                 ],
             },
@@ -364,6 +367,7 @@ fn test_live_e2e_export_print_album_and_carousel() {
                         rotation: None,
                         corner_radius: Some(12.0),
                         shape_type: None,
+                        ..Default::default()
                     }
                 ],
             },
@@ -396,6 +400,7 @@ fn test_live_e2e_export_print_album_and_carousel() {
                         rotation: None,
                         corner_radius: None,
                         shape_type: Some("circle".to_string()),
+                        ..Default::default()
                     },
                     CarouselElementPayload {
                         id: "el5-heart".to_string(),
@@ -413,6 +418,7 @@ fn test_live_e2e_export_print_album_and_carousel() {
                         rotation: None,
                         corner_radius: None,
                         shape_type: Some("heart".to_string()),
+                        ..Default::default()
                     },
                 ],
             },

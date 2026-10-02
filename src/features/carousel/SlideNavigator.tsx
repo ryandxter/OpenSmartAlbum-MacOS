@@ -85,6 +85,20 @@ function MiniSlidePreview({ slide, slideIndex, slideWidth, slideHeight, allFrame
                 loading="lazy"
               />
             )}
+            {frame.borderEnabled && (frame.borderWidth || 0) > 0 && (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  boxSizing: 'border-box',
+                  pointerEvents: 'none',
+                  borderStyle: frame.borderStyle || 'solid',
+                  borderWidth: `${Math.max(0.5, (frame.borderWidth || 1) * (slideWidth > 0 ? 120 / slideWidth : 0.1))}px`,
+                  borderColor: frame.borderColor || '#ffffff',
+                  borderRadius: 'inherit',
+                }}
+              />
+            )}
           </div>
         );
       })}

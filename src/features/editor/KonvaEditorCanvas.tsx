@@ -755,9 +755,12 @@ function PhotoFrameNode({
       </Group>
 
       {/* Frame Border (Inside Stroke or Vector Contour to match shape) */}
-      {frame.borderEnabled && (() => {
-        const strokePx = Math.max(1, Math.round((frame.borderWidth || 0) * scaleFactor));
-        const strokeDash = frame.borderStyle === 'dashed' ? [strokePx * 2.5, strokePx * 1.5] : undefined;
+      {frame.borderEnabled && (frame.borderWidth || 0) > 0 && (() => {
+        const strokePx = (frame.borderWidth || 0) * scaleFactor;
+        if (strokePx <= 0) return null;
+        const strokeDash = frame.borderStyle === 'dashed'
+          ? [Math.max(1.5, strokePx * 3), Math.max(1.0, strokePx * 2)]
+          : undefined;
         const isCustomShape = frame.shapeType && frame.shapeType !== 'rectangle' && frame.shapeType !== 'rounded';
 
         if (isCustomShape) {

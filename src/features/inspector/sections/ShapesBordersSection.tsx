@@ -15,6 +15,8 @@ import {
 import { useEditorStore } from '../../../stores/editorStore';
 import { useAlbumStore } from '../../../stores/albumStore';
 import { useCarouselStore } from '../../../stores/carouselStore';
+import { useProjectStore } from '../../../stores/projectStore';
+import { UNIT_LABELS } from '../../../domain/units';
 import { ColorPicker } from '../../../components/ui/ColorPicker';
 import { Switch } from '../../../components/ui/Switch';
 import { NumberInput } from '../../../components/ui/NumberInput';
@@ -41,6 +43,24 @@ export function ShapesBordersSection({ onToast, activeMode = 'print' }: ShapesBo
   // Carousel Store state
   const currentCarousel = useCarouselStore((s) => s.currentCarousel);
   const selectedCarouselFrameId = useCarouselStore((s) => s.selectedFrameId);
+
+  // Project state
+  const currentProject = useProjectStore((s) => s.currentProject);
+
+  const canvasUnit = isCarousel ? 'px' : (currentProject?.canvasUnit || 'mm');
+  const unitSuffix = isCarousel ? 'px' : (UNIT_LABELS[canvasUnit] || canvasUnit);
+  const borderStep = isCarousel
+    ? 1
+    : canvasUnit === 'inch'
+    ? 0.01
+    : canvasUnit === 'cm'
+    ? 0.01
+    : canvasUnit === 'mm'
+    ? 0.05
+    : 0.5;
+  const borderPrecision = isCarousel ? 0 : 2;
+  const borderMax = isCarousel ? 40 : canvasUnit === 'inch' ? 2 : canvasUnit === 'cm' ? 5 : canvasUnit === 'mm' ? 50 : 50;
+  const borderMin = isCarousel ? 1 : 0.01;
 
   const [isCornersLinked, setIsCornersLinked] = useState(true);
   const svgInputRef = useRef<HTMLInputElement>(null);
@@ -90,7 +110,7 @@ export function ShapesBordersSection({ onToast, activeMode = 'print' }: ShapesBo
 
   // Border values
   const borderEnabled = Boolean(activeTarget.borderEnabled);
-  const borderWidth = Number(activeTarget.borderWidth || 1);
+  const borderWidth = Number(activeTarget.borderWidth ?? (isCarousel ? 1 : 0.5));
   const borderColor = String(activeTarget.borderColor || '#FFFFFF');
   const borderStyle = String(activeTarget.borderStyle || 'solid');
 
@@ -457,9 +477,11 @@ export function ShapesBordersSection({ onToast, activeMode = 'print' }: ShapesBo
               <div style={{ width: '100px' }}>
                 <NumberInput
                   value={borderWidth}
-                  min={1}
-                  max={40}
-                  suffix="px"
+                  min={borderMin}
+                  max={borderMax}
+                  step={borderStep}
+                  precision={borderPrecision}
+                  suffix={unitSuffix}
                   onChange={(w) => updateSelectedBorders({ borderWidth: w })}
                 />
               </div>

@@ -130,8 +130,11 @@ function CarouselFrameNode({
     frame.cornerRadiusBl ?? frame.cornerRadius ?? 0,
   ];
   const hasRounding = cornerRadiiArray.some((r) => r > 0);
-  const strokePx = Math.max(1, Math.round(frame.borderWidth || 1));
-  const strokeDash = frame.borderStyle === 'dashed' ? [strokePx * 2.5, strokePx * 1.5] : undefined;
+  const rawBorderWidth = Number(frame.borderWidth ?? (frame.borderEnabled ? 1 : 0));
+  const strokePx = frame.borderEnabled && rawBorderWidth > 0 ? rawBorderWidth : 0;
+  const strokeDash = frame.borderStyle === 'dashed'
+    ? [Math.max(1.5, strokePx * 3), Math.max(1.0, strokePx * 2)]
+    : undefined;
 
   // Real natural photo aspect ratio from loaded image or frame metadata
   const naturalAspect = (imageObj && imageObj.naturalWidth > 0 && imageObj.naturalHeight > 0)
@@ -221,7 +224,7 @@ function CarouselFrameNode({
       </Group>
 
       {/* Frame Border (Vector Contour or Rounded/Rect stroke) */}
-      {frame.borderEnabled && (() => {
+      {frame.borderEnabled && strokePx > 0 && (() => {
         const isCustomShape = frame.shapeType && frame.shapeType !== 'rectangle' && frame.shapeType !== 'rounded';
         if (isCustomShape) {
           const pathData = getShapeSvgPath(frame.shapeType as any, frame.width, frame.height, cornerRadiiArray, frame.customSvgPath);

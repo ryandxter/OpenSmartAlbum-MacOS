@@ -108,6 +108,35 @@ pub fn unit_to_pixels_with_base_dpi(val: f64, unit: &str, project_base_dpi: i32,
     val * scale
 }
 
+/// Computes continuous sub-pixel coverage alpha for an inside rectangular border.
+/// For hairline borders (0.0 < border_px < 1.0), edge perimeter pixels receive fractional
+/// alpha proportional to border_px, providing high-DPI anti-aliased hairline rendering.
+#[inline]
+pub fn compute_rect_border_alpha(
+    px: f64,
+    py: f64,
+    frame_w: f64,
+    frame_h: f64,
+    border_px: f64,
+) -> f64 {
+    if border_px <= 0.0 {
+        return 0.0;
+    }
+    let dist_to_edge = (px.min(frame_w - px)).min(py.min(frame_h - py));
+    if dist_to_edge < 0.0 {
+        return 0.0;
+    }
+    if border_px < 1.0 {
+        if dist_to_edge < 1.0 {
+            border_px
+        } else {
+            0.0
+        }
+    } else {
+        (border_px - dist_to_edge + 0.5).clamp(0.0, 1.0)
+    }
+}
+
 /// Standard IEEE 802.3 CRC32 calculation for PNG chunks
 fn crc32(data: &[u8]) -> u32 {
     let mut crc = 0xFFFF_FFFFu32;
@@ -648,7 +677,7 @@ fn render_photo_element(
     let frame_w_f = frame_px_w as f64;
     let frame_h_f = frame_px_h as f64;
     let has_border = elem.border_enabled && elem.border_width > 0.0;
-    let border_px = if has_border { (elem.border_width * scale_factor).round().max(1.0) } else { 0.0 };
+    let border_px = if has_border { elem.border_width * scale_factor } else { 0.0 };
     let border_color = parse_hex_color(&elem.border_color);
     let inner_w = (frame_w_f - 2.0 * border_px).max(0.0);
     let inner_h = (frame_h_f - 2.0 * border_px).max(0.0);
@@ -702,29 +731,39 @@ fn render_photo_element(
                 continue;
             }
 
-            let border_alpha = if !has_border {
+            let border_alpha = if !has_border || border_px <= 0.0 {
                 0.0
             } else if !has_corner_radius {
-                if (fx as f64) < border_px || (fy as f64) < border_px
-                    || (fx as f64) >= frame_w_f - border_px || (fy as f64) >= frame_h_f - border_px {
-                    1.0
-                } else {
-                    0.0
-                }
+                compute_rect_border_alpha(fx as f64 + 0.5, fy as f64 + 0.5, frame_w_f, frame_h_f, border_px)
             } else {
                 let px_center_x = fx as f64 + 0.5;
                 let px_center_y = fy as f64 + 0.5;
-                let inner_alpha = if inner_w > 0.0 && inner_h > 0.0
-                    && px_center_x >= border_px && px_center_x < frame_w_f - border_px
-                    && px_center_y >= border_px && px_center_y < frame_h_f - border_px {
-                    compute_corner_alpha(
-                        px_center_x - border_px, px_center_y - border_px,
-                        inner_w, inner_h, inner_r_tl, inner_r_tr, inner_r_br, inner_r_bl,
-                    )
+                if border_px < 1.0 {
+                    // Sub-pixel hairline on rounded rect: blend outer boundary scaled by border_px
+                    let outer_alpha = corner_alpha;
+                    if outer_alpha > 0.0 {
+                        let dist_to_edge = (px_center_x.min(frame_w_f - px_center_x)).min(px_center_y.min(frame_h_f - px_center_y));
+                        if dist_to_edge < 1.0 {
+                            (border_px * outer_alpha).clamp(0.0, 1.0)
+                        } else {
+                            0.0
+                        }
+                    } else {
+                        0.0
+                    }
                 } else {
-                    0.0
-                };
-                (corner_alpha - inner_alpha).clamp(0.0, 1.0)
+                    let inner_alpha = if inner_w > 0.0 && inner_h > 0.0
+                        && px_center_x >= border_px && px_center_x < frame_w_f - border_px
+                        && px_center_y >= border_px && px_center_y < frame_h_f - border_px {
+                        compute_corner_alpha(
+                            px_center_x - border_px, px_center_y - border_px,
+                            inner_w, inner_h, inner_r_tl, inner_r_tr, inner_r_br, inner_r_bl,
+                        )
+                    } else {
+                        0.0
+                    };
+                    (corner_alpha - inner_alpha).clamp(0.0, 1.0)
+                }
             };
 
             let p = resized_rgba.get_pixel(fx, fy);
@@ -2705,6 +2744,119 @@ mod tests {
         assert_eq!(left_p.height(), sharpened_base.height());
         assert_eq!(right_p.height(), sharpened_base.height());
         assert!(right_start > 0 && right_start < total_w);
+    }
+
+    #[test]
+    fn test_compute_rect_border_alpha_subpixel_hairline() {
+        let b = 0.236; // hairline border in pixels
+        let frame_w = 100.0;
+        let frame_h = 100.0;
+
+        // Pixel center at edge perimeter (dist < 1.0)
+        let alpha_edge = compute_rect_border_alpha(0.5, 50.0, frame_w, frame_h, b);
+        assert!((alpha_edge - 0.236).abs() < 1e-6, "Perimeter pixel should receive fractional alpha equal to border width");
+
+        // Pixel center deeply inside (dist >= 1.0)
+        let alpha_inside = compute_rect_border_alpha(5.0, 50.0, frame_w, frame_h, b);
+        assert_eq!(alpha_inside, 0.0, "Inner pixels beyond 1px should receive zero border alpha");
+
+        // Pixel outside bounds
+        let alpha_outside = compute_rect_border_alpha(-0.5, 50.0, frame_w, frame_h, b);
+        assert_eq!(alpha_outside, 0.0, "Outside pixels receive zero alpha");
+    }
+
+    #[test]
+    fn test_compute_rect_border_alpha_thick_border() {
+        let b = 3.0;
+        let frame_w = 100.0;
+        let frame_h = 100.0;
+
+        // Pixel right at edge (dist = 0.5) -> (3.0 - 0.5 + 0.5) clamped to 1.0 = 1.0
+        let alpha_edge = compute_rect_border_alpha(0.5, 50.0, frame_w, frame_h, b);
+        assert_eq!(alpha_edge, 1.0, "Edge pixel should be fully opaque");
+
+        // Pixel at transition boundary (dist = 3.0) -> (3.0 - 3.0 + 0.5) = 0.5
+        let alpha_trans = compute_rect_border_alpha(3.0, 50.0, frame_w, frame_h, b);
+        assert!((alpha_trans - 0.5).abs() < 1e-6, "Transition pixel should have anti-aliased 0.5 alpha");
+
+        // Pixel inside (dist = 5.0) -> (3.0 - 5.0 + 0.5) clamped to 0.0 = 0.0
+        let alpha_inner = compute_rect_border_alpha(5.0, 50.0, frame_w, frame_h, b);
+        assert_eq!(alpha_inner, 0.0, "Interior pixel should receive zero border alpha");
+    }
+
+    #[test]
+    fn test_subpixel_hairline_export_rasterization() {
+        let temp_dir = std::env::temp_dir().join(format!("border_test_{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&temp_dir).unwrap();
+        let photo_path = temp_dir.join("black_photo.png");
+        let black_img: RgbaImage = ImageBuffer::from_pixel(100, 100, Rgba([0, 0, 0, 255]));
+        black_img.save(&photo_path).unwrap();
+
+        let mut canvas: RgbaImage = ImageBuffer::from_pixel(200, 200, Rgba([255, 255, 255, 255])); // White canvas
+        let elem = ElementPayload {
+            id: "photo-1".to_string(),
+            r#type: "photo".to_string(),
+            photo_id: Some("p1".to_string()),
+            file_path: photo_path.to_string_lossy().to_string(),
+            file_name: "black_photo.png".to_string(),
+            preview_path: None,
+            thumbnail_path: None,
+            name: None,
+            hidden: None,
+            x: 10.0,
+            y: 10.0,
+            width: 50.0,
+            height: 50.0,
+            rotation: 0.0,
+            z_index: 1,
+            photo_aspect: 1.0,
+            group_id: None,
+            original_width: None,
+            original_height: None,
+            crop_x: 0.0,
+            crop_y: 0.0,
+            crop_scale: 1.0,
+            crop_rotation: None,
+            border_enabled: true,
+            border_width: 0.05, // 0.05 mm hairline
+            border_color: "#FF0000".to_string(), // Red border
+            opacity: 1.0,
+            locked: None,
+            text_payload: None,
+            corner_radius_tl: 0.0,
+            corner_radius_tr: 0.0,
+            corner_radius_br: 0.0,
+            corner_radius_bl: 0.0,
+            corner_radius: None,
+            shape_type: None,
+            custom_svg_path: None,
+        };
+
+        // Render at 300 DPI (scale_factor for mm = 300 / 25.4 ≈ 11.811 px/mm)
+        // border_px = 0.05 * 11.811 ≈ 0.59055 px (< 1.0 px hairline)
+        let scale_factor = 300.0 / 25.4;
+        render_photo_element(
+            &mut canvas,
+            &elem,
+            None,
+            0.0,
+            0.0,
+            scale_factor,
+            false,
+            200.0,
+            200.0,
+            0.0,
+            0.0,
+        );
+
+        let elem_px_x = (elem.x * scale_factor).round() as u32;
+        let elem_px_y = (elem.y * scale_factor).round() as u32;
+        let edge_pixel = canvas.get_pixel(elem_px_x, elem_px_y);
+
+        // Border is Red (#FF0000) with sub-pixel alpha ~0.59 over Black photo:
+        assert!(edge_pixel[0] > 100, "Hairline red border must contribute red channel to edge pixels (got R={})", edge_pixel[0]);
+
+        let _ = fs::remove_dir_all(&temp_dir);
     }
 }
 

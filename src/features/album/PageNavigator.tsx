@@ -255,10 +255,15 @@ function MiniSpreadPreview({ spread, project }: MiniSpreadPreviewProps) {
                 }}
               />
             )}
-            {photoEl.borderEnabled && photoEl.borderWidth > 0 && (
+            {photoEl.borderEnabled && (photoEl.borderWidth || 0) > 0 && (
               <div style={{
-                position: 'absolute', inset: 0, boxSizing: 'border-box', pointerEvents: 'none',
-                border: `${photoEl.borderWidth * scale}px solid ${photoEl.borderColor || '#ffffff'}`,
+                position: 'absolute',
+                inset: 0,
+                boxSizing: 'border-box',
+                pointerEvents: 'none',
+                borderStyle: photoEl.borderStyle || 'solid',
+                borderWidth: `${photoEl.borderWidth * scale}px`,
+                borderColor: photoEl.borderColor || '#ffffff',
                 borderRadius: 'inherit',
               }} />
             )}
