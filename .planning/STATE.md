@@ -3,14 +3,14 @@ gsd_state_version: "1.0"
 milestone: v1.4.0
 milestone_name: Workflow & Canvas Precision Suite
 status: executing
-last_updated: "2026-10-02T09:49:00.000Z"
+last_updated: "2026-10-02T14:26:00.000Z"
 last_activity: 2026-10-02
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 15
-  completed_plans: 5
-  percent: 33
+  completed_plans: 7
+  percent: 47
 ---
 
 # Project State: OpenSmartAlbum-MacOS Milestone v1.4.0
@@ -20,14 +20,14 @@ progress:
 See: `.planning/PROJECT.md` & `.planning/ROADMAP.md`
 
 **Core value:** Studio-grade canvas precision, direct rich text formatting, workflow parity across Print Album and Social Carousel engines, and on-device AI face-aware studio auto-framing.  
-**Current status:** In Progress (Phases 18 & 19 Complete, Phase 20 Queued)
+**Current status:** In Progress (Phases 18, 19, & 20 Complete, Phase 21 Queued)
 
 ## Current Position
 
-Phase: Phase 20 — Quick Guides & Snapping Popover + Direct Drawer Wheel Scroll
+Phase: Phase 21 — Visual Studio Layers Management & Reordering Panel
 Plan: Ready for Research / Plan
-Status: Ready for Phase 20 execution
-Last activity: 2026-10-02 — Phase 19 Completed & Verified
+Status: Ready for Phase 21 execution
+Last activity: 2026-10-02 — Phase 20 Completed & Verified
 
 ## Milestone v1.4.0 Execution Summary
 
@@ -35,8 +35,8 @@ Last activity: 2026-10-02 — Phase 19 Completed & Verified
 |---|---|---|---|---|
 | **Phase 18: Direct-Canvas Rich Text Color Bar & Inline Hex Editor** | COMPLETED | TXT-01..TXT-05 | 3/3 | Docked TextFormatToolbar, Hex inputs, background highlights, zero-blur focus, dual-engine Konva & Carousel parity |
 | **Phase 19: Adaptive Layout Decorative Exclusion & Photo Swap Shortcut** | COMPLETED | EXC-01..EXC-03 | 2/2 | `excludeFromAdaptiveLayout`, 2D spatial subtraction obstacles, Inspector shield toggle, dual-engine shortcut `S` swap handle parity |
-| **Phase 20: Quick Guides & Snapping Popover + Direct Drawer Wheel Scroll** | QUEUED | GUD-01..GUD-02, NAV-01..NAV-02 | 0/2 | Dedicated Guides & Snapping popover beside counter, direct vertical mouse-wheel horizontal scrolling without Shift |
-| **Phase 21: Visual Studio Layers Management & Reordering Panel** | PENDING | LAY-01..LAY-04 | 0/3 | Visual Studio Layers inspector tab, drag-and-drop z-index reordering, multi-selection block drag, midpoint insertion indicator |
+| **Phase 20: Quick Guides & Snapping Popover + Direct Drawer Wheel Scroll** | COMPLETED | GUD-01..GUD-02, NAV-01..NAV-02 | 2/2 | Dedicated Guides & Snapping popover beside counter, direct vertical mouse-wheel horizontal scrolling without Shift |
+| **Phase 21: Visual Studio Layers Management & Reordering Panel** | QUEUED | LAY-01..LAY-04 | 0/3 | Visual Studio Layers inspector tab, drag-and-drop z-index reordering, multi-selection block drag, midpoint insertion indicator |
 | **Phase 22: Sub-Pixel Hairline Border Scaling Parity** | PENDING | BOR-01..BOR-02 | 0/2 | Exact sub-pixel border scaling in preview/export without 2px floor, cross-engine canvas/thumbnail/export parity |
 | **Phase 23: On-Device AI Face Detection & Studio Framing Engine (YuNet)** | PENDING | AI-01..AI-04 | 0/3 | Lightweight YuNet ONNX in Tauri Rust backend (<10ms), 5 landmarks, studio auto-framing presets (Pasfoto, Wisuda UNY, Portrait) |
 

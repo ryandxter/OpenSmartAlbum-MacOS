@@ -15,12 +15,13 @@
 - [x] **EXC-03**: Pressing keyboard shortcut `S` with a single photo frame selected reveals/activates its photo swap handle, and pressing `S` with two photo frames selected immediately swaps their photos.
 
 ### 3. Quick Guides & Snapping Popover (GUD)
-- [ ] **GUD-01**: User can open a dedicated Guides & Snapping quick popover from a settings button located beside the Spread/Post counter in the bottom navigator bar.
-- [ ] **GUD-02**: User can toggle canvas guides visibility, bleed allowance lines, safe zone margins, magnetic snapping master switch, and snapping distance threshold directly from the popover without opening the global preferences modal.
+- [x] **GUD-01**: User can open a dedicated Guides & Snapping quick popover from a settings button located beside the Spread/Post counter in the bottom navigator bar.
+- [x] **GUD-02**: User can toggle canvas guides visibility, bleed allowance lines, safe zone margins, magnetic snapping master switch, and snapping distance threshold directly from the popover without opening the global preferences modal.
 
 ### 4. Direct Wheel & Trackpad Horizontal Scroll (NAV)
-- [ ] **NAV-01**: User can scroll the bottom Spread/Post thumbnail drawer horizontally using direct mouse-wheel vertical delta (`deltaY`) or trackpad scrolling without holding the Shift key.
-- [ ] **NAV-02**: Thumbnail drawer horizontal scrolling preserves spread/slide drag-and-drop reordering without gesture collision.
+- [x] **NAV-01**: User can scroll the bottom Spread/Post thumbnail drawer horizontally using direct mouse-wheel vertical delta (`deltaY`) or trackpad scrolling without holding the Shift key.
+- [x] **NAV-02**: Thumbnail drawer horizontal scrolling preserves spread/slide drag-and-drop reordering without gesture collision.
+
 
 ### 5. Visual Studio Layers Management & Reordering Panel (LAY)
 - [ ] **LAY-01**: User can view a dedicated Studio Layers panel listing all elements (photos, text, vector shapes) on the active spread/slide with thumbnail previews and type badges.
@@ -58,7 +59,7 @@
 | :--- | :--- | :--- |
 | TXT-01..TXT-05 | Phase 18: Direct-Canvas Rich Text Color Bar & Inline Hex Editor | Complete |
 | EXC-01..EXC-03 | Phase 19: Adaptive Layout Decorative Exclusion & Photo Swap Shortcut | Complete |
-| GUD-01..GUD-02, NAV-01..NAV-02 | Phase 20: Quick Guides & Snapping Popover + Direct Drawer Wheel Scroll | Pending |
+| GUD-01..GUD-02, NAV-01..NAV-02 | Phase 20: Quick Guides & Snapping Popover + Direct Drawer Wheel Scroll | Complete |
 | LAY-01..LAY-04 | Phase 21: Visual Studio Layers Management & Reordering Panel | Pending |
 | BOR-01..BOR-02 | Phase 22: Sub-Pixel Hairline Border Scaling Parity | Pending |
 | AI-01..AI-04 | Phase 23: On-Device AI Face Detection & Studio Framing Engine (YuNet) | Pending |
