@@ -688,6 +688,28 @@ pub fn get_photos_for_folder(
     db.get_photos_for_folder(&folder_id).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub async fn detect_photo_faces(
+    image_path: String,
+) -> Result<crate::photo_engine::face_types::PhotoFaceData, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::photo_engine::face_detector::detect_faces_in_image(&image_path)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn detect_photos_faces_batch(
+    image_paths: Vec<String>,
+) -> Result<Vec<crate::photo_engine::face_types::PhotoFaceData>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        crate::photo_engine::face_detector::detect_faces_in_batch(image_paths)
+    })
+    .await
+    .map_err(|e| e.to_string())
+}
+
 fn chrono_now() -> String {
     let now = std::time::SystemTime::now();
     let duration = now.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();

@@ -162,6 +162,8 @@ pub fn run() {
             commands::photo_commands::remove_photos_from_folder,
             commands::photo_commands::move_photos_between_folders,
             commands::photo_commands::get_photos_for_folder,
+            commands::photo_commands::detect_photo_faces,
+            commands::photo_commands::detect_photos_faces_batch,
             commands::export_commands::export_album_high_res,
             commands::export_commands::export_carousel_slices,
             commands::export_commands::cancel_export,

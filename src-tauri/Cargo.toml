@@ -35,4 +35,6 @@ zip = { version = "2.2", default-features = false, features = ["deflate"] }
 fontdue = "0.9"
 ttf-parser = "0.25"
 tiff = { version = "0.11", default-features = false, features = ["lzw", "deflate"] }
+tract-onnx = "0.21.8"
+ndarray = "0.16"
 

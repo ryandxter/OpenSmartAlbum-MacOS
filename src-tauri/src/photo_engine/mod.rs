@@ -1,3 +1,6 @@
+pub mod face_types;
+pub mod face_detector;
+
 use std::fs;
 use std::path::{Path, PathBuf};
 use image::ImageFormat;
