@@ -154,6 +154,10 @@ export interface EditorState {
   toggleLockSingleFrame: (spreadId: string, frameId: string, forceState?: boolean) => void;
   lockAllFramesOnSpread: (spreadId: string) => void;
   unlockAllFramesOnSpread: (spreadId: string) => void;
+  reorderSpreadElements: (spreadId: string, orderedIds: string[]) => void;
+  toggleElementVisibility: (spreadId: string, frameId: string, forceState?: boolean) => void;
+  renameElement: (spreadId: string, frameId: string, name: string) => void;
+  deleteSingleElement: (spreadId: string, frameId: string) => void;
 
   // Batch Alignment & Distribution
   alignSelectedFrames: (
@@ -1789,6 +1793,22 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       },
       saveStatus: 'unsaved',
     });
+  },
+
+  reorderSpreadElements: (spreadId, orderedIds) => {
+    useAlbumStore.getState().reorderSpreadElements(spreadId, orderedIds);
+  },
+
+  toggleElementVisibility: (spreadId, frameId, forceState) => {
+    useAlbumStore.getState().toggleElementVisibility(spreadId, frameId, forceState);
+  },
+
+  renameElement: (spreadId, frameId, name) => {
+    useAlbumStore.getState().renameElement(spreadId, frameId, name);
+  },
+
+  deleteSingleElement: (spreadId, frameId) => {
+    useAlbumStore.getState().deleteSingleElement(spreadId, frameId);
   },
 
   alignSelectedFrames: (spreadId, alignment, targetMode) => {

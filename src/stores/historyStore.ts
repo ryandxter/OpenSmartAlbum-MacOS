@@ -48,16 +48,16 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     });
   },
 
-  undo: (currentAlbum: Album) => {
+  undo: (currentAlbum?: Album | null) => {
     const { past, future } = get();
     if (past.length === 0) return null;
 
     const previous = past[past.length - 1];
     if (!previous) return null;
 
-    const currentSnapshot: Album = JSON.parse(JSON.stringify(currentAlbum));
+    const currentSnapshot: Album | null = currentAlbum ? JSON.parse(JSON.stringify(currentAlbum)) : null;
     const updatedPast = past.slice(0, -1);
-    const updatedFuture = [currentSnapshot, ...future];
+    const updatedFuture = currentSnapshot ? [currentSnapshot, ...future] : [...future];
 
     set({
       past: updatedPast,
@@ -69,15 +69,15 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     return JSON.parse(JSON.stringify(previous));
   },
 
-  redo: (currentAlbum: Album) => {
+  redo: (currentAlbum?: Album | null) => {
     const { past, future } = get();
     if (future.length === 0) return null;
 
     const next = future[0];
     if (!next) return null;
 
-    const currentSnapshot: Album = JSON.parse(JSON.stringify(currentAlbum));
-    const updatedPast = [...past, currentSnapshot];
+    const currentSnapshot: Album | null = currentAlbum ? JSON.parse(JSON.stringify(currentAlbum)) : null;
+    const updatedPast = currentSnapshot ? [...past, currentSnapshot] : [...past];
     const updatedFuture = future.slice(1);
 
     set({

@@ -36,6 +36,12 @@ import { useEditorStore } from './editorStore';
 import { useProjectStore } from './projectStore';
 import { getCornerRadii, type PhotoFrameElement } from '../domain/editor';
 import { convertUnit } from '../domain/units';
+import {
+  canvasToUiLayers,
+  uiLayersToCanvas,
+  reorderLayersMultiSelection,
+  normalizeZIndices,
+} from '../domain/layout/reorderLayers';
 import type { Photo } from '../domain/photo';
 
 let databaseWriteQueue: Promise<unknown> = Promise.resolve();
@@ -423,6 +429,16 @@ export interface AlbumState {
   ) => Promise<void>;
   promoteToFullBleedSpread: (spreadId: string, frameId: string, project: Project) => void;
   setHeroPhotoOnSpread: (spreadId: string, frameId: string, project: Project) => void;
+
+  // Visual Studio Layers Management Actions (Phase 21)
+  reorderLayers: (spreadId: string, fromIndicesOrIds: string[] | number[], targetIndex: number) => void;
+  reorderSpreadElements: (spreadId: string, orderedElementIds: string[]) => void;
+  toggleElementVisibility: (spreadId: string, elementId: string, forceState?: boolean) => void;
+  toggleElementLock: (spreadId: string, elementId: string, forceState?: boolean) => void;
+  renameElement: (spreadId: string, elementId: string, name: string) => void;
+  setAllElementsLock: (spreadId: string, locked: boolean) => void;
+  setAllElementsVisibility: (spreadId: string, visible: boolean) => void;
+  deleteSingleElement: (spreadId: string, elementId: string) => void;
 }
 
 export const useAlbumStore = create<AlbumState>((set, get) => ({
@@ -2109,6 +2125,270 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
         },
         saveStatus: 'unsaved',
       });
+    }
+  },
+
+  reorderSpreadElements: (spreadId: string, orderedElementIds: string[]) => {
+    const { currentAlbum } = get();
+    if (!currentAlbum) return;
+
+    useHistoryStore.getState().pushState(currentAlbum);
+
+    const reorderInList = (elements: AlbumElement[]): AlbumElement[] => {
+      const elementMap = new Map(elements.map((el) => [el.id, el]));
+      const reordered: AlbumElement[] = [];
+      for (const id of orderedElementIds) {
+        const el = elementMap.get(id);
+        if (el) {
+          reordered.push(el);
+          elementMap.delete(id);
+        }
+      }
+      // Append any elements not explicitly in orderedElementIds
+      for (const remaining of elementMap.values()) {
+        reordered.push(remaining);
+      }
+      return normalizeZIndices(reordered);
+    };
+
+    if (currentAlbum.coverSpread.id === spreadId) {
+      const updatedCover = {
+        ...currentAlbum.coverSpread,
+        elements: reorderInList(currentAlbum.coverSpread.elements || []),
+      };
+      set({
+        currentAlbum: { ...currentAlbum, coverSpread: updatedCover },
+        saveStatus: 'unsaved',
+      });
+    } else {
+      const updatedSpreads = currentAlbum.spreads.map((spread) => {
+        if (spread.id === spreadId) {
+          return {
+            ...spread,
+            elements: reorderInList(spread.elements || []),
+          };
+        }
+        return spread;
+      });
+      set({
+        currentAlbum: { ...currentAlbum, spreads: updatedSpreads },
+        saveStatus: 'unsaved',
+      });
+    }
+  },
+
+  reorderLayers: (spreadId: string, fromIndicesOrIds: string[] | number[], targetIndex: number) => {
+    const { currentAlbum, reorderSpreadElements } = get();
+    if (!currentAlbum) return;
+
+    const targetSpread = currentAlbum.coverSpread?.id === spreadId
+      ? currentAlbum.coverSpread
+      : currentAlbum.spreads.find((s) => s.id === spreadId);
+    if (!targetSpread || !targetSpread.elements || targetSpread.elements.length <= 1) return;
+
+    // Convert elements to UI layer ordering (Slot 0 = Frontmost / Top of UI list)
+    const uiLayers = canvasToUiLayers(targetSpread.elements);
+
+    // Normalize selected IDs
+    let selectedIds: string[] = [];
+    if (typeof fromIndicesOrIds[0] === 'number') {
+      selectedIds = (fromIndicesOrIds as number[])
+        .map((idx) => uiLayers[idx]?.id)
+        .filter((id): id is string => Boolean(id));
+    } else {
+      selectedIds = fromIndicesOrIds as string[];
+    }
+
+    const reorderedUiLayers = reorderLayersMultiSelection(uiLayers, selectedIds, targetIndex);
+    // Convert back to canvas array (Index 0 = Backmost / Lowest zIndex)
+    const canvasElements = uiLayersToCanvas(reorderedUiLayers);
+    reorderSpreadElements(spreadId, canvasElements.map((el) => el.id));
+  },
+
+  toggleElementVisibility: (spreadId: string, elementId: string, forceState?: boolean) => {
+    const { currentAlbum } = get();
+    if (!currentAlbum) return;
+
+    useHistoryStore.getState().pushState(currentAlbum);
+
+    const updateList = (elements: AlbumElement[]) =>
+      elements.map((el) => {
+        if (el.id === elementId) {
+          const nextHidden = forceState !== undefined ? !forceState : !el.hidden;
+          return { ...el, hidden: nextHidden };
+        }
+        return el;
+      });
+
+    if (currentAlbum.coverSpread.id === spreadId) {
+      set({
+        currentAlbum: {
+          ...currentAlbum,
+          coverSpread: { ...currentAlbum.coverSpread, elements: updateList(currentAlbum.coverSpread.elements || []) },
+        },
+        saveStatus: 'unsaved',
+      });
+    } else {
+      set({
+        currentAlbum: {
+          ...currentAlbum,
+          spreads: currentAlbum.spreads.map((s) => (s.id === spreadId ? { ...s, elements: updateList(s.elements || []) } : s)),
+        },
+        saveStatus: 'unsaved',
+      });
+    }
+  },
+
+  toggleElementLock: (spreadId: string, elementId: string, forceState?: boolean) => {
+    const { currentAlbum } = get();
+    if (!currentAlbum) return;
+
+    useHistoryStore.getState().pushState(currentAlbum);
+
+    const updateList = (elements: AlbumElement[]) =>
+      elements.map((el) => {
+        if (el.id === elementId) {
+          const nextLocked = forceState !== undefined ? forceState : !el.locked;
+          return { ...el, locked: nextLocked };
+        }
+        return el;
+      });
+
+    if (currentAlbum.coverSpread.id === spreadId) {
+      set({
+        currentAlbum: {
+          ...currentAlbum,
+          coverSpread: { ...currentAlbum.coverSpread, elements: updateList(currentAlbum.coverSpread.elements || []) },
+        },
+        saveStatus: 'unsaved',
+      });
+    } else {
+      set({
+        currentAlbum: {
+          ...currentAlbum,
+          spreads: currentAlbum.spreads.map((s) => (s.id === spreadId ? { ...s, elements: updateList(s.elements || []) } : s)),
+        },
+        saveStatus: 'unsaved',
+      });
+    }
+  },
+
+  renameElement: (spreadId: string, elementId: string, name: string) => {
+    const { currentAlbum } = get();
+    if (!currentAlbum) return;
+
+    useHistoryStore.getState().pushState(currentAlbum);
+    const trimmedName = name.trim();
+
+    const updateList = (elements: AlbumElement[]) =>
+      elements.map((el) => (el.id === elementId ? { ...el, name: trimmedName || undefined } : el));
+
+    if (currentAlbum.coverSpread.id === spreadId) {
+      set({
+        currentAlbum: {
+          ...currentAlbum,
+          coverSpread: { ...currentAlbum.coverSpread, elements: updateList(currentAlbum.coverSpread.elements || []) },
+        },
+        saveStatus: 'unsaved',
+      });
+    } else {
+      set({
+        currentAlbum: {
+          ...currentAlbum,
+          spreads: currentAlbum.spreads.map((s) => (s.id === spreadId ? { ...s, elements: updateList(s.elements || []) } : s)),
+        },
+        saveStatus: 'unsaved',
+      });
+    }
+  },
+
+  setAllElementsLock: (spreadId: string, locked: boolean) => {
+    const { currentAlbum } = get();
+    if (!currentAlbum) return;
+
+    useHistoryStore.getState().pushState(currentAlbum);
+
+    const updateList = (elements: AlbumElement[]) => elements.map((el) => ({ ...el, locked }));
+
+    if (currentAlbum.coverSpread.id === spreadId) {
+      set({
+        currentAlbum: {
+          ...currentAlbum,
+          coverSpread: { ...currentAlbum.coverSpread, elements: updateList(currentAlbum.coverSpread.elements || []) },
+        },
+        saveStatus: 'unsaved',
+      });
+    } else {
+      set({
+        currentAlbum: {
+          ...currentAlbum,
+          spreads: currentAlbum.spreads.map((s) => (s.id === spreadId ? { ...s, elements: updateList(s.elements || []) } : s)),
+        },
+        saveStatus: 'unsaved',
+      });
+    }
+  },
+
+  setAllElementsVisibility: (spreadId: string, visible: boolean) => {
+    const { currentAlbum } = get();
+    if (!currentAlbum) return;
+
+    useHistoryStore.getState().pushState(currentAlbum);
+
+    const updateList = (elements: AlbumElement[]) => elements.map((el) => ({ ...el, hidden: !visible }));
+
+    if (currentAlbum.coverSpread.id === spreadId) {
+      set({
+        currentAlbum: {
+          ...currentAlbum,
+          coverSpread: { ...currentAlbum.coverSpread, elements: updateList(currentAlbum.coverSpread.elements || []) },
+        },
+        saveStatus: 'unsaved',
+      });
+    } else {
+      set({
+        currentAlbum: {
+          ...currentAlbum,
+          spreads: currentAlbum.spreads.map((s) => (s.id === spreadId ? { ...s, elements: updateList(s.elements || []) } : s)),
+        },
+        saveStatus: 'unsaved',
+      });
+    }
+  },
+
+  deleteSingleElement: (spreadId: string, elementId: string) => {
+    const { currentAlbum } = get();
+    if (!currentAlbum) return;
+
+    useHistoryStore.getState().pushState(currentAlbum);
+
+    const filterList = (elements: AlbumElement[]) => elements.filter((el) => el.id !== elementId);
+
+    if (currentAlbum.coverSpread.id === spreadId) {
+      set({
+        currentAlbum: {
+          ...currentAlbum,
+          coverSpread: { ...currentAlbum.coverSpread, elements: filterList(currentAlbum.coverSpread.elements || []) },
+        },
+        saveStatus: 'unsaved',
+      });
+    } else {
+      set({
+        currentAlbum: {
+          ...currentAlbum,
+          spreads: currentAlbum.spreads.map((s) => (s.id === spreadId ? { ...s, elements: filterList(s.elements || []) } : s)),
+        },
+        saveStatus: 'unsaved',
+      });
+    }
+
+    try {
+      const { selectedFrameIds, selectFrames } = useEditorStore.getState();
+      if (selectedFrameIds.includes(elementId)) {
+        selectFrames(selectedFrameIds.filter((id) => id !== elementId));
+      }
+    } catch {
+      // Ignore if editorStore not ready
     }
   },
 }));

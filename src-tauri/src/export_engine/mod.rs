@@ -2610,6 +2610,8 @@ mod tests {
             file_name: String::new(),
             preview_path: None,
             thumbnail_path: None,
+            name: None,
+            hidden: None,
             x: 50.0,
             y: 50.0,
             width: 100.0,

@@ -10,6 +10,10 @@ export interface PhotoFrameElement {
   thumbnailPath: string;
   fileName: string;
   
+  // Custom user label & visibility state (Phase 21)
+  name?: string;      // User-defined layer name (e.g. "Cover Hero Photo", "Bride Solo")
+  hidden?: boolean;   // When true, element is omitted from canvas rasterization & exports
+
   // Physical dimensions & position on spread (in project unit: mm, cm, inch)
   x: number;
   y: number;

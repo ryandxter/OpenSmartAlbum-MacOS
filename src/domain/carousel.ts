@@ -56,6 +56,8 @@ export interface CarouselPhotoFrame {
   thumbnailPath?: string;
   photoAspect?: number;
   isMissing?: boolean;
+  name?: string;      // User-defined layer name
+  hidden?: boolean;   // When true, element is hidden on canvas and export
   // Canvas coordinate system (x=0 begins at slide 0; can span across slide boundaries)
   x: number;
   y: number;
@@ -86,6 +88,8 @@ export interface CarouselPhotoFrame {
 export interface CarouselTextFrame {
   type: 'text';
   id: string;
+  name?: string;      // User-defined layer name
+  hidden?: boolean;   // When true, element is hidden on canvas and export
   x: number;
   y: number;
   width: number;
@@ -97,6 +101,7 @@ export interface CarouselTextFrame {
   color: string;
   align: 'left' | 'center' | 'right';
   locked: boolean;
+  zIndex?: number;
   opacity?: number;
   rotation?: number;
   // Dual-Engine Rich Text Parity Fields

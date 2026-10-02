@@ -48,6 +48,8 @@ export interface TextNodeElement {
   opacity?: number; // 0..1, defaults to fully opaque for older projects
   zIndex?: number;
   locked?: boolean;
+  name?: string; // User-defined layer name (e.g. "Headline", "Subtitle")
+  hidden?: boolean; // When true, element is hidden on canvas and omitted from export
   groupId?: string | null;
   groupRotation?: number;
   style: TextStyle;

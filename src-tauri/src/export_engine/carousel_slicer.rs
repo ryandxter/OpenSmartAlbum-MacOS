@@ -33,6 +33,10 @@ pub struct CarouselElementPayload {
     pub id: String,
     pub file_path: Option<String>,
     pub preview_path: Option<String>,
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub hidden: Option<bool>,
     pub x: f64,
     pub y: f64,
     pub width: f64,
@@ -128,6 +132,9 @@ pub fn render_carousel_panorama(payload: &CarouselPayload) -> RgbaImage {
     }
 
     for elem in all_elements {
+        if elem.hidden.unwrap_or(false) {
+            continue;
+        }
         let Some(ref raw_path) = elem.file_path else {
             continue;
         };

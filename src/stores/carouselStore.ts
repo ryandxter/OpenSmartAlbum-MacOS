@@ -22,6 +22,12 @@ import { AdaptivePhoto } from '../domain/adaptiveLayout';
 import { generateAutoFlowPlan } from '../domain/storytelling/autoFlowEngine';
 import type { Photo } from '../domain/photo';
 import type { PhotoFrameElement } from '../domain/editor';
+import {
+  canvasToUiLayers,
+  uiLayersToCanvas,
+  reorderLayersMultiSelection,
+  normalizeZIndices,
+} from '../domain/layout/reorderLayers';
 
 let carouselDbWriteQueue: Promise<unknown> = Promise.resolve();
 export function persistCarouselInOrder<T>(write: () => Promise<T>): Promise<T> {
@@ -98,6 +104,15 @@ export interface CarouselState {
   toggleGuide: (guide: 'slices' | 'center' | 'thirds') => void;
   setGuideVisibility: (guide: 'slices' | 'center' | 'thirds', visible: boolean) => void;
   addTextFrame: () => void;
+  // Visual Studio Layers Actions (Phase 21)
+  reorderSlideElements: (slideIndex: number, orderedIds: string[]) => void;
+  reorderLayers: (slideIndex: number, fromIndicesOrIds: string[] | number[], targetIndex: number) => void;
+  toggleElementVisibility: (slideIndex: number | undefined, elementId: string, forceState?: boolean) => void;
+  toggleElementLock: (slideIndex: number | undefined, elementId: string, forceState?: boolean) => void;
+  renameElement: (slideIndex: number | undefined, elementId: string, name: string) => void;
+  setAllElementsLock: (slideIndex: number, locked: boolean) => void;
+  setAllElementsVisibility: (slideIndex: number, visible: boolean) => void;
+  deleteSingleElement: (slideIndex: number | undefined, elementId: string) => void;
 }
 
 export const useCarouselStore = create<CarouselState>((set, get) => ({
@@ -1899,5 +1914,182 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
       selectedFrameId: frameId,
       selectedFrameIds: [frameId],
     });
+  },
+
+  reorderSlideElements: (slideIndex: number, orderedIds: string[]) => {
+    const { currentCarousel, pushHistory, markDirty } = get();
+    if (!currentCarousel || slideIndex < 0 || slideIndex >= currentCarousel.slides.length) return;
+
+    pushHistory();
+
+    const targetSlide = currentCarousel.slides[slideIndex];
+    if (!targetSlide) return;
+
+    const elementMap = new Map(targetSlide.elements.map((el) => [el.id, el]));
+    const reordered: CarouselElement[] = [];
+    for (const id of orderedIds) {
+      const el = elementMap.get(id);
+      if (el) {
+        reordered.push(el);
+        elementMap.delete(id);
+      }
+    }
+    for (const remaining of elementMap.values()) {
+      reordered.push(remaining);
+    }
+
+    const normalized = normalizeZIndices(reordered);
+    const updatedSlides = currentCarousel.slides.map((s, idx) =>
+      idx === slideIndex ? { ...s, elements: normalized } : s
+    );
+
+    set({
+      currentCarousel: { ...currentCarousel, slides: updatedSlides },
+    });
+    markDirty();
+  },
+
+  reorderLayers: (slideIndex: number, fromIndicesOrIds: string[] | number[], targetIndex: number) => {
+    const { currentCarousel, reorderSlideElements } = get();
+    if (!currentCarousel || slideIndex < 0 || slideIndex >= currentCarousel.slides.length) return;
+
+    const targetSlide = currentCarousel.slides[slideIndex];
+    if (!targetSlide || targetSlide.elements.length <= 1) return;
+
+    const uiLayers = canvasToUiLayers(targetSlide.elements);
+
+    let selectedIds: string[] = [];
+    if (typeof fromIndicesOrIds[0] === 'number') {
+      selectedIds = (fromIndicesOrIds as number[])
+        .map((idx) => uiLayers[idx]?.id)
+        .filter((id): id is string => Boolean(id));
+    } else {
+      selectedIds = fromIndicesOrIds as string[];
+    }
+
+    const reorderedUiLayers = reorderLayersMultiSelection(uiLayers, selectedIds, targetIndex);
+    const canvasElements = uiLayersToCanvas(reorderedUiLayers);
+    reorderSlideElements(slideIndex, canvasElements.map((el) => el.id));
+  },
+
+  toggleElementVisibility: (slideIndex: number | undefined, elementId: string, forceState?: boolean) => {
+    const { currentCarousel, activeSlideIndex, pushHistory, markDirty } = get();
+    if (!currentCarousel) return;
+
+    pushHistory();
+    const targetIdx = slideIndex !== undefined ? slideIndex : activeSlideIndex;
+
+    const updatedSlides = currentCarousel.slides.map((slide, idx) => {
+      if (idx !== targetIdx && slideIndex !== undefined) return slide;
+      return {
+        ...slide,
+        elements: slide.elements.map((el) => {
+          if (el.id === elementId) {
+            const nextHidden = forceState !== undefined ? !forceState : !el.hidden;
+            return { ...el, hidden: nextHidden };
+          }
+          return el;
+        }),
+      };
+    });
+
+    set({ currentCarousel: { ...currentCarousel, slides: updatedSlides } });
+    markDirty();
+  },
+
+  toggleElementLock: (slideIndex: number | undefined, elementId: string, forceState?: boolean) => {
+    const { currentCarousel, activeSlideIndex, pushHistory, markDirty } = get();
+    if (!currentCarousel) return;
+
+    pushHistory();
+    const targetIdx = slideIndex !== undefined ? slideIndex : activeSlideIndex;
+
+    const updatedSlides = currentCarousel.slides.map((slide, idx) => {
+      if (idx !== targetIdx && slideIndex !== undefined) return slide;
+      return {
+        ...slide,
+        elements: slide.elements.map((el) => {
+          if (el.id === elementId) {
+            const nextLocked = forceState !== undefined ? forceState : !el.locked;
+            return { ...el, locked: nextLocked };
+          }
+          return el;
+        }),
+      };
+    });
+
+    set({ currentCarousel: { ...currentCarousel, slides: updatedSlides } });
+    markDirty();
+  },
+
+  renameElement: (slideIndex: number | undefined, elementId: string, name: string) => {
+    const { currentCarousel, activeSlideIndex, pushHistory, markDirty } = get();
+    if (!currentCarousel) return;
+
+    pushHistory();
+    const targetIdx = slideIndex !== undefined ? slideIndex : activeSlideIndex;
+    const trimmedName = name.trim();
+
+    const updatedSlides = currentCarousel.slides.map((slide, idx) => {
+      if (idx !== targetIdx && slideIndex !== undefined) return slide;
+      return {
+        ...slide,
+        elements: slide.elements.map((el) => (el.id === elementId ? { ...el, name: trimmedName || undefined } : el)),
+      };
+    });
+
+    set({ currentCarousel: { ...currentCarousel, slides: updatedSlides } });
+    markDirty();
+  },
+
+  setAllElementsLock: (slideIndex: number, locked: boolean) => {
+    const { currentCarousel, pushHistory, markDirty } = get();
+    if (!currentCarousel || slideIndex < 0 || slideIndex >= currentCarousel.slides.length) return;
+
+    pushHistory();
+
+    const updatedSlides = currentCarousel.slides.map((slide, idx) =>
+      idx === slideIndex ? { ...slide, elements: slide.elements.map((el) => ({ ...el, locked })) } : slide
+    );
+
+    set({ currentCarousel: { ...currentCarousel, slides: updatedSlides } });
+    markDirty();
+  },
+
+  setAllElementsVisibility: (slideIndex: number, visible: boolean) => {
+    const { currentCarousel, pushHistory, markDirty } = get();
+    if (!currentCarousel || slideIndex < 0 || slideIndex >= currentCarousel.slides.length) return;
+
+    pushHistory();
+
+    const updatedSlides = currentCarousel.slides.map((slide, idx) =>
+      idx === slideIndex ? { ...slide, elements: slide.elements.map((el) => ({ ...el, hidden: !visible })) } : slide
+    );
+
+    set({ currentCarousel: { ...currentCarousel, slides: updatedSlides } });
+    markDirty();
+  },
+
+  deleteSingleElement: (slideIndex: number | undefined, elementId: string) => {
+    const { currentCarousel, activeSlideIndex, selectedFrameIds, selectedFrameId, pushHistory, markDirty } = get();
+    if (!currentCarousel) return;
+
+    pushHistory();
+    const targetIdx = slideIndex !== undefined ? slideIndex : activeSlideIndex;
+
+    const updatedSlides = currentCarousel.slides.map((slide, idx) => {
+      if (idx !== targetIdx && slideIndex !== undefined) return slide;
+      return {
+        ...slide,
+        elements: slide.elements.filter((el) => el.id !== elementId),
+      };
+    });
+
+    set({
+      currentCarousel: { ...currentCarousel, slides: updatedSlides },
+      selectedFrameId: selectedFrameId === elementId ? null : selectedFrameId,
+      selectedFrameIds: selectedFrameIds.filter((id) => id !== elementId),
+    });
+    markDirty();
   },
 }));

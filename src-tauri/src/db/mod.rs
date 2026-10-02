@@ -110,6 +110,10 @@ pub struct ElementPayload {
     pub preview_path: Option<String>,
     pub thumbnail_path: Option<String>,
     #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub hidden: Option<bool>,
+    #[serde(default)]
     pub x: f64,
     #[serde(default)]
     pub y: f64,
@@ -2157,6 +2161,8 @@ impl Database {
                     file_name: er.get(5).unwrap_or_default(),
                     preview_path: er.get(6).ok(),
                     thumbnail_path: er.get(7).ok(),
+                    name: None,
+                    hidden: None,
                     x: er.get(8).unwrap_or(0.0),
                     y: er.get(9).unwrap_or(0.0),
                     width: w,
@@ -2832,6 +2838,8 @@ mod tests {
                     file_name: "img1.jpg".to_string(),
                     preview_path: None,
                     thumbnail_path: None,
+                    name: None,
+                    hidden: None,
                     x: 10.0,
                     y: 10.0,
                     width: 50.0,
