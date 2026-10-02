@@ -8,6 +8,8 @@
 import type { ShapeType } from './shapes';
 import type { StyledRange } from './styledRanges';
 import type { TextStyle } from './text';
+import type { StudioFramingPreset } from './ai/faceDetection';
+export type { StudioFramingPreset };
 
 export type CarouselRatio = '1:1' | '4:5' | '9:16';
 
@@ -83,6 +85,14 @@ export interface CarouselPhotoFrame {
   cornerRadiusBr?: number;
   cornerRadiusBl?: number;
   excludeFromAdaptiveLayout?: boolean;
+
+  // AI Face & Studio Framing (Phase 23)
+  faceFramingPreset?: StudioFramingPreset;
+  faceHeadroomRatio?: number;
+  faceEyeLineRatio?: number;
+  faceShoulderRatio?: number;
+  activeFaceIndex?: number;
+  showFaceReticles?: boolean;
 }
 
 export interface CarouselTextFrame {

@@ -34,8 +34,11 @@ import { generateAutoFlowPlan } from '../domain/storytelling/autoFlowEngine';
 import { useHistoryStore } from './historyStore';
 import { useEditorStore } from './editorStore';
 import { useProjectStore } from './projectStore';
+import { usePhotoStore } from './photoStore';
 import { getCornerRadii, type PhotoFrameElement } from '../domain/editor';
 import { convertUnit } from '../domain/units';
+import { StudioFramingPreset, FramingConfig } from '../domain/ai/faceDetection';
+import { calculateOptimalStudioCrop } from '../domain/ai/framingMath';
 import {
   canvasToUiLayers,
   uiLayersToCanvas,
@@ -439,6 +442,9 @@ export interface AlbumState {
   setAllElementsLock: (spreadId: string, locked: boolean) => void;
   setAllElementsVisibility: (spreadId: string, visible: boolean) => void;
   deleteSingleElement: (spreadId: string, elementId: string) => void;
+
+  // AI Face & Studio Framing (Phase 23)
+  applyStudioFramingPreset: (frameId: string, preset: StudioFramingPreset, customConfig?: Partial<FramingConfig>) => void;
 }
 
 export const useAlbumStore = create<AlbumState>((set, get) => ({
@@ -1642,12 +1648,15 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
 
     useHistoryStore.getState().pushState(currentAlbum);
 
+    const faceDataMap = usePhotoStore.getState().faceDataMap;
+
     const newUnlockedElements = buildSpreadElementsFromVariation(
       chosenVariation,
       unlockedPhotos,
       project.borderEnabled,
       project.borderWidth,
-      project.borderColor
+      project.borderColor,
+      faceDataMap
     );
 
     const newElements = [...lockedElements, ...excludedElements, ...newUnlockedElements, ...textElements];
@@ -1693,7 +1702,9 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
 
     useHistoryStore.getState().pushState(currentAlbum);
 
-    const shuffledElements = [...shuffleElementsPhotos(photoElements), ...textElements];
+    const faceDataMap = usePhotoStore.getState().faceDataMap;
+
+    const shuffledElements = [...shuffleElementsPhotos(photoElements, faceDataMap), ...textElements];
 
     if (isCover) {
       set({
@@ -1780,12 +1791,15 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
 
     useHistoryStore.getState().pushState(currentAlbum);
 
+    const faceDataMap = usePhotoStore.getState().faceDataMap;
+
     const newUnlockedElements = buildSpreadElementsFromVariation(
       chosenVariation,
       unlockedPhotos,
       project.borderEnabled,
       project.borderWidth,
-      project.borderColor
+      project.borderColor,
+      faceDataMap
     );
 
     const newElements = [...lockedElements, ...excludedElements, ...newUnlockedElements, ...textElements];
@@ -1875,6 +1889,8 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
       activeSpread!.elements.length === 0;
 
     let planStartIdx = 0;
+    const faceDataMap = usePhotoStore.getState().faceDataMap;
+
     if (shouldReplaceActive && activeSpread) {
       const firstPlan = plans[0]!;
       const firstSpreadElements = buildSpreadElementsFromVariation(
@@ -1882,7 +1898,8 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
         firstPlan.photos,
         project.borderEnabled,
         project.borderWidth,
-        project.borderColor
+        project.borderColor,
+        faceDataMap
       );
 
       updatedSpreads = updatedSpreads.map((s) =>
@@ -1903,7 +1920,8 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
         plan.photos,
         project.borderEnabled,
         project.borderWidth,
-        project.borderColor
+        project.borderColor,
+        faceDataMap
       );
 
       newSpread.elements = elements;
@@ -2094,13 +2112,16 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
 
     if (variations.length === 0) return;
 
+    const faceDataMap = usePhotoStore.getState().faceDataMap;
+
     const bestVariation = variations[0]!;
     const newSpreadElements = buildSpreadElementsFromVariation(
       bestVariation,
       adaptivePhotos,
       project.borderEnabled,
       project.borderWidth,
-      project.borderColor
+      project.borderColor,
+      faceDataMap
     );
 
     const nonPhotoElements = (spread.elements || []).filter((el) => el.type !== 'photo');
@@ -2389,6 +2410,80 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
       }
     } catch {
       // Ignore if editorStore not ready
+    }
+  },
+
+  applyStudioFramingPreset: (frameId: string, preset: StudioFramingPreset, customConfig?: Partial<FramingConfig>) => {
+    const album = get().currentAlbum;
+    if (!album) return;
+
+    const allSpreads = [album.coverSpread, ...album.spreads];
+    const spread = allSpreads.find((s) => (s.elements || []).some((e) => e.id === frameId));
+    if (!spread) return;
+    const element = spread.elements.find((e) => e.id === frameId);
+    if (!element || element.type !== 'photo') return;
+
+    const photoState = usePhotoStore.getState();
+    const photoId = element.photoId;
+    const faceData = photoId ? photoState.getPhotoFaceData(photoId) : null;
+    const photo = photoId ? photoState.photos.find((p: any) => p.id === photoId) : null;
+
+    const imageWidth = photo?.width || element.originalWidth || 1200;
+    const imageHeight = photo?.height || element.originalHeight || 800;
+
+    const cropResult = calculateOptimalStudioCrop(
+      {
+        frameWidth: element.width,
+        frameHeight: element.height,
+        imageWidth,
+        imageHeight,
+      },
+      faceData,
+      preset,
+      customConfig
+    );
+
+    useHistoryStore.getState().pushState(album);
+
+    const updateFn = (f: AlbumElement): AlbumElement => {
+      if (f.id === frameId && f.type === 'photo') {
+        return {
+          ...f,
+          cropX: cropResult.cropX,
+          cropY: cropResult.cropY,
+          cropScale: cropResult.cropScale,
+          faceFramingPreset: preset,
+          faceHeadroomRatio: customConfig?.headroomRatio,
+          faceEyeLineRatio: customConfig?.eyeLineTargetRatio,
+          faceShoulderRatio: customConfig?.shoulderRatio,
+        } as AlbumElement;
+      }
+      return f;
+    };
+
+    if (album.coverSpread.id === spread.id) {
+      set({
+        currentAlbum: {
+          ...album,
+          coverSpread: {
+            ...album.coverSpread,
+            elements: (album.coverSpread.elements || []).map(updateFn),
+          },
+        },
+        saveStatus: 'unsaved',
+      });
+    } else {
+      set({
+        currentAlbum: {
+          ...album,
+          spreads: album.spreads.map((s) =>
+            s.id === spread.id
+              ? { ...s, elements: (s.elements || []).map(updateFn) }
+              : s
+          ),
+        },
+        saveStatus: 'unsaved',
+      });
     }
   },
 }));

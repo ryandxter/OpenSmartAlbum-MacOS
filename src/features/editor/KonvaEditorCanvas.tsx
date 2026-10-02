@@ -17,12 +17,14 @@ import {
   Ungroup as UngroupIcon,
   Maximize2,
   Star,
+  Sparkles,
 } from 'lucide-react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useAlbumStore } from '../../stores/albumStore';
 import { useEditorStore } from '../../stores/editorStore';
 import { useProjectStore } from '../../stores/projectStore';
 import { usePhotoStore } from '../../stores/photoStore';
+import { KonvaFaceReticleOverlay } from './KonvaFaceReticleOverlay';
 import {
   PhotoFrameElement,
   calculateSelectionDragSnapping,
@@ -246,6 +248,8 @@ function PhotoFrameNode({
       isMounted = false;
     };
   }, [frame.photoId, frame.previewPath, frame.thumbnailPath, frame.isMissing, assetVersion]);
+
+  const faceData = usePhotoStore((s) => (frame.photoId ? s.faceDataMap[frame.photoId] : undefined));
 
   // Convert physical geometry (mm/cm) to screen pixels (px)
   const pixelX = frame.x * scaleFactor;
@@ -741,6 +745,18 @@ function PhotoFrameNode({
               y={-renderImgH / 2}
               width={renderImgW}
               height={renderImgH}
+            />
+            {/* AI Face Reticle & Facial Landmarks Overlay */}
+            <KonvaFaceReticleOverlay
+              faceData={faceData}
+              imgX={-renderImgW / 2}
+              imgY={-renderImgH / 2}
+              imgW={renderImgW}
+              imgH={renderImgH}
+              frameW={pixelW}
+              frameH={pixelH}
+              eyeLineRatio={frame.faceEyeLineRatio ?? 0.333}
+              visible={Boolean(frame.showFaceReticles)}
             />
           </Group>
         ) : (
@@ -1985,6 +2001,22 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
             updateCrop(activeSpread.id, photoEl.id, { cropRotation: nextRot });
           }
         }
+      } else if (e.shiftKey && (e.key === 'F' || e.key === 'f') && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const photoFrames = (activeSpread.elements || []).filter(
+          (el) => el.type === 'photo' && selectedFrameIds.includes(el.id)
+        ) as PhotoFrameElement[];
+        if (photoFrames.length > 0) {
+          e.preventDefault();
+          const anyReticleActive = photoFrames.some((f) => f.showFaceReticles);
+          const nextVal = !anyReticleActive;
+          for (const f of photoFrames) {
+            updateFrameGeometry(activeSpread.id, f.id, { showFaceReticles: nextVal });
+          }
+          if (onToast) {
+            onToast(nextVal ? '👁 Face reticles & landmarks shown' : 'Face reticles hidden');
+          }
+          return;
+        }
       } else if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         if (editingCropFrameId) {
           const cropFrame = (activeSpread.elements || []).find((frame) => frame.id === editingCropFrameId);
@@ -2747,6 +2779,68 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
               if (onToast) onToast('✓ Set as hero photo');
             }
           },
+        },
+        {
+          id: 'submenu-ai-framing',
+          label: '🪄 AI Face Auto-Frame',
+          icon: <Sparkles size={13} strokeWidth={1.5} />,
+          children: [
+            {
+              id: 'preset-pasfoto',
+              label: '🪄 Pasfoto Formal (3x4/4x6)',
+              onClick: () => {
+                useAlbumStore.getState().applyStudioFramingPreset(targetFrame.id, 'pasfoto_formal');
+                if (onToast) onToast('✓ Applied Pasfoto Formal framing');
+              },
+            },
+            {
+              id: 'preset-wisuda',
+              label: '🎓 Wisuda UNY 50% Shoulder',
+              onClick: () => {
+                useAlbumStore.getState().applyStudioFramingPreset(targetFrame.id, 'wisuda_uny');
+                if (onToast) onToast('✓ Applied Wisuda UNY 50% Shoulder framing');
+              },
+            },
+            {
+              id: 'preset-rule-thirds',
+              label: '📐 Portrait Rule-of-Thirds',
+              onClick: () => {
+                useAlbumStore.getState().applyStudioFramingPreset(targetFrame.id, 'rule_of_thirds');
+                if (onToast) onToast('✓ Applied Rule-of-Thirds framing');
+              },
+            },
+            {
+              id: 'preset-natural-center',
+              label: '🎯 Natural Center',
+              onClick: () => {
+                useAlbumStore.getState().applyStudioFramingPreset(targetFrame.id, 'natural_center');
+                if (onToast) onToast('✓ Applied Natural Center framing');
+              },
+            },
+            { divider: true, id: 'div-ai-actions', label: '' },
+            {
+              id: 'ai-reanalyze',
+              label: '🔄 Re-Analyze Face (YuNet)',
+              onClick: async () => {
+                if (targetFrame.photoId) {
+                  const res = await usePhotoStore.getState().analyzePhotoFaces(targetFrame.photoId);
+                  if (res && res.faces.length > 0) {
+                    useAlbumStore.getState().applyStudioFramingPreset(targetFrame.id, targetFrame.faceFramingPreset || 'natural_center');
+                    if (onToast) onToast(`✓ Face analysis complete: ${res.faces.length} face(s)`);
+                  } else if (onToast) {
+                    onToast('Face analysis: No faces detected');
+                  }
+                }
+              },
+            },
+            {
+              id: 'ai-reset-crop',
+              label: '↺ Reset Crop to Center',
+              onClick: () => {
+                resetSelectedCrop(activeSpread.id);
+              },
+            },
+          ],
         }
       );
     }

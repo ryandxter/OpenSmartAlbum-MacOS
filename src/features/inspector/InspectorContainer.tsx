@@ -22,6 +22,11 @@ import { LayoutSpacingSection } from './sections/LayoutSpacingSection';
 import { ShapesBordersSection } from './sections/ShapesBordersSection';
 import { TypographySection } from './sections/TypographySection';
 import { EffectsShadowsSection } from './sections/EffectsShadowsSection';
+import { AIFramingSection } from './sections/AIFramingSection';
+import { formatFaceTelemetryBadge } from '../../domain/ai/faceDetection';
+import { usePhotoStore } from '../../stores/photoStore';
+import type { PhotoFrameElement } from '../../domain/editor';
+import type { CarouselPhotoFrame } from '../../domain/carousel';
 import styles from './InspectorContainer.module.css';
 
 export interface InspectorContainerProps {
@@ -37,11 +42,15 @@ export function InspectorContainer({ onClose, onToast, activeMode }: InspectorCo
 
   const currentCarousel = useCarouselStore((s) => s.currentCarousel);
   const activeSlideIndex = useCarouselStore((s) => s.activeSlideIndex);
+  const selectedCarouselFrameIds = useCarouselStore((s) => s.selectedFrameIds);
+
+  const faceDataMap = usePhotoStore((s) => s.faceDataMap);
 
   const [activeTab, setActiveTab] = useState<'properties' | 'layers' | 'smart_layout' | 'locks'>('properties');
   const contentRef = useRef<HTMLDivElement>(null);
 
   const { isOpen, toggleSection } = useAccordionState([
+    'ai-framing',
     'layout',
     'shapes',
     'typography',
@@ -53,6 +62,21 @@ export function InspectorContainer({ onClose, onToast, activeMode }: InspectorCo
 
   const carouselElements = currentCarousel?.slides[activeSlideIndex]?.elements || [];
   const printElements = activeSpread?.elements || [];
+
+  const selectedPhotoElement: PhotoFrameElement | CarouselPhotoFrame | undefined =
+    activeMode === 'carousel'
+      ? carouselElements.find(
+          (el): el is CarouselPhotoFrame =>
+            selectedCarouselFrameIds.length === 1 && el.id === selectedCarouselFrameIds[0] && el.type === 'photo'
+        )
+      : printElements.find(
+          (el): el is PhotoFrameElement =>
+            selectedFrameIds.length === 1 && el.id === selectedFrameIds[0] && el.type === 'photo'
+        );
+
+  const currentPhotoFaceData = selectedPhotoElement?.photoId
+    ? faceDataMap[selectedPhotoElement.photoId]
+    : null;
 
   const lockCount = activeMode === 'carousel'
     ? carouselElements.filter((f) => f.locked).length
@@ -152,6 +176,25 @@ export function InspectorContainer({ onClose, onToast, activeMode }: InspectorCo
           <LockedPhotosPanel onToast={(msg) => onToast?.(msg)} />
         ) : (
           <div>
+            {/* AI Face & Studio Framing Section (Phase 23) */}
+            {selectedPhotoElement && (
+              <AccordionSection
+                id="ai-framing"
+                title="AI Face & Studio Framing"
+                icon={Sparkles}
+                isOpen={isOpen('ai-framing')}
+                onToggle={() => toggleSection('ai-framing')}
+                badge={formatFaceTelemetryBadge(currentPhotoFaceData)}
+              >
+                <AIFramingSection
+                  element={selectedPhotoElement}
+                  faceData={currentPhotoFaceData}
+                  onToast={onToast}
+                  activeMode={activeMode}
+                />
+              </AccordionSection>
+            )}
+
             {/* Section 1: Layout & Spacing */}
             <AccordionSection
               id="layout"

@@ -1,5 +1,6 @@
 import type { ShapeType } from './shapes';
-export type { ShapeType };
+import type { StudioFramingPreset } from './ai/faceDetection';
+export type { ShapeType, StudioFramingPreset };
 
 export interface PhotoFrameElement {
   id: string;
@@ -62,6 +63,14 @@ export interface PhotoFrameElement {
   locked?: boolean;
   isMissing?: boolean;
   excludeFromAdaptiveLayout?: boolean;
+
+  // AI Face & Studio Framing (Phase 23)
+  faceFramingPreset?: import('./ai/faceDetection').StudioFramingPreset;
+  faceHeadroomRatio?: number;
+  faceEyeLineRatio?: number;
+  faceShoulderRatio?: number;
+  activeFaceIndex?: number;
+  showFaceReticles?: boolean;
 }
 
 /**

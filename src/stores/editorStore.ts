@@ -18,6 +18,7 @@ import {
 } from '../domain/editor';
 import { Photo } from '../domain/photo';
 import { calculatePhotoBatchPlacement, type PhotoPlacement } from '../domain/photoPlacement';
+import { calculateOptimalStudioCrop } from '../domain/ai/framingMath';
 import type { Project } from '../domain/project';
 import { Album, getAllAlbumSpreads, AlbumElement } from '../domain/album';
 import {
@@ -1103,9 +1104,19 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     useHistoryStore.getState().pushState(currentAlbum);
 
     const photoAspect = photo.width > 0 && photo.height > 0 ? photo.width / photo.height : 1.5;
+    const faceData = usePhotoStore.getState().getPhotoFaceData(photo.id);
+    if (!faceData && photo.id) {
+      void usePhotoStore.getState().analyzePhotoFaces(photo.id);
+    }
 
     const updateFrame = (f: AlbumElement): AlbumElement => {
       if (f.id !== frameId || f.type !== 'photo') return f;
+      const framing = calculateOptimalStudioCrop(
+        { frameWidth: f.width, frameHeight: f.height, imageWidth: photo.width || 1200, imageHeight: photo.height || 800 },
+        faceData,
+        f.faceFramingPreset || 'natural_center'
+      );
+
       return {
         ...f,
         photoId: photo.id,
@@ -1114,10 +1125,9 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         thumbnailPath: photo.thumbnailPath || '',
         fileName: photo.fileName,
         photoAspect: photoAspect,
-        // Reset crop for the new photo
-        cropX: 0,
-        cropY: 0,
-        cropScale: 1.0,
+        cropX: framing.cropX,
+        cropY: framing.cropY,
+        cropScale: framing.cropScale,
         cropRotation: 0,
       };
     };

@@ -19,6 +19,7 @@ import { useEditorStore } from '../../stores/editorStore';
 import { useCarouselStore } from '../../stores/carouselStore';
 import { getAllAlbumSpreads } from '../../domain/album';
 import { filterPhotos, sortPhotos, formatFileSize, PhotoSortBy, Photo } from '../../domain/photo';
+import { isHeroShot } from '../../domain/ai/faceDetection';
 import { FolderTabs } from './FolderTabs';
 import { BatchActionBar } from './BatchActionBar';
 import { FolderDialog } from './FolderDialog';
@@ -231,8 +232,9 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
     return photos.filter((p) => allowedIds.includes(p.id));
   }, [photos, activeFolderId, folderPhotoIds]);
 
-  const filtered = filterPhotos(currentPhotoPool, filter, searchQuery, usedPhotoIdSet);
-  const sortedPhotos = sortPhotos(filtered, sortBy);
+  const faceDataMap = usePhotoStore((s) => s.faceDataMap);
+  const filtered = filterPhotos(currentPhotoPool, filter, searchQuery, usedPhotoIdSet, faceDataMap);
+  const sortedPhotos = sortPhotos(filtered, sortBy, faceDataMap);
 
   // Global Keyboard Shortcuts for Lightroom-style photo interaction
   useEffect(() => {
@@ -297,6 +299,14 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
   const unusedCount = currentPhotoPool.filter((p) => !usedPhotoIdSet.has(p.id) && p.usedCount === 0).length;
   const usedCount = currentPhotoPool.filter((p) => usedPhotoIdSet.has(p.id) || p.usedCount > 0).length;
   const favCount = currentPhotoPool.filter((p) => p.isFavorite).length;
+  const heroCount = currentPhotoPool.filter((p) => {
+    const data = faceDataMap[p.id];
+    return data ? isHeroShot(data) : false;
+  }).length;
+  const faceDetectedCount = currentPhotoPool.filter((p) => {
+    const data = faceDataMap[p.id];
+    return Boolean(data && data.faces && data.faces.length > 0);
+  }).length;
   const missingCount = photos.filter((p) => p.isMissing).length;
 
   const handleToggleImportMenu = (e: React.MouseEvent) => {
@@ -542,6 +552,8 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
                 <option value="unused">Filter: Unused ({unusedCount})</option>
                 <option value="used">Filter: Used ({usedCount})</option>
                 <option value="favorites">Filter: Favorites ({favCount})</option>
+                <option value="hero">Filter: ✨ Hero Shots ({heroCount})</option>
+                <option value="faces">Filter: 👤 Faces Detected ({faceDetectedCount})</option>
               </select>
 
               {/* Sort Dropdown */}
@@ -554,6 +566,7 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
                 <option value="name">Sort: Name</option>
                 <option value="date">Sort: Date</option>
                 <option value="size">Sort: Size</option>
+                <option value="quality">Sort: AI Quality / Hero Score</option>
               </select>
 
               <input
@@ -733,6 +746,10 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
                 const isSelected = selectedPhotoIds.includes(photo.id);
                 const isActive = lastSelectedPhotoId === photo.id;
                 const isUsed = usedPhotoIdSet.has(photo.id) || photo.usedCount > 0;
+                const faceData = faceDataMap[photo.id];
+                const faceCount = faceData?.faces?.length || 0;
+                const isHero = faceData ? isHeroShot(faceData) : false;
+                const isSharp = (faceData?.sharpnessScore ?? 0) >= 75;
 
                 return (
                   <div
@@ -841,6 +858,23 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
                                   className={styles.processingBottomStrip}
                                   title="Generating high-resolution canvas preview in background..."
                                 />
+                              )}
+
+                              {/* Top Left: Hero Shot Badge */}
+                              {isHero && <span className={styles.heroBadge}>✨ HERO</span>}
+
+                              {/* Top Right: Faces Detected Pill */}
+                              {faceCount > 0 && (
+                                <span className={styles.faceBadge} title={`${faceCount} face(s) detected via YuNet AI`}>
+                                  {faceCount > 1 ? `👥 ${faceCount}` : `👤 ${faceCount}`}
+                                </span>
+                              )}
+
+                              {/* Bottom Left: Sharpness Badge */}
+                              {isSharp && (
+                                <span className={styles.sharpBadge} title={`Sharpness Score: ${faceData?.sharpnessScore?.toFixed(0)}`}>
+                                  🎯 SHARP
+                                </span>
                               )}
 
                               {/* Top Right: Favorite Star */}

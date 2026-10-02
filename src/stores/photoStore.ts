@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Photo, PhotoFolder, ImportProgress, ImportNotice, PhotoFilter, PhotoSortBy, getRangeSelection } from '../domain/photo';
 import { detachRemovedAlbumPhotos, detachRemovedPhotos } from '../domain/photoRemoval';
+import { PhotoFaceData, detectPhotoFaces, detectPhotosFacesBatch } from '../domain/ai/faceDetection';
 
 interface PhotoRemovalResult { removedIds: string[]; warnings: string[] }
 interface RelinkProgress { projectId: string; current: number; total: number; currentFile: string; phase: 'scanning' | 'processing' }
@@ -179,6 +180,14 @@ interface PhotoState {
   folderDialogTarget: PhotoFolder | null;
   error: string | null;
 
+  // AI Face Detection & Telemetry Cache (Phase 23)
+  faceDataMap: Record<string, PhotoFaceData>;
+  isAnalyzingFaces: boolean;
+  analyzePhotoFaces: (photoId: string) => Promise<PhotoFaceData | null>;
+  analyzePhotosBatch: (photoIds: string[]) => Promise<void>;
+  getPhotoFaceData: (photoId: string) => PhotoFaceData | undefined;
+  setPhotoFaceData: (photoId: string, data: PhotoFaceData) => void;
+
   // Photo actions
   loadPhotos: (projectId: string) => Promise<void>;
   enqueueImport: (projectId: string, paths: string[], folderId: string | null, label: string) => void;
@@ -273,6 +282,62 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
   folderDialogMode: 'create',
   folderDialogTarget: null,
   error: null,
+
+  faceDataMap: {},
+  isAnalyzingFaces: false,
+
+  analyzePhotoFaces: async (photoId: string) => {
+    const photo = get().photos.find((p) => p.id === photoId);
+    if (!photo || !photo.filePath) return null;
+    try {
+      const data = await detectPhotoFaces(photo.filePath);
+      if (data) {
+        set((s) => ({
+          faceDataMap: { ...s.faceDataMap, [photoId]: data },
+        }));
+      }
+      return data;
+    } catch (err) {
+      console.warn('[AFSN] Face detection failed for photo:', photoId, err);
+      return null;
+    }
+  },
+
+  analyzePhotosBatch: async (photoIds: string[]) => {
+    const photos = get().photos.filter((p) => photoIds.includes(p.id) && p.filePath);
+    if (photos.length === 0) return;
+    set({ isAnalyzingFaces: true });
+    try {
+      const paths = photos.map((p) => p.filePath);
+      const results = await detectPhotosFacesBatch(paths);
+      if (Array.isArray(results)) {
+        set((s) => {
+          const nextMap = { ...s.faceDataMap };
+          for (const res of results) {
+            const matched = photos.find((p) => p.filePath === res.photoPath);
+            if (matched) {
+              nextMap[matched.id] = res;
+            }
+          }
+          return { faceDataMap: nextMap };
+        });
+      }
+    } catch (err) {
+      console.warn('[AFSN] Batch face analysis failed:', err);
+    } finally {
+      set({ isAnalyzingFaces: false });
+    }
+  },
+
+  getPhotoFaceData: (photoId: string) => {
+    return get().faceDataMap[photoId];
+  },
+
+  setPhotoFaceData: (photoId: string, data: PhotoFaceData) => {
+    set((s) => ({
+      faceDataMap: { ...s.faceDataMap, [photoId]: data },
+    }));
+  },
 
   dismissImportNotice: () => set({ importNotice: null }),
 

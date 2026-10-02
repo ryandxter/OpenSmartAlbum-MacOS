@@ -2,10 +2,11 @@ import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { Stage, Layer, Rect, Circle, Line, Text as KonvaText, Group, Image as KonvaImage, Transformer, Path as KonvaPath } from 'react-konva';
 import Konva from 'konva';
 import { convertFileSrc } from '@tauri-apps/api/core';
-import { Maximize2, Star, RotateCcw, Trash2 } from 'lucide-react';
+import { Maximize2, Star, RotateCcw, Trash2, Sparkles } from 'lucide-react';
 import { ContextMenu, ContextMenuItem } from '../../components/ui';
 import { useCarouselStore } from '../../stores/carouselStore';
 import { usePhotoStore } from '../../stores/photoStore';
+import { KonvaFaceReticleOverlay } from '../editor/KonvaFaceReticleOverlay';
 import {
   CarouselPhotoFrame,
   CarouselTextFrame,
@@ -123,6 +124,8 @@ function CarouselFrameNode({
     };
   }, [displaySrc, frame.id, frame.photoAspect]);
 
+  const faceData = usePhotoStore((s) => (frame.photoId ? s.faceDataMap[frame.photoId] : undefined));
+
   const cornerRadiiArray: [number, number, number, number] = [
     frame.cornerRadiusTl ?? frame.cornerRadius ?? 0,
     frame.cornerRadiusTr ?? frame.cornerRadius ?? 0,
@@ -219,6 +222,21 @@ function CarouselFrameNode({
             y={offsetY}
             width={imgW}
             height={imgH}
+          />
+        )}
+
+        {/* AI Face Reticle & Facial Landmarks Overlay */}
+        {imageObj && (
+          <KonvaFaceReticleOverlay
+            faceData={faceData}
+            imgX={offsetX}
+            imgY={offsetY}
+            imgW={imgW}
+            imgH={imgH}
+            frameW={frame.width}
+            frameH={frame.height}
+            eyeLineRatio={frame.faceEyeLineRatio ?? 0.333}
+            visible={Boolean(frame.showFaceReticles)}
           />
         )}
       </Group>
@@ -601,6 +619,33 @@ export function CarouselCanvas({
         return;
       }
 
+      // Shift+F → toggle face reticles and landmarks on selected carousel photo frame(s)
+      if (e.shiftKey && (e.key === 'F' || e.key === 'f') && !cmdOrCtrl && !e.altKey) {
+        const { selectedFrameIds: selIds, currentCarousel: cc } = useCarouselStore.getState();
+        if (selIds.length > 0 && cc) {
+          const selPhotos: CarouselPhotoFrame[] = [];
+          for (const slide of cc.slides) {
+            for (const el of slide.elements) {
+              if (el.type === 'photo' && selIds.includes(el.id)) {
+                selPhotos.push(el);
+              }
+            }
+          }
+          if (selPhotos.length > 0) {
+            e.preventDefault();
+            const anyReticleActive = selPhotos.some((f) => f.showFaceReticles);
+            const nextVal = !anyReticleActive;
+            const updates = selPhotos.map((f) => ({
+              id: f.id,
+              updates: { showFaceReticles: nextVal },
+            }));
+            useCarouselStore.getState().batchUpdateFrames(updates);
+            onToast?.(nextVal ? '👁 Face reticles & landmarks shown' : 'Face reticles hidden');
+            return;
+          }
+        }
+      }
+
       // Arrow keys → nudge all selected carousel frames
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         const { selectedFrameIds: selIds, currentCarousel: cc } = useCarouselStore.getState();
@@ -904,6 +949,69 @@ export function CarouselCanvas({
           setHeroPhotoOnSlide(slideIdx, targetFrame.id);
           onToast?.(`Set photo as Hero on Slide ${slideIdx + 1}`);
         },
+      },
+      {
+        id: 'submenu-ai-framing',
+        label: '🪄 AI Face Auto-Frame',
+        icon: <Sparkles size={14} />,
+        children: [
+          {
+            id: 'preset-pasfoto',
+            label: '🪄 Pasfoto Formal (3x4/4x6)',
+            onClick: () => {
+              useCarouselStore.getState().applyStudioFramingPreset(targetFrame.id, 'pasfoto_formal');
+              onToast?.('✓ Applied Pasfoto Formal framing');
+            },
+          },
+          {
+            id: 'preset-wisuda',
+            label: '🎓 Wisuda UNY 50% Shoulder',
+            onClick: () => {
+              useCarouselStore.getState().applyStudioFramingPreset(targetFrame.id, 'wisuda_uny');
+              onToast?.('✓ Applied Wisuda UNY 50% Shoulder framing');
+            },
+          },
+          {
+            id: 'preset-rule-thirds',
+            label: '📐 Portrait Rule-of-Thirds',
+            onClick: () => {
+              useCarouselStore.getState().applyStudioFramingPreset(targetFrame.id, 'rule_of_thirds');
+              onToast?.('✓ Applied Rule-of-Thirds framing');
+            },
+          },
+          {
+            id: 'preset-natural-center',
+            label: '🎯 Natural Center',
+            onClick: () => {
+              useCarouselStore.getState().applyStudioFramingPreset(targetFrame.id, 'natural_center');
+              onToast?.('✓ Applied Natural Center framing');
+            },
+          },
+          { divider: true, id: 'div-ai-actions', label: '' },
+          {
+            id: 'ai-reanalyze',
+            label: '🔄 Re-Analyze Face (YuNet)',
+            onClick: async () => {
+              if (targetFrame.photoId) {
+                const res = await usePhotoStore.getState().analyzePhotoFaces(targetFrame.photoId);
+                if (res && res.faces.length > 0) {
+                  useCarouselStore.getState().applyStudioFramingPreset(targetFrame.id, targetFrame.faceFramingPreset || 'natural_center');
+                  onToast?.(`✓ Face analysis complete: ${res.faces.length} face(s)`);
+                } else {
+                  onToast?.('Face analysis: No faces detected');
+                }
+              }
+            },
+          },
+          {
+            id: 'ai-reset-crop',
+            label: '↺ Reset Crop to Center',
+            onClick: () => {
+              updatePhotoFrame(targetFrame.id, { cropX: 0, cropY: 0, cropScale: 1.0 });
+              onToast?.('Reset crop and centered photo');
+            },
+          },
+        ],
       },
       { id: 'divider-1', label: '', divider: true },
       {

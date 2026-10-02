@@ -22,6 +22,9 @@ import { AdaptivePhoto } from '../domain/adaptiveLayout';
 import { generateAutoFlowPlan } from '../domain/storytelling/autoFlowEngine';
 import type { Photo } from '../domain/photo';
 import type { PhotoFrameElement } from '../domain/editor';
+import { StudioFramingPreset, FramingConfig } from '../domain/ai/faceDetection';
+import { calculateOptimalStudioCrop } from '../domain/ai/framingMath';
+import { usePhotoStore } from './photoStore';
 import {
   canvasToUiLayers,
   uiLayersToCanvas,
@@ -87,6 +90,7 @@ export interface CarouselState {
     options?: { targetFrameId?: string; isReplace?: boolean }
   ) => string[];
   updatePhotoFrame: (frameId: string, updates: Partial<CarouselPhotoFrame>) => void;
+  applyStudioFramingPreset: (frameId: string, preset: StudioFramingPreset, customConfig?: Partial<FramingConfig>) => void;
   updateTextFrame: (frameId: string, updates: Partial<CarouselTextFrame>) => void;
   removePhotoFrame: (frameId: string) => void;
   cycleSlideLayout: (direction: 'next' | 'prev') => void;
@@ -983,6 +987,46 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         ...currentCarousel,
         slides: updatedSlides,
       },
+    });
+  },
+
+  applyStudioFramingPreset: (frameId, preset, customConfig) => {
+    const { currentCarousel } = get();
+    if (!currentCarousel) return;
+
+    const slide = currentCarousel.slides.find((s) => s.elements.some((e) => e.id === frameId));
+    if (!slide) return;
+    const element = slide.elements.find((e) => e.id === frameId);
+    if (!element || element.type !== 'photo') return;
+
+    const photoState = usePhotoStore.getState();
+    const photoId = element.photoId;
+    const faceData = photoId ? photoState.getPhotoFaceData(photoId) : null;
+    const photo = photoId ? photoState.photos.find((p: any) => p.id === photoId) : null;
+
+    const imageWidth = photo?.width || 1200;
+    const imageHeight = photo?.height || 800;
+
+    const cropResult = calculateOptimalStudioCrop(
+      {
+        frameWidth: element.width,
+        frameHeight: element.height,
+        imageWidth,
+        imageHeight,
+      },
+      faceData,
+      preset,
+      customConfig
+    );
+
+    get().updatePhotoFrame(frameId, {
+      cropX: cropResult.cropX,
+      cropY: cropResult.cropY,
+      cropScale: cropResult.cropScale,
+      faceFramingPreset: preset,
+      faceHeadroomRatio: customConfig?.headroomRatio,
+      faceEyeLineRatio: customConfig?.eyeLineTargetRatio,
+      faceShoulderRatio: customConfig?.shoulderRatio,
     });
   },
 

@@ -425,12 +425,14 @@ export function WorkspaceLayout() {
 
         if (variations.length > 0) {
           const bestVariation = variations[0]!;
+          const faceDataMap = usePhotoStore.getState().faceDataMap;
           const newElements = buildSpreadElementsFromVariation(
             bestVariation,
             adaptivePhotos,
             currentProject.borderEnabled,
             currentProject.borderWidth,
-            currentProject.borderColor
+            currentProject.borderColor,
+            faceDataMap
           );
 
           useHistoryStore.getState().pushState(currentAlbum);

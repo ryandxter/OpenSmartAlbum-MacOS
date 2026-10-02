@@ -914,3 +914,53 @@
   z-index: 50;
   box-shadow: 0 0 8px rgba(56, 189, 248, 0.25);
 }
+
+.heroBadge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  background-color: rgba(245, 158, 11, 0.25);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  color: #fbbf24;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  letter-spacing: 0.03em;
+  z-index: 3;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
+.faceBadge {
+  position: absolute;
+  top: 4px;
+  right: 24px;
+  background-color: rgba(56, 189, 248, 0.2);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  color: #38bdf8;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 3px;
+  z-index: 3;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
+.sharpBadge {
+  position: absolute;
+  bottom: 22px;
+  left: 4px;
+  background-color: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  color: #34d399;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 3px;
+  z-index: 3;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+

@@ -48,8 +48,11 @@ export interface ImportNotice {
   failures?: { file: string; message: string; phase: string }[];
 }
 
-export type PhotoFilter = 'all' | 'unused' | 'used' | 'favorites';
-export type PhotoSortBy = 'name' | 'date' | 'size';
+import type { PhotoFaceData } from './ai/faceDetection';
+import { isHeroShot } from './ai/faceDetection';
+
+export type PhotoFilter = 'all' | 'unused' | 'used' | 'favorites' | 'hero' | 'faces';
+export type PhotoSortBy = 'name' | 'date' | 'size' | 'quality';
 
 export function formatFileSize(bytes: number): string {
   if (bytes <= 0) return '0 B';
@@ -63,7 +66,8 @@ export function filterPhotos(
   photos: Photo[],
   filter: PhotoFilter,
   query?: string,
-  usedPhotoIds?: Set<string>
+  usedPhotoIds?: Set<string>,
+  faceDataMap?: Record<string, PhotoFaceData>
 ): Photo[] {
   let result = photos;
 
@@ -81,6 +85,16 @@ export function filterPhotos(
     }
   } else if (filter === 'favorites') {
     result = result.filter((p) => p.isFavorite);
+  } else if (filter === 'hero') {
+    result = result.filter((p) => {
+      const data = faceDataMap?.[p.id];
+      return data ? isHeroShot(data) : false;
+    });
+  } else if (filter === 'faces') {
+    result = result.filter((p) => {
+      const data = faceDataMap?.[p.id];
+      return Boolean(data && data.faces && data.faces.length > 0);
+    });
   }
 
   if (query && query.trim()) {
@@ -91,7 +105,11 @@ export function filterPhotos(
   return result;
 }
 
-export function sortPhotos(photos: Photo[], sortBy: PhotoSortBy): Photo[] {
+export function sortPhotos(
+  photos: Photo[],
+  sortBy: PhotoSortBy,
+  faceDataMap?: Record<string, PhotoFaceData>
+): Photo[] {
   return [...photos].sort((a, b) => {
     if (sortBy === 'name') {
       return a.fileName.localeCompare(b.fileName, undefined, { numeric: true, sensitivity: 'base' });
@@ -101,6 +119,13 @@ export function sortPhotos(photos: Photo[], sortBy: PhotoSortBy): Photo[] {
     }
     if (sortBy === 'size') {
       return b.fileSize - a.fileSize;
+    }
+    if (sortBy === 'quality') {
+      const dataA = faceDataMap?.[a.id];
+      const dataB = faceDataMap?.[b.id];
+      const scoreA = dataA?.sharpnessScore ?? (dataA?.faces?.length ? 70 : 0);
+      const scoreB = dataB?.sharpnessScore ?? (dataB?.faces?.length ? 70 : 0);
+      return scoreB - scoreA;
     }
     return 0;
   });

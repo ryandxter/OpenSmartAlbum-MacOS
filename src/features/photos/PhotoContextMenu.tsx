@@ -12,6 +12,7 @@ import {
   CheckSquare,
   Trash2,
   ChevronRight,
+  Sparkles,
 } from 'lucide-react';
 import { isMac } from '../../utils/platform';
 import { Photo, PhotoFolder, formatFileSize } from '../../domain/photo';
@@ -199,6 +200,49 @@ export const PhotoContextMenu: React.FC<PhotoContextMenuProps> = ({
           <Star size={14} strokeWidth={1.5} fill={allFav ? 'currentColor' : 'none'} />
         </span>
         <span>{allFav ? 'Remove from Favorites' : 'Mark as Favorite'}</span>
+      </button>
+
+      {/* AI YuNet Face Analysis */}
+      <button
+        type="button"
+        className={styles.menuItem}
+        onClick={() => {
+          onClose();
+          if (isMulti) {
+            usePhotoStore.getState().analyzePhotosBatch(photoIds);
+          } else {
+            usePhotoStore.getState().analyzePhotoFaces(targetPhoto.id);
+          }
+        }}
+      >
+        <span className={styles.menuIcon}><Sparkles size={14} strokeWidth={1.5} /></span>
+        <span>{isMulti ? `Analyze ${count} Photos (YuNet AI)` : 'Analyze Faces (YuNet AI)'}</span>
+      </button>
+
+      {/* Mark as Hero Shot */}
+      <button
+        type="button"
+        className={styles.menuItem}
+        onClick={() => {
+          onClose();
+          const currentData = usePhotoStore.getState().getPhotoFaceData(targetPhoto.id);
+          if (currentData) {
+            usePhotoStore.setState((s) => ({
+              faceDataMap: {
+                ...s.faceDataMap,
+                [targetPhoto.id]: {
+                  ...currentData,
+                  heroScore: currentData.heroScore && currentData.heroScore >= 85 ? 0 : 95,
+                },
+              },
+            }));
+          } else {
+            usePhotoStore.getState().analyzePhotoFaces(targetPhoto.id);
+          }
+        }}
+      >
+        <span className={styles.menuIcon}><Star size={14} strokeWidth={1.5} fill="#fbbf24" color="#fbbf24" /></span>
+        <span>Mark as Hero Shot (✨)</span>
       </button>
 
       {/* Folders Management */}

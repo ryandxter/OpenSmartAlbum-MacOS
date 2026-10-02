@@ -1,5 +1,7 @@
 import { RectBounds, TemplateParams, getUsableAreas, round4 } from './templates';
 import { PhotoFrameElement } from './editor';
+import { PhotoFaceData } from './ai/faceDetection';
+import { calculateOptimalStudioCrop } from './ai/framingMath';
 
 export type PhotoOrientation = 'landscape' | 'portrait' | 'square';
 
@@ -15,6 +17,7 @@ export interface AdaptivePhoto {
   isFavorite?: boolean;
   isHero?: boolean;
   createdAt?: string;
+  faceData?: PhotoFaceData | null;
 }
 
 export interface AdaptiveLayoutVariation {
@@ -108,6 +111,13 @@ export function findOptimalPhotoSlotMapping(
       const slot = slots[s];
       const sAspect = slot ? slot.width / slot.height : 1.5;
       let penalty = calculateCropPenalty(pAspect, sAspect);
+
+      // Penalize assigning photos with detected portrait faces to extreme landscape slots (W/H > 2.2) to prevent head truncation
+      if (photo?.faceData && photo.faceData.faces && photo.faceData.faces.length > 0) {
+        if (sAspect > 2.2) {
+          penalty += 0.40;
+        }
+      }
 
       // If photo is a preferred hero and slot is the largest slot, award a bonus (lower cost)
       const slotArea = slotAreas[s] ?? 0;
@@ -1556,7 +1566,8 @@ export function buildSpreadElementsFromVariation(
   photos: AdaptivePhoto[],
   defaultBorderEnabled = false,
   defaultBorderWidth = 1,
-  defaultBorderColor = '#FFFFFF'
+  defaultBorderColor = '#FFFFFF',
+  faceDataMap?: Record<string, PhotoFaceData>
 ): PhotoFrameElement[] {
   // If optimal photo assignments are available, slot index s gets photo[photoIndex]
   const slotToPhotoMap = new Map<number, AdaptivePhoto>();
@@ -1570,11 +1581,27 @@ export function buildSpreadElementsFromVariation(
   return variation.rects.map((rect, index) => {
     const photo = slotToPhotoMap.get(index) || photos[index];
     const frameId = `frame-${Date.now()}-${index + 1}-${Math.random().toString(36).substr(2, 4)}`;
+    const photoId = photo?.photoId || (photo?.filePath ? `photo-${index + 1}` : null);
+    const faceData = photo?.faceData || (photoId && faceDataMap ? faceDataMap[photoId] : null);
+
+    const imageWidth = photo?.photoAspect ? photo.photoAspect * 1000 : 1500;
+    const imageHeight = 1000;
+
+    const framing = calculateOptimalStudioCrop(
+      {
+        frameWidth: rect.width,
+        frameHeight: rect.height,
+        imageWidth,
+        imageHeight,
+      },
+      faceData,
+      'wisuda_uny'
+    );
 
     return {
       id: frameId,
       type: 'photo',
-      photoId: photo?.photoId || (photo?.filePath ? `photo-${index + 1}` : null),
+      photoId,
       filePath: photo?.filePath || '',
       fileName: photo?.fileName || (photo?.filePath ? photo.filePath.split(/[\\/]/).pop() || '' : ''),
       previewPath: photo?.previewPath || photo?.thumbnailPath || '',
@@ -1588,10 +1615,11 @@ export function buildSpreadElementsFromVariation(
       photoAspect: photo?.photoAspect || (rect.width / rect.height),
       originalWidth: rect.width,
       originalHeight: rect.height,
-      cropX: 0,
-      cropY: 0,
-      cropScale: 1.0,
+      cropX: framing.cropX,
+      cropY: framing.cropY,
+      cropScale: framing.cropScale,
       cropRotation: 0,
+      faceFramingPreset: faceData && faceData.faces && faceData.faces.length > 0 ? 'wisuda_uny' : undefined,
       borderEnabled: defaultBorderEnabled,
       borderWidth: defaultBorderWidth,
       borderColor: defaultBorderColor,
@@ -1608,7 +1636,10 @@ export function buildSpreadElementsFromVariation(
 /**
  * Performs a randomized Fisher-Yates shuffle of assigned photos across the active frame slots.
  */
-export function shuffleElementsPhotos(elements: PhotoFrameElement[]): PhotoFrameElement[] {
+export function shuffleElementsPhotos(
+  elements: PhotoFrameElement[],
+  faceDataMap?: Record<string, PhotoFaceData>
+): PhotoFrameElement[] {
   if (elements.length <= 1) return elements;
 
   const unlockedIndices: number[] = [];
@@ -1663,6 +1694,17 @@ export function shuffleElementsPhotos(elements: PhotoFrameElement[]): PhotoFrame
     const newP = shuffled[sIdx];
     const el = elements[origIdx];
     if (newP && el) {
+      const photoId = newP.photoId;
+      const faceData = photoId && faceDataMap ? faceDataMap[photoId] : null;
+      const imageWidth = (newP.photoAspect || (el.width / el.height)) * 1000;
+      const imageHeight = 1000;
+      const preset = el.faceFramingPreset || 'wisuda_uny';
+      const framing = calculateOptimalStudioCrop(
+        { frameWidth: el.width, frameHeight: el.height, imageWidth, imageHeight },
+        faceData,
+        preset
+      );
+
       result[origIdx] = {
         ...el,
         photoId: newP.photoId,
@@ -1671,9 +1713,10 @@ export function shuffleElementsPhotos(elements: PhotoFrameElement[]): PhotoFrame
         previewPath: newP.previewPath ?? el.previewPath,
         thumbnailPath: newP.thumbnailPath ?? el.thumbnailPath,
         photoAspect: newP.photoAspect || (el.width / el.height),
-        cropX: 0,
-        cropY: 0,
-        cropScale: 1.0,
+        cropX: framing.cropX,
+        cropY: framing.cropY,
+        cropScale: framing.cropScale,
+        faceFramingPreset: faceData && faceData.faces && faceData.faces.length > 0 ? preset : el.faceFramingPreset,
       };
     }
   });
