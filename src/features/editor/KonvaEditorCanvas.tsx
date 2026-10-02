@@ -1168,6 +1168,8 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
     showGutterGuide,
     showBleedGuide,
     showSafeAreaGuide,
+    showCenterGuide,
+    showThirdsGuide,
     initializeAlbum,
     duplicateSpread,
     addSpread,
@@ -3807,6 +3809,125 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                 />
               </Group>
             )}
+
+            {/* Optical Centerlines (Left Page, Right Page, Full Spread) */}
+            {showCenterGuide && (
+              <Group listening={false}>
+                {/* Full Spread Horizontal Centerline */}
+                <Line
+                  points={[0, screenSpreadH / 2, screenSpreadW, screenSpreadH / 2]}
+                  stroke="rgba(168, 85, 247, 0.65)"
+                  strokeWidth={1}
+                  dash={[6, 4]}
+                  perfectDrawEnabled={false}
+                  strokeScaleEnabled={false}
+                />
+                {/* Left Page Vertical Centerline */}
+                <Line
+                  points={[leftPagePixelW / 2, 0, leftPagePixelW / 2, screenSpreadH]}
+                  stroke="rgba(168, 85, 247, 0.65)"
+                  strokeWidth={1}
+                  dash={[6, 4]}
+                  perfectDrawEnabled={false}
+                  strokeScaleEnabled={false}
+                />
+                {/* Right Page Vertical Centerline */}
+                <Line
+                  points={[
+                    leftPagePixelW + gutterPixelW + rightPagePixelW / 2,
+                    0,
+                    leftPagePixelW + gutterPixelW + rightPagePixelW / 2,
+                    screenSpreadH,
+                  ]}
+                  stroke="rgba(168, 85, 247, 0.65)"
+                  strokeWidth={1}
+                  dash={[6, 4]}
+                  perfectDrawEnabled={false}
+                  strokeScaleEnabled={false}
+                />
+                {/* Center Spine Crease Line if gutter is 0 */}
+                {gutterPixelW === 0 && (
+                  <Line
+                    points={[leftPagePixelW, 0, leftPagePixelW, screenSpreadH]}
+                    stroke="rgba(168, 85, 247, 0.5)"
+                    strokeWidth={1}
+                    dash={[4, 4]}
+                    perfectDrawEnabled={false}
+                    strokeScaleEnabled={false}
+                  />
+                )}
+              </Group>
+            )}
+
+            {/* Rule of Thirds 3×3 Composition Grid */}
+            {showThirdsGuide && (
+              <Group listening={false}>
+                {/* Left Page Thirds */}
+                <Line
+                  points={[leftPagePixelW / 3, 0, leftPagePixelW / 3, screenSpreadH]}
+                  stroke="rgba(56, 189, 248, 0.45)"
+                  strokeWidth={1}
+                  dash={[4, 4]}
+                  perfectDrawEnabled={false}
+                  strokeScaleEnabled={false}
+                />
+                <Line
+                  points={[(leftPagePixelW * 2) / 3, 0, (leftPagePixelW * 2) / 3, screenSpreadH]}
+                  stroke="rgba(56, 189, 248, 0.45)"
+                  strokeWidth={1}
+                  dash={[4, 4]}
+                  perfectDrawEnabled={false}
+                  strokeScaleEnabled={false}
+                />
+
+                {/* Right Page Thirds */}
+                <Line
+                  points={[
+                    leftPagePixelW + gutterPixelW + rightPagePixelW / 3,
+                    0,
+                    leftPagePixelW + gutterPixelW + rightPagePixelW / 3,
+                    screenSpreadH,
+                  ]}
+                  stroke="rgba(56, 189, 248, 0.45)"
+                  strokeWidth={1}
+                  dash={[4, 4]}
+                  perfectDrawEnabled={false}
+                  strokeScaleEnabled={false}
+                />
+                <Line
+                  points={[
+                    leftPagePixelW + gutterPixelW + (rightPagePixelW * 2) / 3,
+                    0,
+                    leftPagePixelW + gutterPixelW + (rightPagePixelW * 2) / 3,
+                    screenSpreadH,
+                  ]}
+                  stroke="rgba(56, 189, 248, 0.45)"
+                  strokeWidth={1}
+                  dash={[4, 4]}
+                  perfectDrawEnabled={false}
+                  strokeScaleEnabled={false}
+                />
+
+                {/* Horizontal Thirds across Full Spread */}
+                <Line
+                  points={[0, screenSpreadH / 3, screenSpreadW, screenSpreadH / 3]}
+                  stroke="rgba(56, 189, 248, 0.45)"
+                  strokeWidth={1}
+                  dash={[4, 4]}
+                  perfectDrawEnabled={false}
+                  strokeScaleEnabled={false}
+                />
+                <Line
+                  points={[0, (screenSpreadH * 2) / 3, screenSpreadW, (screenSpreadH * 2) / 3]}
+                  stroke="rgba(56, 189, 248, 0.45)"
+                  strokeWidth={1}
+                  dash={[4, 4]}
+                  perfectDrawEnabled={false}
+                  strokeScaleEnabled={false}
+                />
+              </Group>
+            )}
+
             {/* Keep the sheet edge above artwork, but below every selection overlay. */}
             <Rect
               name="canvas-outer-perimeter-border"

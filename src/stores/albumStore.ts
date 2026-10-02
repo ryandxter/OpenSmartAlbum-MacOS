@@ -371,6 +371,8 @@ export interface AlbumState {
   showGutterGuide: boolean;
   showBleedGuide: boolean;
   showSafeAreaGuide: boolean;
+  showCenterGuide: boolean; // Optical centerlines of left page, right page, and full spread
+  showThirdsGuide: boolean; // Rule of Thirds 3×3 grid overlay for composition balance
 
   // Spread Drawer Open State
   isSpreadDrawerOpen: boolean;
@@ -404,7 +406,8 @@ export interface AlbumState {
   applySafeAreaToAllSpreads: (safeArea: number, side?: 'all' | 'top' | 'bottom' | 'outside' | 'spine', project?: Project) => void;
   updateSpreadBackgroundColor: (spreadId: string, color: string, scope?: 'spread' | 'left' | 'right') => void;
   applyBackgroundColorToAllSpreads: (color: string) => void;
-  toggleGuide: (guide: 'gutter' | 'bleed' | 'safeArea') => void;
+  toggleGuide: (guide: 'gutter' | 'bleed' | 'safeArea' | 'center' | 'thirds') => void;
+  setGuideVisibility: (guide: 'gutter' | 'bleed' | 'safeArea' | 'center' | 'thirds', visible: boolean) => void;
   selectPage: (pageId: string | null) => void;
   setSpreadDrawerOpen: (isOpen: boolean) => void;
   toggleSpreadDrawer: () => void;
@@ -435,6 +438,8 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
   showGutterGuide: true,
   showBleedGuide: true,
   showSafeAreaGuide: true,
+  showCenterGuide: false,
+  showThirdsGuide: false,
   isSpreadDrawerOpen: false,
   spreadLayoutIndices: {},
 
@@ -1526,14 +1531,26 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
     });
   },
 
-  toggleGuide: (guide: 'gutter' | 'bleed' | 'safeArea') => {
+  toggleGuide: (guide: 'gutter' | 'bleed' | 'safeArea' | 'center' | 'thirds') => {
     if (guide === 'gutter') {
       set((s) => ({ showGutterGuide: !s.showGutterGuide }));
     } else if (guide === 'bleed') {
       set((s) => ({ showBleedGuide: !s.showBleedGuide }));
     } else if (guide === 'safeArea') {
       set((s) => ({ showSafeAreaGuide: !s.showSafeAreaGuide }));
+    } else if (guide === 'center') {
+      set((s) => ({ showCenterGuide: !s.showCenterGuide }));
+    } else if (guide === 'thirds') {
+      set((s) => ({ showThirdsGuide: !s.showThirdsGuide }));
     }
+  },
+
+  setGuideVisibility: (guide: 'gutter' | 'bleed' | 'safeArea' | 'center' | 'thirds', visible: boolean) => {
+    if (guide === 'gutter') set({ showGutterGuide: visible });
+    else if (guide === 'bleed') set({ showBleedGuide: visible });
+    else if (guide === 'safeArea') set({ showSafeAreaGuide: visible });
+    else if (guide === 'center') set({ showCenterGuide: visible });
+    else if (guide === 'thirds') set({ showThirdsGuide: visible });
   },
 
   selectPage: (pageId: string | null) => {

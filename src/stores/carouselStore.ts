@@ -34,6 +34,8 @@ export interface CarouselState {
   currentCarousel: Carousel | null;
   activeSlideIndex: number;
   showSliceGuides: boolean;
+  showCenterGuide: boolean; // Center axes per slide (vertical & horizontal crosshairs)
+  showThirdsGuide: boolean; // Rule of Thirds 3×3 grid per slide
   selectedFrameId: string | null;
   selectedFrameIds: string[];
   slideLayoutIndices: Record<number, number>;
@@ -93,6 +95,8 @@ export interface CarouselState {
   swapFrames: (frameIdA: string, frameIdB: string) => void;
   toggleSliceGuides: () => void;
   setShowSliceGuides: (show: boolean) => void;
+  toggleGuide: (guide: 'slices' | 'center' | 'thirds') => void;
+  setGuideVisibility: (guide: 'slices' | 'center' | 'thirds', visible: boolean) => void;
   addTextFrame: () => void;
 }
 
@@ -100,6 +104,8 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
   currentCarousel: null,
   activeSlideIndex: 0,
   showSliceGuides: true,
+  showCenterGuide: false,
+  showThirdsGuide: false,
   selectedFrameId: null,
   selectedFrameIds: [],
   slideLayoutIndices: {},
@@ -1839,6 +1845,22 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
 
   toggleSliceGuides: () => set((state) => ({ showSliceGuides: !state.showSliceGuides })),
   setShowSliceGuides: (show) => set({ showSliceGuides: show }),
+
+  toggleGuide: (guide: 'slices' | 'center' | 'thirds') => {
+    if (guide === 'slices') {
+      set((s) => ({ showSliceGuides: !s.showSliceGuides }));
+    } else if (guide === 'center') {
+      set((s) => ({ showCenterGuide: !s.showCenterGuide }));
+    } else if (guide === 'thirds') {
+      set((s) => ({ showThirdsGuide: !s.showThirdsGuide }));
+    }
+  },
+
+  setGuideVisibility: (guide: 'slices' | 'center' | 'thirds', visible: boolean) => {
+    if (guide === 'slices') set({ showSliceGuides: visible });
+    else if (guide === 'center') set({ showCenterGuide: visible });
+    else if (guide === 'thirds') set({ showThirdsGuide: visible });
+  },
 
   addTextFrame: () => {
     const { currentCarousel, activeSlideIndex, pushHistory } = get();

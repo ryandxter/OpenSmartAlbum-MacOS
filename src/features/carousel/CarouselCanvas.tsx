@@ -288,6 +288,8 @@ export function CarouselCanvas({
   const activeSlideIndex = useCarouselStore((s) => s.activeSlideIndex);
   const setActiveSlide = useCarouselStore((s) => s.setActiveSlide);
   const showSliceGuides = useCarouselStore((s) => s.showSliceGuides);
+  const showCenterGuide = useCarouselStore((s) => s.showCenterGuide);
+  const showThirdsGuide = useCarouselStore((s) => s.showThirdsGuide);
   const updatePhotoFrame = useCarouselStore((s) => s.updatePhotoFrame);
 
   const selectedFrameIds = useCarouselStore((s) => s.selectedFrameIds);
@@ -1519,85 +1521,168 @@ export function CarouselCanvas({
             )}
           </Layer>
 
-          {/* Layer 3: Slice Boundary Guides & Slide Number Badges (Overlay) */}
-          {showSliceGuides && (
+          {/* Layer 3: Guides & Overlays (Slice Boundaries, Centerlines, Rule of Thirds) */}
+          {(showSliceGuides || showCenterGuide || showThirdsGuide) && (
             <Layer listening={false}>
-              {/* Virtual Cut Indicators for Spanning Frames */}
-              {allFrames
-                .filter((f) => f.width > slideWidth + 1)
-                .map((frame) => {
-                  const startSlide = Math.floor(frame.x / slideWidth);
-                  const endSlide = Math.floor((frame.x + frame.width - 1) / slideWidth);
-                  const cutXPositions: number[] = [];
-                  for (let s = startSlide + 1; s <= endSlide; s++) {
-                    const boundaryX = s * slideWidth;
-                    if (boundaryX > frame.x && boundaryX < frame.x + frame.width) {
-                      cutXPositions.push(boundaryX);
-                    }
-                  }
-                  return (
-                    <Group key={`cuts-${frame.id}`}>
-                      {cutXPositions.map((cutX) => (
-                        <Group key={`cut-${frame.id}-${cutX}`}>
-                          <Line
-                            points={[cutX, frame.y, cutX, frame.y + frame.height]}
-                            stroke="rgba(56, 189, 248, 0.75)"
-                            strokeWidth={1.5}
-                            dash={[4, 4]}
-                          />
-                          <Group x={cutX - 35} y={frame.y + frame.height / 2 - 10}>
-                            <Rect width={70} height={20} fill="rgba(15, 23, 42, 0.85)" cornerRadius={4} />
-                            <KonvaText
-                              text="Slide Cut"
-                              x={14}
-                              y={5}
-                              fill="#38bdf8"
-                              fontSize={10}
-                              fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
-                              fontStyle="600"
-                            />
-                          </Group>
+              {/* Slice Boundary Guides & Slide Number Badges (Overlay) */}
+              {showSliceGuides && (
+                <>
+                  {/* Virtual Cut Indicators for Spanning Frames */}
+                  {allFrames
+                    .filter((f) => f.width > slideWidth + 1)
+                    .map((frame) => {
+                      const startSlide = Math.floor(frame.x / slideWidth);
+                      const endSlide = Math.floor((frame.x + frame.width - 1) / slideWidth);
+                      const cutXPositions: number[] = [];
+                      for (let s = startSlide + 1; s <= endSlide; s++) {
+                        const boundaryX = s * slideWidth;
+                        if (boundaryX > frame.x && boundaryX < frame.x + frame.width) {
+                          cutXPositions.push(boundaryX);
+                        }
+                      }
+                      return (
+                        <Group key={`cuts-${frame.id}`}>
+                          {cutXPositions.map((cutX) => (
+                            <Group key={`cut-${frame.id}-${cutX}`}>
+                              <Line
+                                points={[cutX, frame.y, cutX, frame.y + frame.height]}
+                                stroke="rgba(56, 189, 248, 0.75)"
+                                strokeWidth={1.5}
+                                dash={[4, 4]}
+                              />
+                              <Group x={cutX - 35} y={frame.y + frame.height / 2 - 10}>
+                                <Rect width={70} height={20} fill="rgba(15, 23, 42, 0.85)" cornerRadius={4} />
+                                <KonvaText
+                                  text="Slide Cut"
+                                  x={14}
+                                  y={5}
+                                  fill="#38bdf8"
+                                  fontSize={10}
+                                  fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
+                                  fontStyle="600"
+                                />
+                              </Group>
+                            </Group>
+                          ))}
                         </Group>
-                      ))}
-                    </Group>
-                  );
-                })}
+                      );
+                    })}
 
-              {currentCarousel?.slides.map((slide, idx) => {
-                const xOffset = getSlideXOffset(currentCarousel, idx);
-                return (
-                  <Group key={`guide-${slide.id}`} x={xOffset} y={0}>
-                    {/* Vertical Boundary Line between slides (except at x=0) */}
-                    {idx > 0 && (
-                      <Line
-                        points={[0, 0, 0, totalHeight]}
-                        stroke="rgba(255, 255, 255, 0.4)"
-                        strokeWidth={1.5}
-                        dash={[6, 6]}
-                      />
-                    )}
+                  {currentCarousel?.slides.map((slide, idx) => {
+                    const xOffset = getSlideXOffset(currentCarousel, idx);
+                    return (
+                      <Group key={`guide-${slide.id}`} x={xOffset} y={0}>
+                        {/* Vertical Boundary Line between slides (except at x=0) */}
+                        {idx > 0 && (
+                          <Line
+                            points={[0, 0, 0, totalHeight]}
+                            stroke="rgba(255, 255, 255, 0.4)"
+                            strokeWidth={1.5}
+                            dash={[6, 6]}
+                          />
+                        )}
 
-                    {/* Slide Top Badge Header */}
-                    <Group x={12} y={12}>
-                      <Rect
-                        width={74}
-                        height={22}
-                        fill="rgba(0, 0, 0, 0.65)"
-                        cornerRadius={4}
-                      />
-                      <KonvaText
-                        text={`Slide ${idx + 1}`}
-                        x={10}
-                        y={5}
-                        fill="#F4F4F5"
-                        fontSize={11}
-                        fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
-                        fontStyle="500"
-                      />
-                    </Group>
-                  </Group>
-                );
-              })}
+                        {/* Slide Top Badge Header */}
+                        <Group x={12} y={12}>
+                          <Rect
+                            width={74}
+                            height={22}
+                            fill="rgba(0, 0, 0, 0.65)"
+                            cornerRadius={4}
+                          />
+                          <KonvaText
+                            text={`Slide ${idx + 1}`}
+                            x={10}
+                            y={5}
+                            fill="#F4F4F5"
+                            fontSize={11}
+                            fontFamily="-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif"
+                            fontStyle="500"
+                          />
+                        </Group>
+                      </Group>
+                    );
+                  })}
+                </>
+              )}
+
+              {/* Optical Centerlines per Slide */}
+              {showCenterGuide && (
+                <Group listening={false}>
+                  {currentCarousel?.slides.map((slide, idx) => {
+                    const xOffset = getSlideXOffset(currentCarousel, idx);
+                    return (
+                      <Group key={`center-guide-${slide.id}`} x={xOffset} y={0}>
+                        {/* Vertical Slide Centerline */}
+                        <Line
+                          points={[slideWidth / 2, 0, slideWidth / 2, totalHeight]}
+                          stroke="rgba(168, 85, 247, 0.65)"
+                          strokeWidth={1.5}
+                          dash={[6, 4]}
+                          perfectDrawEnabled={false}
+                          strokeScaleEnabled={false}
+                        />
+                        {/* Horizontal Slide Centerline */}
+                        <Line
+                          points={[0, totalHeight / 2, slideWidth, totalHeight / 2]}
+                          stroke="rgba(168, 85, 247, 0.65)"
+                          strokeWidth={1.5}
+                          dash={[6, 4]}
+                          perfectDrawEnabled={false}
+                          strokeScaleEnabled={false}
+                        />
+                      </Group>
+                    );
+                  })}
+                </Group>
+              )}
+
+              {/* Rule of Thirds Grid per Slide */}
+              {showThirdsGuide && (
+                <Group listening={false}>
+                  {currentCarousel?.slides.map((slide, idx) => {
+                    const xOffset = getSlideXOffset(currentCarousel, idx);
+                    return (
+                      <Group key={`thirds-guide-${slide.id}`} x={xOffset} y={0}>
+                        {/* Vertical Thirds */}
+                        <Line
+                          points={[slideWidth / 3, 0, slideWidth / 3, totalHeight]}
+                          stroke="rgba(56, 189, 248, 0.45)"
+                          strokeWidth={1}
+                          dash={[4, 4]}
+                          perfectDrawEnabled={false}
+                          strokeScaleEnabled={false}
+                        />
+                        <Line
+                          points={[(slideWidth * 2) / 3, 0, (slideWidth * 2) / 3, totalHeight]}
+                          stroke="rgba(56, 189, 248, 0.45)"
+                          strokeWidth={1}
+                          dash={[4, 4]}
+                          perfectDrawEnabled={false}
+                          strokeScaleEnabled={false}
+                        />
+                        {/* Horizontal Thirds */}
+                        <Line
+                          points={[0, totalHeight / 3, slideWidth, totalHeight / 3]}
+                          stroke="rgba(56, 189, 248, 0.45)"
+                          strokeWidth={1}
+                          dash={[4, 4]}
+                          perfectDrawEnabled={false}
+                          strokeScaleEnabled={false}
+                        />
+                        <Line
+                          points={[0, (totalHeight * 2) / 3, slideWidth, (totalHeight * 2) / 3]}
+                          stroke="rgba(56, 189, 248, 0.45)"
+                          strokeWidth={1}
+                          dash={[4, 4]}
+                          perfectDrawEnabled={false}
+                          strokeScaleEnabled={false}
+                        />
+                      </Group>
+                    );
+                  })}
+                </Group>
+              )}
             </Layer>
           )}
         </Stage>
