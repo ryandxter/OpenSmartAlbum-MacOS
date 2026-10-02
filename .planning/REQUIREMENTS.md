@@ -24,10 +24,10 @@
 
 
 ### 5. Visual Studio Layers Management & Reordering Panel (LAY)
-- [ ] **LAY-01**: User can view a dedicated Studio Layers panel listing all elements (photos, text, vector shapes) on the active spread/slide with thumbnail previews and type badges.
-- [ ] **LAY-02**: User can reorder elements' z-index via drag-and-drop within the Layers panel with a responsive pointer lifecycle and midpoint crossing insertion indicator.
-- [ ] **LAY-03**: User can multi-select layer cards to drag and reorder them as a unified block.
-- [ ] **LAY-04**: User can toggle lock/unlock and visibility (hide/show) directly on individual layer cards.
+- [x] **LAY-01**: User can view a dedicated Studio Layers panel listing all elements (photos, text, vector shapes) on the active spread/slide with thumbnail previews and type badges.
+- [x] **LAY-02**: User can reorder elements' z-index via drag-and-drop within the Layers panel with a responsive pointer lifecycle and midpoint crossing insertion indicator.
+- [x] **LAY-03**: User can multi-select layer cards to drag and reorder them as a unified block.
+- [x] **LAY-04**: User can toggle lock/unlock and visibility (hide/show) directly on individual layer cards.
 
 ### 6. Sub-Pixel Hairline Border Scaling Parity (BOR)
 - [ ] **BOR-01**: Ultra-thin photo borders (0.02 - 0.1 mm/pt) render with exact proportional sub-pixel scaling in Export Preview, eliminating artificial 2-device-pixel minimum constraints.
@@ -60,6 +60,6 @@
 | TXT-01..TXT-05 | Phase 18: Direct-Canvas Rich Text Color Bar & Inline Hex Editor | Complete |
 | EXC-01..EXC-03 | Phase 19: Adaptive Layout Decorative Exclusion & Photo Swap Shortcut | Complete |
 | GUD-01..GUD-02, NAV-01..NAV-02 | Phase 20: Quick Guides & Snapping Popover + Direct Drawer Wheel Scroll | Complete |
-| LAY-01..LAY-04 | Phase 21: Visual Studio Layers Management & Reordering Panel | Pending |
+| LAY-01..LAY-04 | Phase 21: Visual Studio Layers Management & Reordering Panel | Complete |
 | BOR-01..BOR-02 | Phase 22: Sub-Pixel Hairline Border Scaling Parity | Pending |
 | AI-01..AI-04 | Phase 23: On-Device AI Face Detection & Studio Framing Engine (YuNet) | Pending |
