@@ -3,11 +3,11 @@
 ## Milestone v1.4.0: Workflow & Canvas Precision Suite
 
 ### 1. Direct-Canvas Rich Text & Inline Color Bar (TXT)
-- [ ] **TXT-01**: User can format text color with a direct-canvas floating color bar featuring an editable Hex input field supporting `#RGB` (3-digit) and `#RRGGBB` (6-digit) values.
-- [ ] **TXT-02**: User can format text background highlight per character/word span with live Hex input and color presets.
-- [ ] **TXT-03**: System detects and clearly indicates `Mixed` status when the active text selection contains multiple different text colors or background highlights.
-- [ ] **TXT-04**: Active text selection on canvas is preserved without losing focus or range bounds when clicking the color picker or typing in Hex inputs.
-- [ ] **TXT-05**: Inline text formatting changes synchronize bidirectionally with the Inspector's TypographyPanel and record into Undo/Redo history.
+- [x] **TXT-01**: User can format text color with a direct-canvas floating color bar featuring an editable Hex input field supporting `#RGB` (3-digit) and `#RRGGBB` (6-digit) values.
+- [x] **TXT-02**: User can format text background highlight per character/word span with live Hex input and color presets.
+- [x] **TXT-03**: System detects and clearly indicates `Mixed` status when the active text selection contains multiple different text colors or background highlights.
+- [x] **TXT-04**: Active text selection on canvas is preserved without losing focus or range bounds when clicking the color picker or typing in Hex inputs.
+- [x] **TXT-05**: Inline text formatting changes synchronize bidirectionally with the Inspector's TypographyPanel and record into Undo/Redo history.
 
 ### 2. Adaptive Layout Decorative & Overlay Exclusion (EXC)
 - [ ] **EXC-01**: User can toggle `excludeFromAdaptiveLayout` on photo frames (logos, watermarks, stamps) so they are preserved in place during Spacebar layout shuffle and auto-layout generation while remaining fully editable.
@@ -56,7 +56,7 @@
 
 | Requirement | Phase | Status |
 | :--- | :--- | :--- |
-| TXT-01..TXT-05 | Phase 18: Direct-Canvas Rich Text Color Bar & Inline Hex Editor | Pending |
+| TXT-01..TXT-05 | Phase 18: Direct-Canvas Rich Text Color Bar & Inline Hex Editor | Complete |
 | EXC-01..EXC-03 | Phase 19: Adaptive Layout Decorative Exclusion & Photo Swap Shortcut | Pending |
 | GUD-01..GUD-02, NAV-01..NAV-02 | Phase 20: Quick Guides & Snapping Popover + Direct Drawer Wheel Scroll | Pending |
 | LAY-01..LAY-04 | Phase 21: Visual Studio Layers Management & Reordering Panel | Pending |
