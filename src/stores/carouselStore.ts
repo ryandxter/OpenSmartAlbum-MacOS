@@ -78,6 +78,7 @@ export interface CarouselState {
     options?: { targetFrameId?: string; isReplace?: boolean }
   ) => string[];
   updatePhotoFrame: (frameId: string, updates: Partial<CarouselPhotoFrame>) => void;
+  updateTextFrame: (frameId: string, updates: Partial<CarouselTextFrame>) => void;
   removePhotoFrame: (frameId: string) => void;
   cycleSlideLayout: (direction: 'next' | 'prev') => void;
   applyDynamicSlideLayoutByIndex: (slideIndex: number, variationIndex: number) => void;
@@ -87,7 +88,7 @@ export interface CarouselState {
   setPanoramaSpan: ((frameId: string, spanSlides: 2 | 3) => void) &
     ((slideIndex: number, frameId: string, spanSlides: 2 | 3) => void);
   setHeroPhotoOnSlide: (slideIndex: number, frameId: string) => void;
-  batchUpdateFrames: (updates: Array<{ id: string; updates: Partial<CarouselPhotoFrame> }>) => void;
+  batchUpdateFrames: (updates: Array<{ id: string; updates: Partial<CarouselPhotoFrame> | Partial<CarouselTextFrame> }>) => void;
   swapFrames: (frameIdA: string, frameIdB: string) => void;
   toggleSliceGuides: () => void;
   setShowSliceGuides: (show: boolean) => void;
@@ -146,6 +147,11 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
           locked: Boolean(frame.locked),
           opacity: Number.isFinite(frame.opacity) ? Math.max(0, Math.min(1, frame.opacity!)) : 1.0,
           rotation: Number.isFinite(frame.rotation) ? frame.rotation : 0,
+          styledRanges: Array.isArray(frame.styledRanges) ? frame.styledRanges : undefined,
+          style: frame.style ? frame.style : undefined,
+          highlight: frame.highlight || undefined,
+          lineHeight: frame.lineHeight !== undefined ? frame.lineHeight : undefined,
+          letterSpacing: frame.letterSpacing !== undefined ? frame.letterSpacing : undefined,
         };
       }
       const cornerRadiusNum = typeof frame.cornerRadius === 'number' ? frame.cornerRadius : null;
@@ -275,39 +281,65 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         widthPx: slide.widthPx || preset.width,
         heightPx: slide.heightPx || preset.height,
         backgroundColor: slide.backgroundColor || '#FFFFFF',
-        elements: (slide.elements || []).map((el: any): CarouselPhotoFrame => ({
-          type: 'photo',
-          id: el.id,
-          photoId: el.photoId || undefined,
-          filePath: el.filePath || '',
-          fileName: el.fileName || '',
-          previewPath: el.previewPath || undefined,
-          thumbnailPath: el.thumbnailPath || undefined,
-          x: Number(el.x ?? 0),
-          y: Number(el.y ?? 0),
-          width: Number(el.width ?? 100),
-          height: Number(el.height ?? 100),
-          rotation: Number(el.rotation ?? 0),
-          zIndex: el.zIndex !== undefined && el.zIndex !== null ? Number(el.zIndex) : 1,
-          photoAspect: el.photoAspect !== undefined && el.photoAspect !== null ? Number(el.photoAspect) : 1.0,
-          cropX: Number(el.cropX ?? 0),
-          cropY: Number(el.cropY ?? 0),
-          cropScale: Number(el.cropScale ?? 1.0),
-          cropRotation: Number(el.cropRotation ?? 0),
-          borderEnabled: Boolean(el.borderEnabled),
-          borderWidth: Number(el.borderWidth ?? 0),
-          borderColor: el.borderColor || '#FFFFFF',
-          borderStyle: el.borderStyle || 'solid',
-          opacity: Number(el.opacity ?? 1.0),
-          locked: Boolean(el.locked),
-          shapeType: el.shapeType || undefined,
-          customSvgPath: el.customSvgPath || undefined,
-          cornerRadius: el.cornerRadius !== undefined ? Number(el.cornerRadius) : (el.cornerRadiusTl ?? undefined),
-          cornerRadiusTl: el.cornerRadiusTl !== undefined && el.cornerRadiusTl !== null ? Number(el.cornerRadiusTl) : undefined,
-          cornerRadiusTr: el.cornerRadiusTr !== undefined && el.cornerRadiusTr !== null ? Number(el.cornerRadiusTr) : undefined,
-          cornerRadiusBr: el.cornerRadiusBr !== undefined && el.cornerRadiusBr !== null ? Number(el.cornerRadiusBr) : undefined,
-          cornerRadiusBl: el.cornerRadiusBl !== undefined && el.cornerRadiusBl !== null ? Number(el.cornerRadiusBl) : undefined,
-        })),
+        elements: (slide.elements || []).map((el: any): CarouselElement => {
+          if (el.type === 'text') {
+            return {
+              type: 'text',
+              id: el.id,
+              x: Number(el.x ?? 0),
+              y: Number(el.y ?? 0),
+              width: Number(el.width ?? 100),
+              height: Number(el.height ?? 80),
+              text: el.text || '',
+              fontSize: Number(el.fontSize || 48),
+              fontFamily: el.fontFamily || 'SF Pro Display, system-ui, sans-serif',
+              fontWeight: el.fontWeight || '700',
+              color: el.color || '#FFFFFF',
+              align: el.align || 'center',
+              locked: Boolean(el.locked),
+              opacity: Number(el.opacity ?? 1.0),
+              rotation: Number(el.rotation ?? 0),
+              styledRanges: Array.isArray(el.styledRanges) ? el.styledRanges : undefined,
+              style: el.style || undefined,
+              highlight: el.highlight || undefined,
+              lineHeight: el.lineHeight !== undefined && el.lineHeight !== null ? Number(el.lineHeight) : undefined,
+              letterSpacing: el.letterSpacing !== undefined && el.letterSpacing !== null ? Number(el.letterSpacing) : undefined,
+            };
+          }
+          return {
+            type: 'photo',
+            id: el.id,
+            photoId: el.photoId || undefined,
+            filePath: el.filePath || '',
+            fileName: el.fileName || '',
+            previewPath: el.previewPath || undefined,
+            thumbnailPath: el.thumbnailPath || undefined,
+            x: Number(el.x ?? 0),
+            y: Number(el.y ?? 0),
+            width: Number(el.width ?? 100),
+            height: Number(el.height ?? 100),
+            rotation: Number(el.rotation ?? 0),
+            zIndex: el.zIndex !== undefined && el.zIndex !== null ? Number(el.zIndex) : 1,
+            photoAspect: el.photoAspect !== undefined && el.photoAspect !== null ? Number(el.photoAspect) : 1.0,
+            cropX: Number(el.cropX ?? 0),
+            cropY: Number(el.cropY ?? 0),
+            cropScale: Number(el.cropScale ?? 1.0),
+            cropRotation: Number(el.cropRotation ?? 0),
+            borderEnabled: Boolean(el.borderEnabled),
+            borderWidth: Number(el.borderWidth ?? 0),
+            borderColor: el.borderColor || '#FFFFFF',
+            borderStyle: el.borderStyle || 'solid',
+            opacity: Number(el.opacity ?? 1.0),
+            locked: Boolean(el.locked),
+            shapeType: el.shapeType || undefined,
+            customSvgPath: el.customSvgPath || undefined,
+            cornerRadius: el.cornerRadius !== undefined ? Number(el.cornerRadius) : (el.cornerRadiusTl ?? undefined),
+            cornerRadiusTl: el.cornerRadiusTl !== undefined && el.cornerRadiusTl !== null ? Number(el.cornerRadiusTl) : undefined,
+            cornerRadiusTr: el.cornerRadiusTr !== undefined && el.cornerRadiusTr !== null ? Number(el.cornerRadiusTr) : undefined,
+            cornerRadiusBr: el.cornerRadiusBr !== undefined && el.cornerRadiusBr !== null ? Number(el.cornerRadiusBr) : undefined,
+            cornerRadiusBl: el.cornerRadiusBl !== undefined && el.cornerRadiusBl !== null ? Number(el.cornerRadiusBl) : undefined,
+          };
+        }),
       }));
 
       const loadedCarousel: Carousel = {
@@ -916,7 +948,35 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     pushHistory();
     const updatedSlides = currentCarousel.slides.map((s) => ({
       ...s,
-      elements: s.elements.map((el) => (el.id === frameId ? { ...el, ...updates } : el)),
+      elements: s.elements.map((el): CarouselElement => {
+        if (el.id === frameId && el.type === 'photo') {
+          return { ...el, ...updates };
+        }
+        return el;
+      }),
+    }));
+
+    set({
+      currentCarousel: {
+        ...currentCarousel,
+        slides: updatedSlides,
+      },
+    });
+  },
+
+  updateTextFrame: (frameId, updates) => {
+    const { currentCarousel, pushHistory } = get();
+    if (!currentCarousel) return;
+
+    pushHistory();
+    const updatedSlides = currentCarousel.slides.map((s) => ({
+      ...s,
+      elements: s.elements.map((el): CarouselElement => {
+        if (el.id === frameId && el.type === 'text') {
+          return { ...el, ...updates };
+        }
+        return el;
+      }),
     }));
 
     set({
@@ -1582,7 +1642,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     });
   },
 
-  batchUpdateFrames: (updates: Array<{ id: string; updates: Partial<CarouselPhotoFrame> }>) => {
+  batchUpdateFrames: (updates: Array<{ id: string; updates: Partial<CarouselPhotoFrame> | Partial<CarouselTextFrame> }>) => {
     const { currentCarousel, pushHistory } = get();
     if (!currentCarousel || updates.length === 0) return;
 
@@ -1590,9 +1650,13 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     const updateMap = new Map(updates.map((u) => [u.id, u.updates]));
 
     const updatedSlides = currentCarousel.slides.map((slide) => {
-      const updatedElements = slide.elements.map((el) => {
+      const updatedElements = slide.elements.map((el): CarouselElement => {
         const patch = updateMap.get(el.id);
-        return patch ? { ...el, ...patch } : el;
+        if (!patch) return el;
+        if (el.type === 'photo') {
+          return { ...el, ...(patch as Partial<CarouselPhotoFrame>) };
+        }
+        return { ...el, ...(patch as Partial<CarouselTextFrame>) };
       });
       return { ...slide, elements: updatedElements };
     });

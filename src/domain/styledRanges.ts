@@ -1,4 +1,7 @@
 import { TextStyle, TextRun } from './text';
+import { normalizeStyledRanges } from './richTextSelection';
+
+export * from './richTextSelection';
 
 export interface StyledRange {
   id: string;
@@ -134,7 +137,7 @@ export function applyStyleToRange(
 ): StyledRange[] {
   const s = Math.min(start, end);
   const e = Math.max(start, end);
-  if (s === e) return existingRanges ? [...existingRanges] : [];
+  if (s === e) return normalizeStyledRanges(existingRanges);
 
   const current = existingRanges ? [...existingRanges] : [];
 
@@ -142,7 +145,7 @@ export function applyStyleToRange(
   const exactIndex = current.findIndex((r) => r.start === s && r.end === e);
   if (exactIndex >= 0) {
     const existing = current[exactIndex];
-    if (!existing) return current;
+    if (!existing) return normalizeStyledRanges(current);
 
     // Check if toggle off (e.g. bold -> normal)
     const isTogglingOff = Object.entries(patch).every(([key, val]) => {
@@ -159,7 +162,7 @@ export function applyStyleToRange(
       const keys = Object.keys(updated).filter((k) => !['id', 'start', 'end'].includes(k));
       if (keys.length === 0) {
         current.splice(exactIndex, 1);
-        return current;
+        return normalizeStyledRanges(current);
       }
       current[exactIndex] = {
         ...updated,
@@ -167,7 +170,7 @@ export function applyStyleToRange(
         start: existing.start,
         end: existing.end,
       };
-      return current;
+      return normalizeStyledRanges(current);
     }
 
     current[exactIndex] = {
@@ -177,7 +180,7 @@ export function applyStyleToRange(
       start: existing.start,
       end: existing.end,
     };
-    return current;
+    return normalizeStyledRanges(current);
   }
 
   // Add new range
@@ -188,7 +191,7 @@ export function applyStyleToRange(
     ...patch,
   });
 
-  return current.sort((a, b) => a.start - b.start);
+  return normalizeStyledRanges(current.sort((a, b) => a.start - b.start));
 }
 
 /**
@@ -199,7 +202,7 @@ export function removeStyleRange(
   rangeId: string
 ): StyledRange[] {
   if (!ranges) return [];
-  return ranges.filter((r) => r.id !== rangeId);
+  return normalizeStyledRanges(ranges.filter((r) => r.id !== rangeId));
 }
 
 /**
@@ -213,7 +216,7 @@ export function shiftRangesOnTextEdit(
 ): StyledRange[] {
   if (!ranges || ranges.length === 0) return [];
   const delta = insertedLength - removedLength;
-  if (removedLength === 0 && insertedLength === 0) return ranges;
+  if (removedLength === 0 && insertedLength === 0) return normalizeStyledRanges(ranges);
 
   const updated: StyledRange[] = [];
 
@@ -242,7 +245,7 @@ export function shiftRangesOnTextEdit(
     }
   }
 
-  return updated;
+  return normalizeStyledRanges(updated);
 }
 
 /** UTF-16 offsets match textarea selection and the serialized range contract. */
@@ -254,3 +257,4 @@ export function updateRangesForTextChange(ranges: StyledRange[] | undefined, pre
   while (oldEnd > start && newEnd > start && previous[oldEnd - 1] === next[newEnd - 1]) { oldEnd--; newEnd--; }
   return shiftRangesOnTextEdit(ranges, start, oldEnd - start, newEnd - start);
 }
+

@@ -6,6 +6,8 @@
  */
 
 import type { ShapeType } from './shapes';
+import type { StyledRange } from './styledRanges';
+import type { TextStyle } from './text';
 
 export type CarouselRatio = '1:1' | '4:5' | '9:16';
 
@@ -96,6 +98,12 @@ export interface CarouselTextFrame {
   locked: boolean;
   opacity?: number;
   rotation?: number;
+  // Dual-Engine Rich Text Parity Fields
+  styledRanges?: StyledRange[];
+  style?: Partial<TextStyle>;
+  highlight?: string;
+  lineHeight?: number;
+  letterSpacing?: number;
 }
 
 export type CarouselElement = CarouselPhotoFrame | CarouselTextFrame;
