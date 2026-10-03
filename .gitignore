@@ -54,3 +54,8 @@ desktop.ini
 # Graphify Knowledge Graph
 graphify-out/
 
+# Planning & Scratch Files
+.planning/
+.continue-here.md
+
+
