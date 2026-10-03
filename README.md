@@ -7,12 +7,12 @@
 # OpenSmartAlbum for macOS
 ### Professional, Offline-First Photo Album & Instagram Panorama Suite
 
-[![Release](https://img.shields.io/badge/Release-v1.3.0-0A84FF.svg?style=for-the-badge&logo=github)](https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases)
+[![Release](https://img.shields.io/badge/Release-v1.4.0-0A84FF.svg?style=for-the-badge&logo=github)](https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases)
 [![Platform](https://img.shields.io/badge/Platform-macOS%2013%2B%20%7C%20Apple%20Silicon%20%26%20Intel-000000.svg?style=for-the-badge&logo=apple)](https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131.svg?style=for-the-badge&logo=tauri)](https://tauri.app/)
 [![Rust](https://img.shields.io/badge/Rust-Rayon%20Engine-DEA584.svg?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
+[![On-Device AI](https://img.shields.io/badge/AI%20Framing-YuNet%20ONNX-9333EA.svg?style=for-the-badge&logo=openai)](https://github.com/ryandxter/OpenSmartAlbum-MacOS)
 [![React](https://img.shields.io/badge/React-18%20%2B%20Konva-61DAFB.svg?style=for-the-badge&logo=react)](https://reactjs.org/)
-[![Vector Engine](https://img.shields.io/badge/Vector%20Fillet-Figma--Grade-FF6154.svg?style=for-the-badge&logo=figma)](https://github.com/ryandxter/OpenSmartAlbum-MacOS)
 
 <p align="center">
   <b>Pilih Bahasa / Select Language:</b><br/>
@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases"><img src="https://img.shields.io/badge/⬇️_Download_Latest_.DMG_(v1.3.0)-Apple_Silicon_&_Intel-2ea44f?style=for-the-badge&logo=apple" alt="Download DMG" /></a>
+  <a href="https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases"><img src="https://img.shields.io/badge/⬇️_Download_Latest_.DMG_(v1.4.0)-Apple_Silicon_&_Intel-2ea44f?style=for-the-badge&logo=apple" alt="Download DMG" /></a>
 </p>
 
 > [!IMPORTANT]
@@ -51,7 +51,7 @@
   <a href="#en-overview">Overview</a> •
   <a href="#en-install">Installation</a> •
   <a href="#en-features">Features</a> •
-  <a href="#en-v130">v1.3.0 Update</a> •
+  <a href="#en-v140">v1.4.0 Update</a> •
   <a href="#en-presets">Presets</a> •
   <a href="#en-shortcuts">Shortcuts</a> •
   <a href="#en-faq">FAQ</a> •
@@ -173,21 +173,83 @@ Seamlessly switch between fine-art print albums and modern digital social storyt
 - **Independent Viewport Zooms:** Preserves `printZoom` and `carouselZoom` independently with zero scaling jumps or pan drift.
 - **Full SQLite v16 & `.afsn` Package Persistence:** All carousel slides, photo frames, aspect ratios, and custom backgrounds are fully serialized to SQLite and `.afsn` archives.
 - **Real-Time Dirty Tracking & Close Guard:** Dynamic title bar save status (green "Saved" vs amber "Unsaved Changes") with a native macOS close safeguard sheet.
+<details>
+<summary><h3>🧠 9. On-Device AI Face Detection & Studio Framing Engine (New in v1.4.0)</h3></summary>
+
+High-speed, 100% offline facial detection and institutional portrait framing powered by YuNet in pure Rust:
+- **Embedded YuNet ONNX in Rust Backend:** Sub-10ms neural inference via `tract-onnx` with multi-threaded batch scanning and zero cloud dependencies.
+- **5-Landmark Facial Geometry:** Extracts bounding box, eyes, nose, and mouth corner coordinates with roll angle and symmetry telemetry.
+- **Institutional Studio Presets:**
+  - `Pasfoto Formal (3x4 / 4x6)`: Strict 10% headroom clearance and centered optical alignment.
+  - `Wisuda UNY 50% Shoulder`: Eye line anchored at upper third with a 50% shoulder-to-frame ratio.
+  - `Portrait Rule of Thirds`: Golden third line positioning with dynamic gaze-direction bias.
+  - `Natural Center`: Balanced optical centering for candid photography.
+- **Canvas Reticles & Culling Badges:** Press `Shift+F` for live facial reticle overlays on canvas; filmstrip auto-tags `✨ HERO` and `👤` face badges.
+- **Face-Aware Adaptive Layout:** Spacebar layout shuffling protects detected face regions from accidental crop clipping.
+</details>
+
+<details>
+<summary><h3>📑 10. Visual Studio Layers Management & Reordering Panel (New in v1.4.0)</h3></summary>
+
+Figma-grade layer management directly inside the Inspector sidebar:
+- **Dedicated Layers Tab:** Live element count badge with tab switching between Properties and Layers.
+- **Polymorphic Thumbnail Cards:** 8 interactive visual states with thumbnail previews for photo frames, typography text glyphs, and vector shapes.
+- **Midpoint Crossing Drag & Drop:** Fluid z-index reordering with midpoint calculation ($Y_{\text{mid}} = \text{top} + \text{height} / 2$) and a 4px deadband hysteresis buffer.
+- **Multi-Selection Block Drag:** Select multiple layers with `⌘`/`Shift` and drag them as a contiguous block to any target slot.
+- **Per-Layer & Batch Controls:** Instant visibility toggle (Eye), lock toggle, inline double-click rename, delete, plus master Lock-All / Unlock-All and Hide-All / Show-All batch actions.
+</details>
+
+<details>
+<summary><h3>🎨 11. Direct-Canvas Rich Text Color Bar & Inline Hex Editor (New in v1.4.0)</h3></summary>
+
+Precise typography styling without leaving the canvas:
+- **Floating Format Bar:** Contextual formatting toolbar anchored directly above the active inline text box.
+- **Inline Hex Editor:** Type `#RGB` or `#RRGGBB` values directly with instant canvas updates on Enter.
+- **Text Background Highlights:** Apply custom background highlight colors behind text blocks.
+- **Mixed-Color Detection:** Clear "Mixed" indicators for multi-color selections, preserving existing spans during edits.
+- **Zero-Blur Focus Retention:** Color picker interactions maintain caret position and text selection.
+</details>
+
+<details>
+<summary><h3>🧭 12. Quick Guides & Snapping Popover + Direct Drawer Wheel Scroll (New in v1.4.0)</h3></summary>
+
+Effortless alignment and fluid navigation across large album spreads:
+- **Quick Guides Popover:** One-click settings button beside the spread counter in the bottom navigator bar.
+- **On-the-Fly Snapping Controls:** Toggle magnetic snap sensitivity (1–10mm), spine centerlines, rule of thirds, safe margins, and bleed trim lines.
+- **Direct Wheel Drawer Scroll:** Vertical mouse-wheel scrolling (`deltaY`) automatically scrolls the thumbnail drawer horizontally (`scrollLeft`) without holding `Shift`.
+</details>
+
+<details>
+<summary><h3>🛡️ 13. Adaptive Layout Decorative Exclusion & Photo Swap Shortcut (New in v1.4.0)</h3></summary>
+
+Seamless coexistence of static design elements and dynamic photo arrangements:
+- **Decorative Exclusion:** Flag logos, stamps, and watermarks as `excludeFromAdaptiveLayout` to keep them anchored during Spacebar layout variations.
+- **Obstacle Subtraction Engine:** 2D bin-packing algorithm packs photos dynamically around static excluded frames.
+- **Photo Swap Shortcut (`S`):** Press `S` with 1 frame selected to activate swap handles; press `S` with 2 frames selected for instant atomic swap.
+</details>
+
+<details>
+<summary><h3>🔬 14. Sub-Pixel Hairline Border Scaling Parity (New in v1.4.0)</h3></summary>
+
+Museum-grade print fidelity for ultra-thin photo borders:
+- **Removed 2px Floor:** Micro-borders (0.01 – 0.1 mm) render proportionally across Editor Canvas, Page Navigator, and Export Preview.
+- **Dynamic Decimal Steps:** Unit-aware inputs (0.05 mm, 0.01 in/cm, 1 px) for ultra-fine adjustments.
+- **Continuous Sub-Pixel Anti-Aliasing:** Rust export engine computes exact sub-pixel geometric alpha coverage (`compute_rect_border_alpha`) for smooth 300 DPI exports.
 </details>
 
 ---
 
-<a name="en-v130"></a>
-## 🚀 What's New in v1.3.0: Workspace Isolation, Carousel Persistence & Vector Shape Polish
+<a name="en-v140"></a>
+## 🚀 What's New in v1.4.0: Workflow & Canvas Precision Suite
 
 | Feature / Fix | Description | Status |
 | :--- | :--- | :---: |
-| **Carousel Persistence** | Full SQLite v16 schema, `.afsn` archive round-trip, dirty state tracking & macOS window close sheet | ✅ Complete |
-| **Workspace Isolation** | Global `activeMode` hoisting, independent viewport zooms (`printZoom` vs `carouselZoom`), mode-guarded shortcuts | ✅ Complete |
-| **Batch Drop In-Bounds** | WebKit in-bounds ghost badge preventing snapshot clipping, atomic single-transaction placement | ✅ Complete |
-| **Vector Fillet Engine** | Figma-grade vertex tangent fillet circular arcs ($\theta = \arccos(\hat{u} \cdot \hat{v})$) with dynamic self-intersection clamp | ✅ Complete |
-| **Polygon Corner Radii** | Unlocked Inspector radius sliders for Hexagon, Octagon, Star, Scallop, Heart; independent tip/valley star controls | ✅ Complete |
-| **Compound SVG Normalizer** | DOMParser multi-primitive merging, viewBox extraction, aspect-fit contain & Rust export parity | ✅ Complete |
+| **On-Device AI Face Framing** | YuNet ONNX embedded in Rust backend (<10ms), 5-landmark face detection, studio presets (`Pasfoto`, `Wisuda UNY`, `Rule of Thirds`), reticle overlay (`Shift+F`), Hero shot badges | ✅ Complete |
+| **Studio Layers Panel** | Inspector Layers tab with live counter, 8-state polymorphic cards, midpoint crossing drag & drop, multi-selection block drag, lock/hide controls | ✅ Complete |
+| **Direct-Canvas Text Bar** | Floating text toolbar, inline `#RGB`/`#RRGGBB` hex editor, background highlight, zero-blur focus preservation | ✅ Complete |
+| **Quick Guides & Wheel Scroll** | Bottom bar Quick Guides & Snapping popover, dynamic snap thresholds, direct vertical wheel to horizontal thumbnail drawer scrolling | ✅ Complete |
+| **Decorative Exclusion & Swap** | `excludeFromAdaptiveLayout` keeps overlays fixed during Spacebar shuffle, obstacle subtraction algorithm, `S` key swap handle & instant swap | ✅ Complete |
+| **Sub-Pixel Hairline Borders** | Removed 2px floor, micro-borders (0.01 - 0.1 mm) with dynamic steps, continuous sub-pixel coverage alpha anti-aliasing in Rust export engine | ✅ Complete |
 
 ---
 
@@ -254,7 +316,8 @@ Seamlessly switch between fine-art print albums and modern digital social storyt
 | <kbd>⌘</kbd> + <kbd>L</kbd> / <kbd>⌥</kbd> + <kbd>L</kbd> | Lock / Unlock frame geometry |
 | <kbd>⌘</kbd> + <kbd>G</kbd> / <kbd>⌘</kbd> + <kbd>⇧</kbd> + <kbd>G</kbd> | Group / Ungroup selected frames |
 | <kbd>R</kbd> / <kbd>⇧</kbd> + <kbd>R</kbd> | Rotate 90° Clockwise / Counter-Clockwise |
-| <kbd>S</kbd> | Instantly swap photos between two selected frames |
+| <kbd>S</kbd> | Toggle Photo Swap Handle (1 selected) / Instant Swap (2 selected) |
+| <kbd>⇧</kbd> + <kbd>F</kbd> | Toggle AI Face Reticles & Landmark Overlay on canvas |
 | <kbd>T</kbd> | Add new typography text frame |
 
 ### In-Frame Crop Mode *(Double-click any photo frame)*
@@ -325,7 +388,7 @@ npm run tauri build -- --target aarch64-apple-darwin
   <a href="#id-ringkasan">Ringkasan</a> •
   <a href="#id-instalasi">Instalasi</a> •
   <a href="#id-fitur">Fitur Unggulan</a> •
-  <a href="#id-v130">Pembaruan v1.3.0</a> •
+  <a href="#id-v140">Pembaruan v1.4.0</a> •
   <a href="#id-format">Format & Preset</a> •
   <a href="#id-pintasan">Pintasan Keyboard</a> •
   <a href="#id-faq">Tanya Jawab</a> •
@@ -446,19 +509,83 @@ Beralih mulus antara album cetak fine-art dan storytelling media sosial digital:
 - **Pelacak Perubahan Real-Time & Pengaman Tutup Jendela:** Status simpan dinamis pada title bar (hijau "Saved" vs amber "Unsaved Changes") dengan sheet konfirmasi native macOS saat keluar.
 </details>
 
+<details>
+<summary><h3>🧠 9. Engine Deteksi Wajah AI On-Device & Framing Studio (Fitur Baru v1.4.0)</h3></summary>
+
+Deteksi wajah dan perataan potret standar studio 100% offline berkecepatan tinggi via YuNet dalam pure Rust:
+- **Model YuNet ONNX Tertanam di Rust Backend:** Inferensi neural secepat <10ms via `tract-onnx` dengan pemindaian multithread batch paralel tanpa perlu koneksi internet.
+- **Geometri 5-Landmark Wajah:** Mendeteksi kotak pembatas, kedua mata, hidung, dan sudut bibir lengkap dengan sudut kemiringan (roll) serta rasio simetri.
+- **Preset Framing Standar Studio:**
+  - `Pasfoto Formal (3x4 / 4x6)`: Batas headroom presisi 10% dan perataan optik tengah.
+  - `Wisuda UNY 50% Shoulder`: Garis mata di sepertiga atas dengan proporsi bahu 50% terhadap bingkai.
+  - `Portrait Rule of Thirds`: Penempatan garis sepertiga dengan bias arah pandangan dinamis.
+  - `Natural Center`: Perataan tengah optik seimbang untuk potret candid.
+- **Reticle Kanvas & Badge Seleksi:** Tekan `Shift+F` untuk melihat overlay reticle wajah di kanvas; filmstrip otomatis menandai foto `✨ HERO` dan ikon wajah `👤`.
+- **Proteksi Layout Adaptif:** Pengacakan layout via tombol Spasi otomatis melindungi area wajah agar tidak terpotong.
+</details>
+
+<details>
+<summary><h3>📑 10. Panel Visual Studio Layers & Manajemen Urutan Z-Index (Fitur Baru v1.4.0)</h3></summary>
+
+Manajemen layer sekelas Figma langsung di sidebar Inspector:
+- **Tab Layers Mandiri:** Dilengkapi penghitung elemen live dan tombol navigasi Properties / Layers.
+- **Kartu Thumbnail Polimorfik:** 8 status interaktif dengan pratinjau thumbnail untuk bingkai foto, cuplikan tipografi, dan bentuk vektor.
+- **Drag & Drop Midpoint Crossing:** Pengaturan urutan z-index yang mulus dengan kalkulasi titik tengah ($Y_{\text{mid}} = \text{top} + \text{height} / 2$) dan zona toleransi 4px.
+- **Drag Blok Multi-Seleksi:** Pilih beberapa layer sekaligus (`⌘`/`Shift`) dan seret sebagai satu kesatuan blok ke urutan baru.
+- **Kontrol Cepat & Batch:** Tombol sembunyikan/tampilkan (Mata), kunci posisi, ganti nama via klik ganda, hapus, serta aksi serentak Kunci Semua / Buka Semua dan Sembunyikan Semua / Tampilkan Semua.
+</details>
+
+<details>
+<summary><h3>🎨 11. Toolbar Warna Teks Direct-Canvas & Editor Hex Inline (Fitur Baru v1.4.0)</h3></summary>
+
+Penataan gaya tipografi presisi langsung di atas kanvas:
+- **Toolbar Terapung:** Toolbar pemformatan kontekstual yang mengambang tepat di atas kotak teks aktif.
+- **Editor Hex Inline:** Ketik langsung kode warna `#RGB` atau `#RRGGBB` dengan pembaruan instan saat menekan Enter.
+- **Warna Latar Belakang Teks:** Memberi highlight warna di belakang teks secara presisi.
+- **Deteksi Warna Campuran (Mixed):** Indikator visual "Mixed" cerdas untuk pilihan teks beragam warna tanpa merusak format kata.
+- **Fokus Tanpa Blur:** Memilih warna tidak menghilangkan seleksi maupun kursor teks aktif.
+</details>
+
+<details>
+<summary><h3>🧭 12. Popover Pemandu Cepat & Snap + Scroll Roda Mouse Drawer (Fitur Baru v1.4.0)</h3></summary>
+
+Perataan instan dan navigasi cepat melintasi spread album:
+- **Popover Pemandu Cepat:** Tombol pengaturan cepat di samping penghitung spread pada bar navigasi bawah.
+- **Kontrol Snap Fleksibel:** Atur toleransi magnetik (1–10mm), garis tengah spine, rule of thirds, batas aman cetak, dan garis potong bleed.
+- **Scroll Roda Mouse Otomatis:** Gerakan roda mouse vertikal (`deltaY`) otomatis menggeser drawer thumbnail secara horizontal (`scrollLeft`) tanpa perlu menahan `Shift`.
+</details>
+
+<details>
+<summary><h3>🛡️ 13. Pengecualian Elemen Dekoratif Layout & Pintasan Tukar Foto (Fitur Baru v1.4.0)</h3></summary>
+
+Kombinasi harmonis antara elemen desain statis dan penataan foto dinamis:
+- **Pengecualian Dekoratif:** Tandai logo, stempel, atau watermark sebagai `excludeFromAdaptiveLayout` agar posisinya tetap terkunci saat pengacakan layout Spasi.
+- **Algoritma Pengurangan Rintangan:** Algoritma bin-packing 2D mengalirkan foto di sekitar bingkai yang dikecualikan.
+- **Pintasan Tukar Foto (`S`):** Tekan `S` saat memilih 1 bingkai untuk memunculkan handle penukar; tekan `S` saat memilih 2 bingkai untuk pertukaran instan.
+</details>
+
+<details>
+<summary><h3>🔬 14. Skala Border Hairline Sub-Piksel & Anti-Aliasing Rust (Fitur Baru v1.4.0)</h3></summary>
+
+Fidelitas cetak standar museum untuk garis tepi ultra-tipis:
+- **Penghapusan Batas Minimum 2px:** Border mikro (0.01 – 0.1 mm) tampil proporsional di Kanvas, Navigator Halaman, dan Preview Ekspor.
+- **Step Desimal Fleksibel:** Input desimal cerdas (0.05 mm, 0.01 in/cm, 1 px) untuk penyesuaian sangat halus.
+- **Anti-Aliasing Sub-Piksel Kontinu:** Engine ekspor Rust menghitung nilai alpha geometri sub-piksel (`compute_rect_border_alpha`) untuk hasil cetak 300 DPI tanpa jagged edge.
+</details>
+
 ---
 
-<a name="id-v130"></a>
-## 🚀 Pembaruan v1.3.0: Isolasi Workspace, Persistensi Carousel & Polish Vektor
+<a name="id-v140"></a>
+## 🚀 Pembaruan v1.4.0: Presisi Kanvas, AI Studio Framing & Manajemen Layer
 
 | Fitur / Perbaikan | Keterangan | Status |
 | :--- | :--- | :---: |
-| **Persistensi Carousel Penuh** | Skema SQLite v16, arsip `.afsn`, pelacak dirty changes & proteksi tutup jendela macOS | ✅ Selesai |
-| **Isolasi Workspace & Sinkronisasi** | Hoisting `activeMode`, zoom kanvas independen (`printZoom` vs `carouselZoom`), isolasi shortcut | ✅ Selesai |
-| **Keandalan Drag Multi-Foto** | Badge drag DOM in-bounds mencegah clipping WebKit, penempatan frame batch atomik | ✅ Selesai |
-| **Engine Vertex Fillet Vektor** | Lengkungan fillet tangen matematis ($\theta = \arccos(\hat{u} \cdot \hat{v})$) dengan dynamic clamp | ✅ Selesai |
-| **Radius Sudut Poligon di Inspector** | Slider radius aktif untuk Hexagon, Octagon, Bintang, Scallop, Hati; kontrol terpisah ujung/lembah bintang | ✅ Selesai |
-| **Normalizer Compound SVG** | Penggabungan multiprimitif DOMParser, ekstraksi viewBox, fit aspek rasio & parity ekspor Rust | ✅ Selesai |
+| **Deteksi Wajah AI On-Device** | Model YuNet ONNX tertanam di backend Rust (<10ms), deteksi 5 landmark wajah, preset studio (`Pasfoto`, `Wisuda UNY`, `Rule of Thirds`), overlay reticle (`Shift+F`), badge Hero shot | ✅ Selesai |
+| **Panel Studio Layers** | Tab Layers di Inspector dengan counter live, kartu 8 status polimorfik, drag & drop midpoint crossing, drag blok multi-seleksi, kontrol lock/hide | ✅ Selesai |
+| **Toolbar Teks Direct-Canvas** | Toolbar terapung di atas teks, editor Hex `#RGB`/`#RRGGBB` inline, highlight background, preservasi fokus tanpa blur | ✅ Selesai |
+| **Popover Pemandu & Snap Cepat** | Tombol popover pemandu di bar bawah, sensitivitas snap dinamis, scroll roda mouse vertikal ke horizontal di drawer thumbnail | ✅ Selesai |
+| **Eksklusi Dekoratif & Tukar Foto** | `excludeFromAdaptiveLayout` mengunci logo/watermark saat acak Spacebar, pengurangan rintangan 2D, pintasan `S` untuk handle & tukar instan | ✅ Selesai |
+| **Border Hairline Sub-Piksel** | Penghapusan batas 2px, border mikro (0.01 - 0.1 mm) dengan step desimal, anti-aliasing cakupan sub-piksel kontinu di engine ekspor Rust | ✅ Selesai |
 
 ---
 
@@ -525,7 +652,8 @@ Beralih mulus antara album cetak fine-art dan storytelling media sosial digital:
 | <kbd>⌘</kbd> + <kbd>L</kbd> / <kbd>⌥</kbd> + <kbd>L</kbd> | Kunci / Buka kunci posisi bingkai |
 | <kbd>⌘</kbd> + <kbd>G</kbd> / <kbd>⌘</kbd> + <kbd>⇧</kbd> + <kbd>G</kbd> | Gabung (*Group*) / Pisah grup (*Ungroup*) |
 | <kbd>R</kbd> / <kbd>⇧</kbd> + <kbd>R</kbd> | Putar 90° Searah / Berlawanan jarum jam |
-| <kbd>S</kbd> | Tukar posisi foto antara dua bingkai yang dipilih |
+| <kbd>S</kbd> | Aktifkan handle tukar foto (1 foto) / Tukar posisi instan (2 foto) |
+| <kbd>⇧</kbd> + <kbd>F</kbd> | Tampilkan / sembunyikan reticle deteksi wajah AI pada kanvas |
 | <kbd>T</kbd> | Tambahkan bingkai teks tipografi baru |
 
 ### Mode Potong / Crop Internal *(Klik ganda bingkai apa saja)*
@@ -597,13 +725,13 @@ npm run tauri build -- --target aarch64-apple-darwin
                             │ IPC (Tauri v2)
 ┌───────────────────────────▼────────────────────────────┐
 │                  Rust Core Engine                      │
-│  Rayon Multi-Threading  •  image-rs  •  SQLite (.afsn) │
+│   tract-onnx (YuNet AI)  •  Rayon  •  image-rs  • .afsn│
 └────────────────────────────────────────────────────────┘
 ```
 
 - **Frontend Canvas:** Hardware-accelerated 60fps rendering via [Konva.js](https://konvajs.org/) & React 18.
 - **App Shell:** [Tauri 2](https://tauri.app/) — Native macOS webview host dengan konsumsi memori minimal.
-- **Image Engine:** Pure Rust multithreaded processing dengan [Rayon](https://github.com/rayon-rs/rayon) & [image-rs](https://github.com/image-rs/image).
+- **Image & AI Engine:** Pure Rust multithreaded processing dengan [Rayon](https://github.com/rayon-rs/rayon), [image-rs](https://github.com/image-rs/image), dan [tract-onnx](https://github.com/sonos/tract) (YuNet On-Device Face AI).
 - **Penyimpanan:** Embedded SQLite database melalui `rusqlite`.
 
 ---
@@ -614,7 +742,7 @@ npm run tauri build -- --target aarch64-apple-darwin
 * **macOS Port & Enhancements:** [@ryandxter](https://github.com/ryandxter) — Porting penuh ke ekosistem native macOS, ekstraksi Win32, Instagram Carousel slicer, eksportir Layered PSD, dan installer DMG.
 
 ### Fondasi Open Source
-- [Tauri](https://tauri.app/) (MIT / Apache-2.0) • [React](https://reactjs.org/) (MIT) • [Konva](https://konvajs.org/) (MIT) • [SQLite](https://www.sqlite.org/) (Public Domain) • [Rayon](https://github.com/rayon-rs/rayon) (MIT / Apache-2.0) • [image crate](https://github.com/image-rs/image) (MIT)
+- [Tauri](https://tauri.app/) (MIT / Apache-2.0) • [React](https://reactjs.org/) (MIT) • [Konva](https://konvajs.org/) (MIT) • [SQLite](https://www.sqlite.org/) (Public Domain) • [Rayon](https://github.com/rayon-rs/rayon) (MIT / Apache-2.0) • [image crate](https://github.com/image-rs/image) (MIT) • [tract](https://github.com/sonos/tract) (MIT / Apache-2.0)
 
 ---
 
