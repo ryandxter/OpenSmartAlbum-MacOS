@@ -6,6 +6,8 @@ import { Maximize2, Star, RotateCcw, Trash2, Sparkles } from 'lucide-react';
 import { ContextMenu, ContextMenuItem } from '../../components/ui';
 import { useCarouselStore } from '../../stores/carouselStore';
 import { usePhotoStore } from '../../stores/photoStore';
+import { useEditorStore } from '../../stores/editorStore';
+import { CanvasToolDock } from '../editor/CanvasToolDock';
 import { KonvaFaceReticleOverlay } from '../editor/KonvaFaceReticleOverlay';
 import {
   CarouselPhotoFrame,
@@ -456,6 +458,9 @@ export function CarouselCanvas({
   const currentCarousel = useCarouselStore((s) => s.currentCarousel);
   const activeSlideIndex = useCarouselStore((s) => s.activeSlideIndex);
   const setActiveSlide = useCarouselStore((s) => s.setActiveSlide);
+  const addTextFrame = useCarouselStore((s) => s.addTextFrame);
+  const activeTool = useEditorStore((s) => s.activeTool);
+  const setActiveTool = useEditorStore((s) => s.setActiveTool);
   const showSliceGuides = useCarouselStore((s) => s.showSliceGuides);
   const showCenterGuide = useCarouselStore((s) => s.showCenterGuide);
   const showThirdsGuide = useCarouselStore((s) => s.showThirdsGuide);
@@ -1312,10 +1317,10 @@ export function CarouselCanvas({
   return (
     <div
       ref={containerRef}
-      className={`${styles.canvasContainer} ${isSpacePanning ? styles.panningMode : ''}`}
+      className={`${styles.canvasContainer} ${isSpacePanning || activeTool === 'pan' ? styles.panningMode : ''}`}
       onMouseDown={(e) => {
         cancelSmoothPan();
-        if (isSpacePanning || e.button === 1) {
+        if (isSpacePanning || e.button === 1 || activeTool === 'pan') {
           setIsMouseDown(true);
           dragStartRef.current = { x: e.clientX - stagePos.x, y: e.clientY - stagePos.y };
         }
@@ -1333,6 +1338,14 @@ export function CarouselCanvas({
         dragStartRef.current = null;
       }}
     >
+      {/* Floating Canvas Pointer Tool Dock */}
+      <CanvasToolDock
+        onAddText={() => {
+          addTextFrame();
+          onToast?.('✓ Added Text Frame to Slide');
+        }}
+      />
+
       <div
         className={styles.stageWrapper}
         onDragOver={handleDragOver}
@@ -1348,6 +1361,12 @@ export function CarouselCanvas({
           x={stagePos.x}
           y={stagePos.y}
           onClick={(e) => {
+            if (activeTool === 'text') {
+              addTextFrame();
+              setActiveTool('select');
+              onToast?.('✓ Added Text Frame to Slide');
+              return;
+            }
             if (e.target === e.target.getStage()) {
               setSelectedFrameIds([]);
             }
@@ -1366,7 +1385,15 @@ export function CarouselCanvas({
               shadowBlur={30}
               shadowOffset={{ x: 0, y: 15 }}
               shadowOpacity={0.6}
-              onClick={() => setSelectedFrameIds([])}
+              onClick={() => {
+                if (activeTool === 'text') {
+                  addTextFrame();
+                  setActiveTool('select');
+                  onToast?.('✓ Added Text Frame to Slide');
+                  return;
+                }
+                setSelectedFrameIds([]);
+              }}
             />
 
             {/* Individual Slide Backgrounds */}
@@ -1376,10 +1403,22 @@ export function CarouselCanvas({
                 x={getSlideXOffset(currentCarousel, idx)}
                 y={0}
                 onClick={() => {
+                  if (activeTool === 'text') {
+                    addTextFrame();
+                    setActiveTool('select');
+                    onToast?.('✓ Added Text Frame to Slide');
+                    return;
+                  }
                   setActiveSlide(idx);
                   setSelectedFrameIds([]);
                 }}
                 onTap={() => {
+                  if (activeTool === 'text') {
+                    addTextFrame();
+                    setActiveTool('select');
+                    onToast?.('✓ Added Text Frame to Slide');
+                    return;
+                  }
                   setActiveSlide(idx);
                   setSelectedFrameIds([]);
                 }}

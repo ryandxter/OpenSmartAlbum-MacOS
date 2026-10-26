@@ -63,12 +63,13 @@ import { renderFilteredPhotoToCanvas, getSeededGrainTile } from '../../utils/ima
 import { DividerOverlayLayer } from './DividerOverlayLayer';
 import { extractCanvasDividers, RectFrameInput } from '../../domain/layout/dividerGraph';
 import { isMac } from '../../utils/platform';
+import { CanvasToolDock } from './CanvasToolDock';
 import styles from './KonvaEditorCanvas.module.css';
 
 interface KonvaEditorCanvasProps {
   zoomLevel: number;
   fitTrigger?: number;
-  activeTool?: 'select' | 'pan';
+  activeTool?: 'select' | 'pan' | 'text';
   onZoomChange?: (updater: (prev: number) => number) => void;
   onToast?: (msg: string) => void;
 }
@@ -1365,7 +1366,7 @@ function PhotoFrameNode({
   );
 }
 
-export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomChange, onToast }: KonvaEditorCanvasProps) {
+export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool: propActiveTool, onZoomChange, onToast }: KonvaEditorCanvasProps) {
   const currentProject = useProjectStore((s) => s.currentProject);
   const {
     currentAlbum,
@@ -1381,6 +1382,9 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
   } = useAlbumStore();
 
   const {
+    activeTool: storeActiveTool,
+    setActiveTool,
+    addTextToSpread,
     selectedFrameIds,
     editingCropFrameId,
     activeSnapLines,
@@ -1424,6 +1428,8 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
     updateTextElement,
     multiResizeGapMode,
   } = useEditorStore();
+
+  const activeTool = propActiveTool ?? storeActiveTool;
   const photos = usePhotoStore((s) => s.photos);
   const photoById = useMemo(() => new Map(photos.map((photo) => [photo.id, photo])), [photos]);
 
@@ -2632,6 +2638,20 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
     // Ignore middle & right clicks
     if ('button' in e.evt && (e.evt.button === 1 || e.evt.button === 2)) return;
 
+    if (activeTool === 'text') {
+      const pointer = e.target.getStage()?.getPointerPosition();
+      const point = pointer ? screenToSpreadPoint(pointer, stageOrigin, scaleFactor) : null;
+      if (point && activeSpread) {
+        const newId = addTextToSpread(activeSpread.id, { x: point.x, y: point.y });
+        if (newId) {
+          setEditingTextElementId(newId);
+          onToast?.('✓ Added Text Box. Double-click or type to edit.');
+        }
+      }
+      setActiveTool('select');
+      return;
+    }
+
     const targetName = e.target.name() || '';
     const isBackground =
       e.target === e.target.getStage() ||
@@ -3383,6 +3403,19 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
         }}
       >
         <div className={styles.stageViewport} style={{ width: pasteboard.viewportWidth, height: pasteboard.viewportHeight }}>
+        {/* Floating Canvas Pointer Tool Dock */}
+        <CanvasToolDock
+          onAddText={() => {
+            if (activeSpread) {
+              const newId = addTextToSpread(activeSpread.id);
+              if (newId) {
+                setEditingTextElementId(newId);
+                onToast?.('✓ Added Text Box. Double-click or type to edit.');
+              }
+            }
+          }}
+        />
+
         {/* Outer Bleed Guide Boundary */}
         {showBleedGuide && (
           <div

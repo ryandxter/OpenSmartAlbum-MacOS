@@ -70,6 +70,8 @@ function createPhotoFrame(photo: Photo, project: Project, placement: PhotoPlacem
 }
 
 export interface EditorState {
+  activeTool: 'select' | 'pan' | 'text';
+  setActiveTool: (tool: 'select' | 'pan' | 'text') => void;
   selectedFrameIds: string[];
   selectionGroupRotation: number | null;
   editingCropFrameId: string | null;
@@ -206,6 +208,8 @@ export interface EditorState {
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
+  activeTool: 'select',
+  setActiveTool: (tool: 'select' | 'pan' | 'text') => set({ activeTool: tool }),
   selectedFrameIds: [],
   selectionGroupRotation: null,
   editingCropFrameId: null,
