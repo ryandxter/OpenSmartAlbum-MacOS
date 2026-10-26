@@ -52,17 +52,34 @@ export const frameAssetService = {
   async importCustomAsset(
     filePath: string,
     category: 'frame' | 'element' = 'frame',
-    shape?: string
+    shape?: string,
+    customSlot?: FrameSlotPayload
   ): Promise<FrameAssetMeta> {
     return await invoke<FrameAssetMeta>('import_custom_frame_asset', {
       filePath,
       category,
       shape: shape || 'rectangle',
+      customSlot: customSlot || null,
     });
   },
 
   async deleteAsset(id: string): Promise<void> {
     await invoke('delete_cached_frame_asset', { id });
+  },
+
+  async pickFrameAssetFileDialog(): Promise<string | null> {
+    if (!isTauri()) return null;
+    return await invoke<string | null>('pick_frame_asset_file_dialog');
+  },
+
+  async getFrameAssetsStorageStats(): Promise<{ fileCount: number; totalBytes: number }> {
+    if (!isTauri()) return { fileCount: 0, totalBytes: 0 };
+    return await invoke<{ fileCount: number; totalBytes: number }>('get_frame_assets_storage_stats');
+  },
+
+  async clearFrameAssetsCache(): Promise<void> {
+    if (!isTauri()) return;
+    await invoke('clear_frame_assets_cache');
   },
 
   resolveAssetUrl(asset: FrameAssetMeta, preferThumb = false): string {

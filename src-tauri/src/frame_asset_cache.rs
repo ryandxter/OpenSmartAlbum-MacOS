@@ -173,6 +173,62 @@ pub fn delete_cached_frame_asset(app_handle: &AppHandle, id: &str) -> Result<(),
     Ok(())
 }
 
+#[derive(Debug, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameAssetCacheStats {
+    pub file_count: usize,
+    pub total_bytes: u64,
+}
+
+pub fn get_frame_assets_storage_stats(app_handle: &AppHandle) -> Result<FrameAssetCacheStats, String> {
+    let base_dir = get_frame_assets_dir(app_handle)?;
+    let mut stats = FrameAssetCacheStats::default();
+
+    if base_dir.exists() {
+        if let Ok(entries) = fs::read_dir(&base_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    if let Ok(sub_entries) = fs::read_dir(&path) {
+                        for sub in sub_entries.flatten() {
+                            if let Ok(meta) = sub.metadata() {
+                                if meta.is_file() {
+                                    stats.file_count += 1;
+                                    stats.total_bytes += meta.len();
+                                }
+                            }
+                        }
+                    }
+                } else if path.is_file() {
+                    if let Ok(meta) = entry.metadata() {
+                        stats.file_count += 1;
+                        stats.total_bytes += meta.len();
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(stats)
+}
+
+pub fn clear_frame_assets_cache(app_handle: &AppHandle) -> Result<(), String> {
+    let base_dir = get_frame_assets_dir(app_handle)?;
+    if base_dir.exists() {
+        if let Ok(entries) = fs::read_dir(&base_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    let _ = fs::remove_dir_all(path);
+                } else if path.is_file() {
+                    let _ = fs::remove_file(path);
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -8,6 +8,8 @@ import {
   Square,
   Type,
   Sparkles,
+  Palette,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { useAlbumStore } from '../../stores/albumStore';
 import { useEditorStore } from '../../stores/editorStore';
@@ -16,6 +18,7 @@ import { getAllAlbumSpreads } from '../../domain/album';
 import { TemplatesPanel } from '../templates/TemplatesPanel';
 import { LockedPhotosPanel } from '../editor/LockedPhotosPanel';
 import { StudioLayersPanel } from './layers/StudioLayersPanel';
+import { AssetsPanel } from '../assets/AssetsPanel';
 import { AccordionSection } from './AccordionSection';
 import { useAccordionState } from './useAccordionState';
 import { LayoutSpacingSection } from './sections/LayoutSpacingSection';
@@ -23,19 +26,30 @@ import { ShapesBordersSection } from './sections/ShapesBordersSection';
 import { TypographySection } from './sections/TypographySection';
 import { EffectsShadowsSection } from './sections/EffectsShadowsSection';
 import { AIFramingSection } from './sections/AIFramingSection';
+import { FrameOverlaySection } from './sections/FrameOverlaySection';
 import { formatFaceTelemetryBadge } from '../../domain/ai/faceDetection';
 import { usePhotoStore } from '../../stores/photoStore';
 import type { PhotoFrameElement } from '../../domain/editor';
 import type { CarouselPhotoFrame } from '../../domain/carousel';
 import styles from './InspectorContainer.module.css';
 
+export type InspectorTab = 'properties' | 'layers' | 'smart_layout' | 'locks' | 'assets';
+
 export interface InspectorContainerProps {
   onClose: () => void;
   onToast?: (msg: string) => void;
   activeMode?: 'print' | 'carousel';
+  activeTab?: InspectorTab;
+  onTabChange?: (tab: InspectorTab) => void;
 }
 
-export function InspectorContainer({ onClose, onToast, activeMode }: InspectorContainerProps) {
+export function InspectorContainer({
+  onClose,
+  onToast,
+  activeMode,
+  activeTab: controlledTab,
+  onTabChange,
+}: InspectorContainerProps) {
   const currentAlbum = useAlbumStore((s) => s.currentAlbum);
   const activeSpreadId = useAlbumStore((s) => s.activeSpreadId);
   const selectedFrameIds = useEditorStore((s) => s.selectedFrameIds);
@@ -46,10 +60,16 @@ export function InspectorContainer({ onClose, onToast, activeMode }: InspectorCo
 
   const faceDataMap = usePhotoStore((s) => s.faceDataMap);
 
-  const [activeTab, setActiveTab] = useState<'properties' | 'layers' | 'smart_layout' | 'locks'>('properties');
+  const [localActiveTab, setLocalActiveTab] = useState<InspectorTab>('properties');
+  const activeTab = controlledTab ?? localActiveTab;
+  const setActiveTab = (tab: InspectorTab) => {
+    setLocalActiveTab(tab);
+    onTabChange?.(tab);
+  };
   const contentRef = useRef<HTMLDivElement>(null);
 
   const { isOpen, toggleSection } = useAccordionState([
+    'frame-overlay',
     'ai-framing',
     'layout',
     'shapes',
@@ -152,6 +172,18 @@ export function InspectorContainer({ onClose, onToast, activeMode }: InspectorCo
             <Lock size={15} strokeWidth={1.5} />
             {lockCount > 0 && <span className={styles.lockBadge}>{lockCount}</span>}
           </button>
+
+          {/* Tab 5: Decorative Assets (Frames & Stickers) */}
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'assets'}
+            className={`${styles.tabBtn} ${activeTab === 'assets' ? styles.tabBtnActive : ''}`}
+            onClick={() => setActiveTab('assets')}
+            title="Frames & Graphic Assets (A / F)"
+          >
+            <Palette size={15} strokeWidth={1.5} />
+          </button>
         </div>
 
         {/* Collapse Button */}
@@ -174,8 +206,24 @@ export function InspectorContainer({ onClose, onToast, activeMode }: InspectorCo
           <TemplatesPanel onApplyToast={(msg) => onToast?.(msg)} activeMode={activeMode} />
         ) : activeTab === 'locks' ? (
           <LockedPhotosPanel onToast={(msg) => onToast?.(msg)} />
+        ) : activeTab === 'assets' ? (
+          <AssetsPanel onApplyToast={(msg) => onToast?.(msg)} activeMode={activeMode} />
         ) : (
           <div>
+            {/* Decorative Frame Overlay Section (AST-01) */}
+            {selectedPhotoElement && selectedPhotoElement.frameAssetId && (
+              <AccordionSection
+                id="frame-overlay"
+                title="Decorative Frame Overlay"
+                icon={ImageIcon}
+                isOpen={isOpen('frame-overlay')}
+                onToggle={() => toggleSection('frame-overlay')}
+                badge={selectedPhotoElement.frameAssetSlot?.shape || 'Frame'}
+              >
+                <FrameOverlaySection onToast={onToast} activeMode={activeMode} />
+              </AccordionSection>
+            )}
+
             {/* AI Face & Studio Framing Section (Phase 23) */}
             {selectedPhotoElement && (
               <AccordionSection

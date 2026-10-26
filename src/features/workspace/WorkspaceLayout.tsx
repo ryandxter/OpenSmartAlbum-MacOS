@@ -25,7 +25,7 @@ import { listen } from '@tauri-apps/api/event';
 import { ExportAlbumDialog, ExportOptions } from '../export/ExportAlbumDialog';
 import { ExportProgressModal } from '../export/ExportProgressModal';
 import { AppTitleBar } from './AppTitleBar';
-import { InspectorContainer } from '../inspector/InspectorContainer';
+import { InspectorContainer, type InspectorTab } from '../inspector/InspectorContainer';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import Konva from 'konva';
 import { DropZoneHUD } from './DropZoneHUD';
@@ -96,6 +96,7 @@ export function WorkspaceLayout() {
   const cancelImport = useTemplateStore((s) => s.cancelImport);
 
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
+  const [inspectorTab, setInspectorTab] = useState<InspectorTab>('properties');
   const [isFilmstripOpen, setIsFilmstripOpen] = useState(true);
   // ISO-01: Read activeMode from appStore (global, not local state)
   const activeMode = useAppStore((s) => s.activeMode);
@@ -818,6 +819,7 @@ export function WorkspaceLayout() {
       if (!cmdOrCtrl && !e.altKey && !e.shiftKey && (e.key === 'p' || e.key === 'P')) {
         e.preventDefault();
         setIsPropertiesOpen((v) => !v);
+        setInspectorTab('properties');
         showToast('📋 Properties Panel');
         return;
       }
@@ -826,6 +828,7 @@ export function WorkspaceLayout() {
       if (!cmdOrCtrl && !e.altKey && !e.shiftKey && (e.key === 'l' || e.key === 'L')) {
         e.preventDefault();
         setIsPropertiesOpen(true);
+        setInspectorTab('locks');
         showToast('🔒 Locked Photos & Elements');
         return;
       }
@@ -834,7 +837,17 @@ export function WorkspaceLayout() {
       if (!cmdOrCtrl && !e.altKey && !e.shiftKey && (e.key === 'g' || e.key === 'G')) {
         e.preventDefault();
         setIsPropertiesOpen(true);
+        setInspectorTab('smart_layout');
         showToast('✨ Smart Layout Templates');
+        return;
+      }
+
+      // 4. Single Key: A or F -> Open Decorative Assets Panel
+      if (!cmdOrCtrl && !e.altKey && !e.shiftKey && (e.key === 'a' || e.key === 'A' || e.key === 'f' || e.key === 'F')) {
+        e.preventDefault();
+        setIsPropertiesOpen(true);
+        setInspectorTab('assets');
+        showToast('🎨 Decorative Frames & Graphics');
         return;
       }
 
@@ -1148,6 +1161,8 @@ export function WorkspaceLayout() {
           onClose={() => setIsPropertiesOpen(false)}
           onToast={showToast}
           activeMode={activeMode}
+          activeTab={inspectorTab}
+          onTabChange={setInspectorTab}
         />
       )}
 

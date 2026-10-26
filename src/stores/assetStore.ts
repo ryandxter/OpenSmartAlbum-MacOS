@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { frameAssetService, FrameAssetMeta } from '../services/frameAssetService';
+import { frameAssetService, FrameAssetMeta, FrameSlotPayload } from '../services/frameAssetService';
 
 export type AssetShapeFilter = 'all' | 'rectangle' | 'square' | 'oval' | 'arch' | 'circle';
 
@@ -13,7 +13,12 @@ interface AssetState {
 
   loadAssets: () => Promise<void>;
   syncCatalog: (url?: string) => Promise<void>;
-  importAsset: (filePath: string, category: 'frame' | 'element', shape?: string) => Promise<FrameAssetMeta | null>;
+  importAsset: (
+    filePath: string,
+    category: 'frame' | 'element',
+    shape?: string,
+    customSlot?: FrameSlotPayload
+  ) => Promise<FrameAssetMeta | null>;
   deleteAsset: (id: string) => Promise<void>;
   setActiveTab: (tab: 'frames' | 'elements') => void;
   setSelectedShape: (shape: AssetShapeFilter) => void;
@@ -50,9 +55,9 @@ export const useAssetStore = create<AssetState>((set, get) => ({
     }
   },
 
-  importAsset: async (filePath, category, shape) => {
+  importAsset: async (filePath, category, shape, customSlot) => {
     try {
-      const imported = await frameAssetService.importCustomAsset(filePath, category, shape);
+      const imported = await frameAssetService.importCustomAsset(filePath, category, shape, customSlot);
       await get().loadAssets();
       return imported;
     } catch (err) {

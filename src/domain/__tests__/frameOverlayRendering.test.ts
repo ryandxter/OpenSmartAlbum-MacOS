@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calculateImageOffset, calculateCoverDimensions } from '../editor';
-import type { PhotoFrameElement, GraphicElement, FrameSlotPayload } from '../editor';
+import type { PhotoFrameElement, GraphicElement } from '../editor';
 import { useAlbumStore } from '../../stores/albumStore';
 import { useCarouselStore } from '../../stores/carouselStore';
 import type { FrameAssetMeta } from '../../services/frameAssetService';
@@ -104,7 +104,8 @@ describe('Plan 04-02: Decorative Frame Overlays & Graphic Elements Rendering', (
         currentAlbum: {
           id: 'test-album',
           projectId: 'p1',
-          name: 'Test Album',
+          totalSpreads: 1,
+          totalPages: 2,
           coverSpread: {
             id: 'spread-1',
             spreadIndex: 0,
@@ -198,14 +199,16 @@ describe('Plan 04-02: Decorative Frame Overlays & Graphic Elements Rendering', (
         currentCarousel: {
           id: 'test-carousel',
           projectId: 'p1',
-          name: 'Social Reel',
           ratio: '4:5',
           slideWidthPx: 1080,
           slideHeightPx: 1350,
+          totalSlides: 1,
           slides: [
             {
               id: 'c-slide-0',
               slideIndex: 0,
+              widthPx: 1080,
+              heightPx: 1350,
               backgroundColor: '#18181B',
               elements: [
                 {
@@ -282,14 +285,16 @@ describe('Plan 04-02: Decorative Frame Overlays & Graphic Elements Rendering', (
         currentCarousel: {
           id: 'test-carousel-2',
           projectId: 'p2',
-          name: 'Social Reel 2',
           ratio: '1:1',
           slideWidthPx: 1080,
           slideHeightPx: 1080,
+          totalSlides: 1,
           slides: [
             {
               id: 'c-slide-1',
               slideIndex: 0,
+              widthPx: 1080,
+              heightPx: 1080,
               backgroundColor: '#ffffff',
               elements: [],
             },

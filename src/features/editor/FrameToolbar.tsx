@@ -48,7 +48,6 @@ export function FrameToolbar() {
     groupSelectedFrames,
     ungroupSelectedFrames,
     updateFrameGeometry,
-    batchUpdateFrames,
     updateCrop,
   } = useEditorStore();
 
@@ -326,21 +325,16 @@ export function FrameToolbar() {
               type="button"
               className={styles.toolBtn}
               onClick={() => {
-                batchUpdateFrames(
-                  activeSpread.id,
+                const activeMode = useAppStore.getState().activeMode;
+                if (activeMode === 'carousel') {
                   selectedElements
                     .filter((el) => el.type === 'photo' && Boolean((el as PhotoFrameElement).frameAssetId))
-                    .map((el) => ({
-                      id: el.id,
-                      geometry: {
-                        frameAssetId: undefined,
-                        frameAssetUrl: undefined,
-                        frameAssetLocalPath: undefined,
-                        frameAssetTitle: undefined,
-                        frameAssetSlot: undefined,
-                      } as Partial<PhotoFrameElement>,
-                    }))
-                );
+                    .forEach((el) => useCarouselStore.getState().detachFrameOverlay(el.id));
+                } else if (activeSpread) {
+                  selectedElements
+                    .filter((el) => el.type === 'photo' && Boolean((el as PhotoFrameElement).frameAssetId))
+                    .forEach((el) => useAlbumStore.getState().detachFrameOverlay(activeSpread.id, el.id));
+                }
               }}
               title="Detach Decorative Frame"
             >

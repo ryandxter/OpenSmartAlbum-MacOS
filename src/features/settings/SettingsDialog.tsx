@@ -32,6 +32,7 @@ import { convertUnit, Unit, UNIT_LABELS } from '../../domain/units';
 import { SNAPPING_LEVELS, SnappingLevel } from '../../domain/editor';
 import type { AutoSaveIntervalSeconds, StartupBehavior } from '../../domain/appPreferences';
 import { isTauri, isMac } from '../../utils/platform';
+import { StorageSettingsTab } from './tabs/StorageSettingsTab';
 import styles from './SettingsDialog.module.css';
 
 function normalizeKeyToken(token: string): string {
@@ -839,6 +840,18 @@ export function SettingsDialog() {
               </span>
               <span>Shortcuts</span>
             </button>
+
+            {/* Tab 5: Local Storage & Cache */}
+            <button
+              type="button"
+              className={`${styles.tabBtn} ${activeTab === 'storage' ? styles.tabBtnActive : ''}`}
+              onClick={() => setActiveTab('storage')}
+            >
+              <span className={styles.tabIcon}>
+                <HardDrive size={18} strokeWidth={1.5} />
+              </span>
+              <span>Storage & Cache</span>
+            </button>
           </div>
 
           {/* Sidebar Footer */}
@@ -1496,6 +1509,11 @@ export function SettingsDialog() {
               )}
             </div>
           )}
+
+          {/* ================================================================ */}
+          {/* 5. Storage & Cache Tab                                            */}
+          {/* ================================================================ */}
+          {activeTab === 'storage' && <StorageSettingsTab />}
         </div>
       </div>
       </Dialog>

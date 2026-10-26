@@ -196,6 +196,9 @@ pub fn run() {
             commands::frame_asset_commands::download_frame_asset,
             commands::frame_asset_commands::import_custom_frame_asset,
             commands::frame_asset_commands::delete_cached_frame_asset,
+            commands::frame_asset_commands::pick_frame_asset_file_dialog,
+            commands::frame_asset_commands::get_frame_assets_storage_stats,
+            commands::frame_asset_commands::clear_frame_assets_cache,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
