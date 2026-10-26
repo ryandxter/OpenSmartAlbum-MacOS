@@ -15,6 +15,7 @@ import {
   isAlbumDesignEqual,
   AlbumElement,
   GraphicElement,
+  SpreadBackgroundImage,
 } from '../domain/album';
 import {
   TextNodeElement,
@@ -416,6 +417,28 @@ export interface AlbumState {
   applySafeAreaToAllSpreads: (safeArea: number, side?: 'all' | 'top' | 'bottom' | 'outside' | 'spine', project?: Project) => void;
   updateSpreadBackgroundColor: (spreadId: string, color: string, scope?: 'spread' | 'left' | 'right') => void;
   applyBackgroundColorToAllSpreads: (color: string) => void;
+  setSpreadBackgroundImage: (
+    spreadId: string,
+    image: SpreadBackgroundImage | Partial<SpreadBackgroundImage>,
+    scope?: 'spread' | 'left' | 'right'
+  ) => void;
+  updateSpreadBackgroundImage: (spreadId: string, patch: Partial<SpreadBackgroundImage>) => void;
+  clearSpreadBackgroundImage: (spreadId: string) => void;
+  setSpreadBackgroundColorNoise: (
+    spreadId: string,
+    noise: number,
+    scope?: 'spread' | 'left' | 'right'
+  ) => void;
+  applyBackgroundNoiseToAllSpreads: (noise: number) => void;
+  updateSpreadBorder: (
+    spreadId: string,
+    border: { borderEnabled?: boolean; borderWidth?: number; borderColor?: string },
+    target?: 'both' | 'full' | 'left' | 'right'
+  ) => void;
+  applyBorderToAllSpreads: (
+    border: { borderEnabled?: boolean; borderWidth?: number; borderColor?: string },
+    target?: 'both' | 'full' | 'left' | 'right'
+  ) => void;
   toggleGuide: (guide: 'gutter' | 'bleed' | 'safeArea' | 'center' | 'thirds') => void;
   setGuideVisibility: (guide: 'gutter' | 'bleed' | 'safeArea' | 'center' | 'thirds', visible: boolean) => void;
   selectPage: (pageId: string | null) => void;
@@ -1727,6 +1750,306 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
         ...currentAlbum,
         coverSpread: updatedCover,
         spreads: updatedSpreads,
+      },
+      saveStatus: 'unsaved',
+    });
+  },
+
+  setSpreadBackgroundImage: (
+    spreadId: string,
+    image: SpreadBackgroundImage | Partial<SpreadBackgroundImage>,
+    scope: 'spread' | 'left' | 'right' = 'spread'
+  ) => {
+    const { currentAlbum } = get();
+    if (!currentAlbum) return;
+
+    useHistoryStore.getState().pushState(currentAlbum);
+
+    const target: 'full' | 'left' | 'right' = scope === 'left' ? 'left' : scope === 'right' ? 'right' : 'full';
+    const bgImage: SpreadBackgroundImage = {
+      photoId: image.photoId || '',
+      filePath: image.filePath || '',
+      fileName: image.fileName || '',
+      previewPath: image.previewPath,
+      thumbnailPath: image.thumbnailPath,
+      width: image.width,
+      height: image.height,
+      fit: image.fit || 'fill',
+      opacity: image.opacity ?? 100,
+      cropX: image.cropX ?? 0,
+      cropY: image.cropY ?? 0,
+      cropScale: image.cropScale ?? 1,
+      cropRotation: image.cropRotation ?? 0,
+      flipHorizontal: image.flipHorizontal ?? false,
+      flipVertical: image.flipVertical ?? false,
+      blurRadius: image.blurRadius ?? 0,
+      grayscaleAmount: image.grayscaleAmount ?? 0,
+      noiseAmount: image.noiseAmount ?? 0,
+      target,
+      ...image,
+    };
+
+    const isCover = currentAlbum.coverSpread.id === spreadId;
+    if (isCover) {
+      set({
+        currentAlbum: {
+          ...currentAlbum,
+          coverSpread: {
+            ...currentAlbum.coverSpread,
+            backgroundImage: bgImage,
+          },
+        },
+        saveStatus: 'unsaved',
+      });
+      return;
+    }
+
+    set({
+      currentAlbum: {
+        ...currentAlbum,
+        spreads: currentAlbum.spreads.map((s) =>
+          s.id === spreadId ? { ...s, backgroundImage: bgImage } : s
+        ),
+      },
+      saveStatus: 'unsaved',
+    });
+  },
+
+  updateSpreadBackgroundImage: (spreadId: string, patch: Partial<SpreadBackgroundImage>) => {
+    const { currentAlbum } = get();
+    if (!currentAlbum) return;
+
+    const isCover = currentAlbum.coverSpread.id === spreadId;
+    const targetSpread = isCover
+      ? currentAlbum.coverSpread
+      : currentAlbum.spreads.find((s) => s.id === spreadId);
+
+    if (!targetSpread?.backgroundImage) return;
+
+    const updatedBgImage: SpreadBackgroundImage = {
+      ...targetSpread.backgroundImage,
+      ...patch,
+    };
+
+    if (isCover) {
+      set({
+        currentAlbum: {
+          ...currentAlbum,
+          coverSpread: {
+            ...currentAlbum.coverSpread,
+            backgroundImage: updatedBgImage,
+          },
+        },
+        saveStatus: 'unsaved',
+      });
+      return;
+    }
+
+    set({
+      currentAlbum: {
+        ...currentAlbum,
+        spreads: currentAlbum.spreads.map((s) =>
+          s.id === spreadId ? { ...s, backgroundImage: updatedBgImage } : s
+        ),
+      },
+      saveStatus: 'unsaved',
+    });
+  },
+
+  clearSpreadBackgroundImage: (spreadId: string) => {
+    const { currentAlbum } = get();
+    if (!currentAlbum) return;
+
+    useHistoryStore.getState().pushState(currentAlbum);
+
+    const isCover = currentAlbum.coverSpread.id === spreadId;
+    if (isCover) {
+      set({
+        currentAlbum: {
+          ...currentAlbum,
+          coverSpread: {
+            ...currentAlbum.coverSpread,
+            backgroundImage: null,
+          },
+        },
+        saveStatus: 'unsaved',
+      });
+      return;
+    }
+
+    set({
+      currentAlbum: {
+        ...currentAlbum,
+        spreads: currentAlbum.spreads.map((s) =>
+          s.id === spreadId ? { ...s, backgroundImage: null } : s
+        ),
+      },
+      saveStatus: 'unsaved',
+    });
+  },
+
+  setSpreadBackgroundColorNoise: (
+    spreadId: string,
+    noise: number,
+    scope: 'spread' | 'left' | 'right' = 'spread'
+  ) => {
+    const { currentAlbum } = get();
+    if (!currentAlbum) return;
+
+    const isCover = currentAlbum.coverSpread.id === spreadId;
+    if (isCover) {
+      const cover = currentAlbum.coverSpread;
+      const updatedCover: Spread = {
+        ...cover,
+        backgroundColorNoise: scope === 'spread' ? noise : cover.backgroundColorNoise,
+        leftPageBackgroundColorNoise: scope === 'left' ? noise : (scope === 'spread' ? null : cover.leftPageBackgroundColorNoise),
+        rightPageBackgroundColorNoise: scope === 'right' ? noise : (scope === 'spread' ? null : cover.rightPageBackgroundColorNoise),
+      };
+      set({
+        currentAlbum: {
+          ...currentAlbum,
+          coverSpread: updatedCover,
+        },
+        saveStatus: 'unsaved',
+      });
+      return;
+    }
+
+    set({
+      currentAlbum: {
+        ...currentAlbum,
+        spreads: currentAlbum.spreads.map((s) => {
+          if (s.id !== spreadId) return s;
+          return {
+            ...s,
+            backgroundColorNoise: scope === 'spread' ? noise : s.backgroundColorNoise,
+            leftPageBackgroundColorNoise: scope === 'left' ? noise : (scope === 'spread' ? null : s.leftPageBackgroundColorNoise),
+            rightPageBackgroundColorNoise: scope === 'right' ? noise : (scope === 'spread' ? null : s.rightPageBackgroundColorNoise),
+          };
+        }),
+      },
+      saveStatus: 'unsaved',
+    });
+  },
+
+  applyBackgroundNoiseToAllSpreads: (noise: number) => {
+    const { currentAlbum } = get();
+    if (!currentAlbum) return;
+
+    useHistoryStore.getState().pushState(currentAlbum);
+
+    set({
+      currentAlbum: {
+        ...currentAlbum,
+        coverSpread: {
+          ...currentAlbum.coverSpread,
+          backgroundColorNoise: noise,
+          leftPageBackgroundColorNoise: null,
+          rightPageBackgroundColorNoise: null,
+        },
+        spreads: currentAlbum.spreads.map((s) => ({
+          ...s,
+          backgroundColorNoise: noise,
+          leftPageBackgroundColorNoise: null,
+          rightPageBackgroundColorNoise: null,
+        })),
+      },
+      saveStatus: 'unsaved',
+    });
+  },
+
+  updateSpreadBorder: (
+    spreadId: string,
+    border: { borderEnabled?: boolean; borderWidth?: number; borderColor?: string },
+    target: 'both' | 'full' | 'left' | 'right' = 'both'
+  ) => {
+    const { currentAlbum } = get();
+    if (!currentAlbum) return;
+
+    const updateSpreadFn = (s: Spread): Spread => {
+      if (target === 'left') {
+        return {
+          ...s,
+          leftPageBorderEnabled: border.borderEnabled !== undefined ? border.borderEnabled : s.leftPageBorderEnabled,
+          leftPageBorderWidth: border.borderWidth !== undefined ? border.borderWidth : s.leftPageBorderWidth,
+          leftPageBorderColor: border.borderColor !== undefined ? border.borderColor : s.leftPageBorderColor,
+        };
+      }
+      if (target === 'right') {
+        return {
+          ...s,
+          rightPageBorderEnabled: border.borderEnabled !== undefined ? border.borderEnabled : s.rightPageBorderEnabled,
+          rightPageBorderWidth: border.borderWidth !== undefined ? border.borderWidth : s.rightPageBorderWidth,
+          rightPageBorderColor: border.borderColor !== undefined ? border.borderColor : s.rightPageBorderColor,
+        };
+      }
+      return {
+        ...s,
+        borderEnabled: border.borderEnabled !== undefined ? border.borderEnabled : s.borderEnabled,
+        borderWidth: border.borderWidth !== undefined ? border.borderWidth : s.borderWidth,
+        borderColor: border.borderColor !== undefined ? border.borderColor : s.borderColor,
+      };
+    };
+
+    if (currentAlbum.coverSpread.id === spreadId) {
+      set({
+        currentAlbum: {
+          ...currentAlbum,
+          coverSpread: updateSpreadFn(currentAlbum.coverSpread),
+        },
+        saveStatus: 'unsaved',
+      });
+      return;
+    }
+
+    set({
+      currentAlbum: {
+        ...currentAlbum,
+        spreads: currentAlbum.spreads.map((s) => (s.id === spreadId ? updateSpreadFn(s) : s)),
+      },
+      saveStatus: 'unsaved',
+    });
+  },
+
+  applyBorderToAllSpreads: (
+    border: { borderEnabled?: boolean; borderWidth?: number; borderColor?: string },
+    target: 'both' | 'full' | 'left' | 'right' = 'both'
+  ) => {
+    const { currentAlbum } = get();
+    if (!currentAlbum) return;
+
+    useHistoryStore.getState().pushState(currentAlbum);
+
+    const updateSpreadFn = (s: Spread): Spread => {
+      if (target === 'left') {
+        return {
+          ...s,
+          leftPageBorderEnabled: border.borderEnabled !== undefined ? border.borderEnabled : s.leftPageBorderEnabled,
+          leftPageBorderWidth: border.borderWidth !== undefined ? border.borderWidth : s.leftPageBorderWidth,
+          leftPageBorderColor: border.borderColor !== undefined ? border.borderColor : s.leftPageBorderColor,
+        };
+      }
+      if (target === 'right') {
+        return {
+          ...s,
+          rightPageBorderEnabled: border.borderEnabled !== undefined ? border.borderEnabled : s.rightPageBorderEnabled,
+          rightPageBorderWidth: border.borderWidth !== undefined ? border.borderWidth : s.rightPageBorderWidth,
+          rightPageBorderColor: border.borderColor !== undefined ? border.borderColor : s.rightPageBorderColor,
+        };
+      }
+      return {
+        ...s,
+        borderEnabled: border.borderEnabled !== undefined ? border.borderEnabled : s.borderEnabled,
+        borderWidth: border.borderWidth !== undefined ? border.borderWidth : s.borderWidth,
+        borderColor: border.borderColor !== undefined ? border.borderColor : s.borderColor,
+      };
+    };
+
+    set({
+      currentAlbum: {
+        ...currentAlbum,
+        coverSpread: updateSpreadFn(currentAlbum.coverSpread),
+        spreads: currentAlbum.spreads.map(updateSpreadFn),
       },
       saveStatus: 'unsaved',
     });

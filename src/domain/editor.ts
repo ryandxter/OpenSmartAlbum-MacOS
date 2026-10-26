@@ -855,6 +855,69 @@ export function alignElementPositionToSpine(
 }
 
 /**
+ * Calculates Inner Page / Spread Border rects along the Safe Margin boundary (FX-04, D-05).
+ * Supports target scopes: 'both' | 'full' | 'left' | 'right'.
+ */
+export function computeInnerBorderRects(params: {
+  spreadWidth: number;
+  spreadHeight: number;
+  safeArea: number | { top?: number; bottom?: number; outside?: number; spine?: number };
+  gutterWidth?: number;
+  target?: 'both' | 'full' | 'left' | 'right';
+  isSpread?: boolean;
+}): RectBounds[] {
+  const {
+    spreadWidth,
+    spreadHeight,
+    safeArea,
+    gutterWidth = 0,
+    target = 'both',
+    isSpread = true,
+  } = params;
+
+  const top = typeof safeArea === 'number' ? safeArea : (safeArea.top ?? 0);
+  const bottom = typeof safeArea === 'number' ? safeArea : (safeArea.bottom ?? 0);
+  const outside = typeof safeArea === 'number' ? safeArea : (safeArea.outside ?? 0);
+  const spine = typeof safeArea === 'number' ? safeArea : (safeArea.spine ?? 0);
+
+  const rects: RectBounds[] = [];
+  const height = Math.max(0, spreadHeight - top - bottom);
+
+  if (!isSpread || target === 'full') {
+    const width = Math.max(0, spreadWidth - 2 * outside);
+    rects.push({ x: outside, y: top, width, height });
+    return rects;
+  }
+
+  const singlePageW = (spreadWidth - gutterWidth) / 2;
+  const spineLeft = singlePageW;
+  const spineRight = singlePageW + gutterWidth;
+
+  const leftW = Math.max(0, spineLeft - outside - spine);
+  const rightW = Math.max(0, (spreadWidth - spineRight) - spine - outside);
+
+  if (target === 'both' || target === 'left') {
+    rects.push({
+      x: outside,
+      y: top,
+      width: leftW,
+      height,
+    });
+  }
+
+  if (target === 'both' || target === 'right') {
+    rects.push({
+      x: spineRight + spine,
+      y: top,
+      width: rightW,
+      height,
+    });
+  }
+
+  return rects;
+}
+
+/**
  * Calculates smart magnetic snapping lines, equal distance gaps, and adjustments for a dragged frame.
  */
 export function calculateSnapping(
@@ -871,9 +934,10 @@ export function calculateSnapping(
       },
   gutterWidth: number,
   otherFrames: RectBounds[],
-  thresholdOrConfig: number | SnappingConfig = DEFAULT_SNAPPING_CONFIG,
+  thresholdOrConfig: number | Partial<SnappingConfig> = DEFAULT_SNAPPING_CONFIG,
   unit: string = 'mm',
-  preferredGap?: number
+  preferredGap?: number,
+  innerBorderRects?: RectBounds[]
 ): { snappedX: number; snappedY: number; snapLines: SnapLine[]; gapGuides: GapGuide[] } {
   const config: SnappingConfig =
     typeof thresholdOrConfig === 'number'
@@ -929,6 +993,15 @@ export function calculateSnapping(
     );
   }
 
+  if (innerBorderRects && innerBorderRects.length > 0) {
+    for (const b of innerBorderRects) {
+      vTargets.push(
+        { pos: b.x, label: 'Inner Border Left', kind: 'margin' },
+        { pos: b.x + b.width, label: 'Inner Border Right', kind: 'margin' }
+      );
+    }
+  }
+
   if (config.snapToMargins) {
     if (safeAreaOutside > 0) {
       vTargets.push(
@@ -956,6 +1029,15 @@ export function calculateSnapping(
 
   if (config.snapToPageCenters) {
     hTargets.push({ pos: spreadHeight / 2, label: 'Spread Center Y', kind: 'center' });
+  }
+
+  if (innerBorderRects && innerBorderRects.length > 0) {
+    for (const b of innerBorderRects) {
+      hTargets.push(
+        { pos: b.y, label: 'Inner Border Top', kind: 'margin' },
+        { pos: b.y + b.height, label: 'Inner Border Bottom', kind: 'margin' }
+      );
+    }
   }
 
   if (config.snapToMargins) {
@@ -1574,12 +1656,24 @@ export function calculateSelectionDragSnapping(
   safeArea: Parameters<typeof calculateSnapping>[3],
   gutterWidth: number,
   otherFrames: RectBounds[],
-  thresholdOrConfig: number | SnappingConfig = DEFAULT_SNAPPING_CONFIG,
+  thresholdOrConfig: number | Partial<SnappingConfig> = DEFAULT_SNAPPING_CONFIG,
   unit: string = 'mm',
-  preferredGap?: number
+  preferredGap?: number,
+  innerBorderRects?: RectBounds[]
 ): ReturnType<typeof calculateSnapping> {
   if (selectedFrames.length <= 1) {
-    return calculateSnapping(dragged, spreadWidth, spreadHeight, safeArea, gutterWidth, otherFrames, thresholdOrConfig, unit, preferredGap);
+    return calculateSnapping(
+      dragged,
+      spreadWidth,
+      spreadHeight,
+      safeArea,
+      gutterWidth,
+      otherFrames,
+      thresholdOrConfig,
+      unit,
+      preferredGap,
+      innerBorderRects
+    );
   }
 
   const visualBounds = selectedFrames.map(getSnappingVisualBounds);
@@ -1591,7 +1685,15 @@ export function calculateSelectionDragSnapping(
   const groupY = top + dragged.y - initialDragged.y;
   const result = calculateSnapping(
     { x: groupX, y: groupY, width: right - left, height: bottom - top },
-    spreadWidth, spreadHeight, safeArea, gutterWidth, otherFrames, thresholdOrConfig, unit, preferredGap
+    spreadWidth,
+    spreadHeight,
+    safeArea,
+    gutterWidth,
+    otherFrames,
+    thresholdOrConfig,
+    unit,
+    preferredGap,
+    innerBorderRects
   );
   return {
     snappedX: initialDragged.x + result.snappedX - left,
@@ -1614,7 +1716,8 @@ export function calculateResizeSnapping(
   otherFrames: RectBounds[],
   threshold: number = 2.0,
   unit: string = 'mm',
-  anchor?: string
+  anchor?: string,
+  innerBorderRects?: RectBounds[]
 ): ResizeSnapResult {
   let { x, y, width, height } = current;
   const snapLines: SnapLine[] = [];
@@ -1752,6 +1855,14 @@ export function calculateResizeSnapping(
   // 2. Secondary & Edge Snapping: Safe Area Margins, Spine, Spread Boundaries, and Other Frames
   // Build Vertical Targets (X lines)
   const verticalTargets: { pos: number; label: string; start?: number; end?: number }[] = [];
+  if (innerBorderRects && innerBorderRects.length > 0) {
+    for (const b of innerBorderRects) {
+      verticalTargets.push(
+        { pos: b.x, label: 'Inner Border Left', start: b.y, end: b.y + b.height },
+        { pos: b.x + b.width, label: 'Inner Border Right', start: b.y, end: b.y + b.height }
+      );
+    }
+  }
   if (marginOutside > 0) {
     verticalTargets.push(
       { pos: marginOutside, label: 'Safe Margin Left' },
@@ -1782,6 +1893,14 @@ export function calculateResizeSnapping(
 
   // Build Horizontal Targets (Y lines)
   const horizontalTargets: { pos: number; label: string; start?: number; end?: number }[] = [];
+  if (innerBorderRects && innerBorderRects.length > 0) {
+    for (const b of innerBorderRects) {
+      horizontalTargets.push(
+        { pos: b.y, label: 'Inner Border Top', start: b.x, end: b.x + b.width },
+        { pos: b.y + b.height, label: 'Inner Border Bottom', start: b.x, end: b.x + b.width }
+      );
+    }
+  }
   if (marginTop > 0) {
     horizontalTargets.push({ pos: marginTop, label: 'Safe Margin Top' });
   }

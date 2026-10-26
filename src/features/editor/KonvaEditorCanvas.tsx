@@ -45,9 +45,10 @@ import {
   getCornerRadii,
   getFrameVisualBounds,
   calculateCoverDimensions,
+  computeInnerBorderRects,
   MAX_CROP_SCALE,
 } from '../../domain/editor';
-import { getAllAlbumSpreads, mergeFramePhotoAsset } from '../../domain/album';
+import { getAllAlbumSpreads, mergeFramePhotoAsset, SpreadBackgroundImage } from '../../domain/album';
 import { getProjectDimensionsInCanvasUnit } from '../../domain/templates';
 import { calculateSpreadViewport, calculatePasteboardViewport, preservePasteboardView, screenToSpreadPoint, type PasteboardViewport } from '../../domain/viewport';
 import { Photo } from '../../domain/photo';
@@ -58,7 +59,7 @@ import { convertPtToUnit, convertUnit, Unit } from '../../domain/units';
 import { ContextMenu, ContextMenuItem } from '../../components/ui';
 import { findPhotoSwapTarget } from './photoSwapDrag';
 import { drawShapeToContext, getShapeSvgPath } from '../../domain/shapes';
-import { renderFilteredPhotoToCanvas } from '../../utils/imageFilters';
+import { renderFilteredPhotoToCanvas, getSeededGrainTile } from '../../utils/imageFilters';
 import { DividerOverlayLayer } from './DividerOverlayLayer';
 import { extractCanvasDividers, RectFrameInput } from '../../domain/layout/dividerGraph';
 import { isMac } from '../../utils/platform';
@@ -119,6 +120,151 @@ function deleteCachedPhotoImage(key: string) {
     evicted.src = '';
   }
   photoImageCache.delete(key);
+}
+
+interface SpreadBackgroundImageNodeProps {
+  backgroundImage: SpreadBackgroundImage;
+  screenSpreadW: number;
+  screenSpreadH: number;
+  leftPagePixelW: number;
+  rightPagePixelW: number;
+  gutterPixelW: number;
+  scaleFactor: number;
+}
+
+function SpreadBackgroundImageNode({
+  backgroundImage,
+  screenSpreadW,
+  screenSpreadH,
+  leftPagePixelW,
+  rightPagePixelW,
+  gutterPixelW,
+  scaleFactor,
+}: SpreadBackgroundImageNodeProps) {
+  const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    const src = backgroundImage.previewPath || backgroundImage.filePath;
+    if (!src) {
+      setImageObj(null);
+      return;
+    }
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.src = convertFileSrc(src);
+    img.onload = () => setImageObj(img);
+    img.onerror = () => {
+      if (
+        backgroundImage.previewPath &&
+        backgroundImage.filePath &&
+        backgroundImage.previewPath !== backgroundImage.filePath
+      ) {
+        const fallback = new window.Image();
+        fallback.crossOrigin = 'anonymous';
+        fallback.src = convertFileSrc(backgroundImage.filePath);
+        fallback.onload = () => setImageObj(fallback);
+      }
+    };
+  }, [backgroundImage.filePath, backgroundImage.previewPath]);
+
+  // Determine target bounds on the spread
+  const target = backgroundImage.target || 'full';
+  let boxX = 0;
+  let boxY = 0;
+  let boxW = screenSpreadW;
+  let boxH = screenSpreadH;
+
+  if (target === 'left') {
+    boxX = 0;
+    boxY = 0;
+    boxW = leftPagePixelW;
+    boxH = screenSpreadH;
+  } else if (target === 'right') {
+    boxX = leftPagePixelW + gutterPixelW;
+    boxY = 0;
+    boxW = rightPagePixelW;
+    boxH = screenSpreadH;
+  }
+
+  const naturalW = imageObj?.naturalWidth || imageObj?.width || 1;
+  const naturalH = imageObj?.naturalHeight || imageObj?.height || 1;
+  const fit = backgroundImage.fit || 'fill';
+
+  let baseScaleX = 1;
+  let baseScaleY = 1;
+
+  if (fit === 'fill') {
+    const scale = Math.max(boxW / naturalW, boxH / naturalH);
+    baseScaleX = scale;
+    baseScaleY = scale;
+  } else if (fit === 'fit') {
+    const scale = Math.min(boxW / naturalW, boxH / naturalH);
+    baseScaleX = scale;
+    baseScaleY = scale;
+  } else if (fit === 'stretch') {
+    baseScaleX = boxW / naturalW;
+    baseScaleY = boxH / naturalH;
+  }
+
+  const cropScale = backgroundImage.cropScale ?? 1.0;
+  const finalScaleX = baseScaleX * cropScale * (backgroundImage.flipHorizontal ? -1 : 1);
+  const finalScaleY = baseScaleY * cropScale * (backgroundImage.flipVertical ? -1 : 1);
+
+  const imgRenderW = naturalW * Math.abs(finalScaleX);
+  const imgRenderH = naturalH * Math.abs(finalScaleY);
+
+  const cropX = (backgroundImage.cropX ?? 0) * scaleFactor;
+  const cropY = (backgroundImage.cropY ?? 0) * scaleFactor;
+
+  const posX = boxX + (boxW - imgRenderW) / 2 + cropX;
+  const posY = boxY + (boxH - imgRenderH) / 2 + cropY;
+
+  const hasEffects = Boolean(
+    (backgroundImage.grayscaleAmount && backgroundImage.grayscaleAmount > 0) ||
+    (backgroundImage.noiseAmount && backgroundImage.noiseAmount > 0) ||
+    (backgroundImage.blurRadius && backgroundImage.blurRadius > 0)
+  );
+
+  const displayCanvasOrImg = useMemo(() => {
+    if (!imageObj) return null;
+    if (!hasEffects) return imageObj;
+    const blurPx = (backgroundImage.blurRadius || 0) * scaleFactor;
+    return renderFilteredPhotoToCanvas(imageObj, naturalW, naturalH, {
+      grayscale: backgroundImage.grayscaleAmount || 0,
+      noise: backgroundImage.noiseAmount || 0,
+      blur: blurPx,
+      seed: `bg_${backgroundImage.photoId || 'spread'}`,
+    });
+  }, [
+    imageObj,
+    hasEffects,
+    backgroundImage.grayscaleAmount,
+    backgroundImage.noiseAmount,
+    backgroundImage.blurRadius,
+    backgroundImage.photoId,
+    scaleFactor,
+    naturalW,
+    naturalH,
+  ]);
+
+  if (!imageObj || !displayCanvasOrImg) return null;
+
+  return (
+    <Group clipX={boxX} clipY={boxY} clipWidth={boxW} clipHeight={boxH} listening={false}>
+      <KonvaImage
+        image={displayCanvasOrImg}
+        x={posX + (backgroundImage.flipHorizontal ? imgRenderW : 0)}
+        y={posY + (backgroundImage.flipVertical ? imgRenderH : 0)}
+        width={naturalW * baseScaleX * cropScale}
+        height={naturalH * baseScaleY * cropScale}
+        scaleX={backgroundImage.flipHorizontal ? -1 : 1}
+        scaleY={backgroundImage.flipVertical ? -1 : 1}
+        rotation={backgroundImage.cropRotation || 0}
+        opacity={(backgroundImage.opacity ?? 100) / 100}
+        listening={false}
+      />
+    </Group>
+  );
 }
 
 // Single Photo Frame Component rendered with Konva
@@ -2134,6 +2280,42 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
     spine: dims.safeMarginSpine,
   };
 
+  const isCover = activeSpread.type === 'cover' || !activeSpread.leftPage || !activeSpread.rightPage;
+  const isInnerBorderActive = Boolean(
+    activeSpread.borderEnabled ||
+    activeSpread.leftPageBorderEnabled ||
+    activeSpread.rightPageBorderEnabled
+  );
+
+  const activePhysicalInnerBorderRects = useMemo(() => {
+    if (!isInnerBorderActive) return [];
+    const targetScope = activeSpread.leftPageBorderEnabled
+      ? 'left'
+      : activeSpread.rightPageBorderEnabled
+      ? 'right'
+      : 'both';
+
+    return computeInnerBorderRects({
+      spreadWidth: isCover ? dims.pageWidth : dims.pageWidth * 2,
+      spreadHeight: dims.pageHeight,
+      safeArea: safeAreaMargins,
+      gutterWidth: 0,
+      target: targetScope,
+      isSpread: !isCover,
+    });
+  }, [
+    isInnerBorderActive,
+    activeSpread.leftPageBorderEnabled,
+    activeSpread.rightPageBorderEnabled,
+    dims.pageWidth,
+    dims.pageHeight,
+    safeAreaMargins.top,
+    safeAreaMargins.bottom,
+    safeAreaMargins.outside,
+    safeAreaMargins.spine,
+    isCover,
+  ]);
+
   // Single page physical dimensions (strictly in canvasUnit)
   const singlePageW = dims.pageWidth;
   const singlePageH = dims.pageHeight;
@@ -3293,6 +3475,86 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
               }
             />
 
+            {/* Spread Background Image (FX-03) */}
+            {activeSpread.backgroundImage && (
+              <SpreadBackgroundImageNode
+                backgroundImage={activeSpread.backgroundImage}
+                screenSpreadW={screenSpreadW}
+                screenSpreadH={screenSpreadH}
+                leftPagePixelW={leftPagePixelW}
+                rightPagePixelW={rightPagePixelW}
+                gutterPixelW={gutterPixelW}
+                scaleFactor={scaleFactor}
+              />
+            )}
+
+            {/* Background Color Noise Grain Overlay (FX-03) */}
+            {Boolean(
+              (activeSpread.backgroundColorNoise && activeSpread.backgroundColorNoise > 0) ||
+              (activeSpread.leftPageBackgroundColorNoise && activeSpread.leftPageBackgroundColorNoise > 0) ||
+              (activeSpread.rightPageBackgroundColorNoise && activeSpread.rightPageBackgroundColorNoise > 0)
+            ) && (
+              <>
+                {(activeSpread.backgroundColorNoise ?? 0) > 0 && (
+                  <Rect
+                    listening={false}
+                    x={0}
+                    y={0}
+                    width={screenSpreadW}
+                    height={screenSpreadH}
+                    fillPriority="pattern"
+                    fillPatternImage={getSeededGrainTile(activeSpread.id + '_noise') as unknown as HTMLImageElement}
+                    fillPatternRepeat="repeat"
+                    opacity={Math.min(1, ((activeSpread.backgroundColorNoise ?? 0) / 100) * 0.45)}
+                    globalCompositeOperation="overlay"
+                  />
+                )}
+                {(activeSpread.leftPageBackgroundColorNoise ?? 0) > 0 && (
+                  <Rect
+                    listening={false}
+                    x={0}
+                    y={0}
+                    width={leftPagePixelW}
+                    height={screenSpreadH}
+                    fillPriority="pattern"
+                    fillPatternImage={getSeededGrainTile(activeSpread.id + '_left_noise') as unknown as HTMLImageElement}
+                    fillPatternRepeat="repeat"
+                    opacity={Math.min(1, ((activeSpread.leftPageBackgroundColorNoise ?? 0) / 100) * 0.45)}
+                    globalCompositeOperation="overlay"
+                  />
+                )}
+                {(activeSpread.rightPageBackgroundColorNoise ?? 0) > 0 && (
+                  <Rect
+                    listening={false}
+                    x={leftPagePixelW + gutterPixelW}
+                    y={0}
+                    width={rightPagePixelW}
+                    height={screenSpreadH}
+                    fillPriority="pattern"
+                    fillPatternImage={getSeededGrainTile(activeSpread.id + '_right_noise') as unknown as HTMLImageElement}
+                    fillPatternRepeat="repeat"
+                    opacity={Math.min(1, ((activeSpread.rightPageBackgroundColorNoise ?? 0) / 100) * 0.45)}
+                    globalCompositeOperation="overlay"
+                  />
+                )}
+              </>
+            )}
+
+            {/* Inner Page / Spread Borders along Safe Margins (FX-04, D-05) */}
+            {isInnerBorderActive &&
+              activePhysicalInnerBorderRects.map((r, bIdx) => (
+                <Rect
+                  key={`inner-border-${bIdx}`}
+                  listening={false}
+                  x={r.x * scaleFactor}
+                  y={r.y * scaleFactor}
+                  width={r.width * scaleFactor}
+                  height={r.height * scaleFactor}
+                  stroke={activeSpread.borderColor || '#000000'}
+                  strokeWidth={Math.max(1, (activeSpread.borderWidth || 1) * scaleFactor)}
+                />
+              ))}
+
             {/* Spread Sheet Perimeter Border (Thin Solid Black) */}
             <Rect
               name="background-sheet-border"
@@ -3395,7 +3657,8 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                           otherRects,
                           { ...snappingConfig, threshold: snappingThresholdUnits },
                           unit,
-                          preferredGap
+                          preferredGap,
+                          activePhysicalInnerBorderRects
                         );
 
                         if (snapRes.snapLines.length > 0 || snapRes.gapGuides.length > 0) {
@@ -3457,7 +3720,8 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                                 otherRects,
                                 { ...snappingConfig, threshold: snappingThresholdUnits },
                                 unit,
-                                preferredGap
+                                preferredGap,
+                                activePhysicalInnerBorderRects
                               );
 
                         let deltaPhysX = snapRes.snappedX - textEl.x;
@@ -3631,7 +3895,8 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                         otherRects,
                         { ...snappingConfig, threshold: snappingThresholdUnits },
                         unit,
-                        preferredGap
+                        preferredGap,
+                        activePhysicalInnerBorderRects
                       );
 
                       if (snapRes.snapLines.length > 0 || snapRes.gapGuides.length > 0) {
@@ -3707,7 +3972,8 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                             otherRects,
                             { ...snappingConfig, threshold: snappingThresholdUnits },
                             unit,
-                            preferredGap
+                            preferredGap,
+                            activePhysicalInnerBorderRects
                           );
 
                       let deltaPhysX = snapRes.snappedX - frame.x;
@@ -4460,7 +4726,8 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool, onZoomCha
                     otherRects,
                     thresholdUnits,
                     unit,
-                    currentAnchor || undefined
+                    currentAnchor || undefined,
+                    activePhysicalInnerBorderRects
                   );
 
                   if (snapRes.snapLines.length > 0 || snapRes.gapGuides.length > 0) {

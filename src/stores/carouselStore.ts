@@ -23,6 +23,7 @@ import { AdaptivePhoto } from '../domain/adaptiveLayout';
 import { generateAutoFlowPlan } from '../domain/storytelling/autoFlowEngine';
 import type { Photo } from '../domain/photo';
 import type { PhotoFrameElement } from '../domain/editor';
+import type { SpreadBackgroundImage } from '../domain/album';
 import { getCornerRadii, permuteCornerRadiiOnFlip } from '../domain/editor';
 import { StudioFramingPreset, FramingConfig } from '../domain/ai/faceDetection';
 import { calculateOptimalStudioCrop } from '../domain/ai/framingMath';
@@ -85,6 +86,41 @@ export interface CarouselState {
   deleteSlide: (index: number) => void;
   reorderSlide: (fromIndex: number, toIndex: number) => void;
   updateSlideBackground: (slideIndex: number, color: string) => void;
+  setSpreadBackgroundImage: (
+    slideIndex: number,
+    image: SpreadBackgroundImage | Partial<SpreadBackgroundImage>
+  ) => void;
+  updateSpreadBackgroundImage: (slideIndex: number, patch: Partial<SpreadBackgroundImage>) => void;
+  clearSpreadBackgroundImage: (slideIndex: number) => void;
+  setSpreadBackgroundColorNoise: (slideIndex: number, noise: number) => void;
+  applyBackgroundNoiseToAllSpreads: (noise: number) => void;
+  updateSpreadBorder: (
+    slideIndex: number,
+    border: { borderEnabled?: boolean; borderWidth?: number; borderColor?: string }
+  ) => void;
+  applyBorderToAllSpreads: (border: {
+    borderEnabled?: boolean;
+    borderWidth?: number;
+    borderColor?: string;
+  }) => void;
+  // Slide aliases
+  setSlideBackgroundImage: (
+    slideIndex: number,
+    image: SpreadBackgroundImage | Partial<SpreadBackgroundImage>
+  ) => void;
+  updateSlideBackgroundImage: (slideIndex: number, patch: Partial<SpreadBackgroundImage>) => void;
+  clearSlideBackgroundImage: (slideIndex: number) => void;
+  setSlideBackgroundColorNoise: (slideIndex: number, noise: number) => void;
+  applyBackgroundNoiseToAllSlides: (noise: number) => void;
+  updateSlideBorder: (
+    slideIndex: number,
+    border: { borderEnabled?: boolean; borderWidth?: number; borderColor?: string }
+  ) => void;
+  applyBorderToAllSlides: (border: {
+    borderEnabled?: boolean;
+    borderWidth?: number;
+    borderColor?: string;
+  }) => void;
   addPhotoFrame: (slideIndex: number, frame: Omit<CarouselPhotoFrame, 'id'>) => void;
   addPhotoFrames: (
     slideIndex: number,
@@ -898,6 +934,189 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         slides: updatedSlides,
       },
     });
+  },
+
+  setSpreadBackgroundImage: (slideIndex, image) => {
+    const { currentCarousel, pushHistory } = get();
+    if (!currentCarousel) return;
+
+    pushHistory();
+
+    const bgImage: SpreadBackgroundImage = {
+      photoId: image.photoId || '',
+      filePath: image.filePath || '',
+      fileName: image.fileName || '',
+      previewPath: image.previewPath,
+      thumbnailPath: image.thumbnailPath,
+      width: image.width,
+      height: image.height,
+      fit: image.fit || 'fill',
+      opacity: image.opacity ?? 100,
+      cropX: image.cropX ?? 0,
+      cropY: image.cropY ?? 0,
+      cropScale: image.cropScale ?? 1,
+      cropRotation: image.cropRotation ?? 0,
+      flipHorizontal: image.flipHorizontal ?? false,
+      flipVertical: image.flipVertical ?? false,
+      blurRadius: image.blurRadius ?? 0,
+      grayscaleAmount: image.grayscaleAmount ?? 0,
+      noiseAmount: image.noiseAmount ?? 0,
+      target: 'full',
+      ...image,
+    };
+
+    set({
+      currentCarousel: {
+        ...currentCarousel,
+        slides: currentCarousel.slides.map((s, idx) =>
+          idx === slideIndex ? { ...s, backgroundImage: bgImage } : s
+        ),
+      },
+    });
+    get().saveCarouselToDb();
+  },
+
+  updateSpreadBackgroundImage: (slideIndex, patch) => {
+    const { currentCarousel } = get();
+    if (!currentCarousel) return;
+
+    const targetSlide = currentCarousel.slides[slideIndex];
+    if (!targetSlide?.backgroundImage) return;
+
+    const updatedBgImage: SpreadBackgroundImage = {
+      ...targetSlide.backgroundImage,
+      ...patch,
+    };
+
+    set({
+      currentCarousel: {
+        ...currentCarousel,
+        slides: currentCarousel.slides.map((s, idx) =>
+          idx === slideIndex ? { ...s, backgroundImage: updatedBgImage } : s
+        ),
+      },
+    });
+    get().saveCarouselToDb();
+  },
+
+  clearSpreadBackgroundImage: (slideIndex) => {
+    const { currentCarousel, pushHistory } = get();
+    if (!currentCarousel) return;
+
+    pushHistory();
+
+    set({
+      currentCarousel: {
+        ...currentCarousel,
+        slides: currentCarousel.slides.map((s, idx) =>
+          idx === slideIndex ? { ...s, backgroundImage: null } : s
+        ),
+      },
+    });
+    get().saveCarouselToDb();
+  },
+
+  setSpreadBackgroundColorNoise: (slideIndex, noise) => {
+    const { currentCarousel } = get();
+    if (!currentCarousel) return;
+
+    set({
+      currentCarousel: {
+        ...currentCarousel,
+        slides: currentCarousel.slides.map((s, idx) =>
+          idx === slideIndex ? { ...s, backgroundColorNoise: noise } : s
+        ),
+      },
+    });
+    get().saveCarouselToDb();
+  },
+
+  applyBackgroundNoiseToAllSpreads: (noise) => {
+    const { currentCarousel, pushHistory } = get();
+    if (!currentCarousel) return;
+
+    pushHistory();
+
+    set({
+      currentCarousel: {
+        ...currentCarousel,
+        slides: currentCarousel.slides.map((s) => ({
+          ...s,
+          backgroundColorNoise: noise,
+        })),
+      },
+    });
+    get().saveCarouselToDb();
+  },
+
+  updateSpreadBorder: (slideIndex, border) => {
+    const { currentCarousel } = get();
+    if (!currentCarousel) return;
+
+    set({
+      currentCarousel: {
+        ...currentCarousel,
+        slides: currentCarousel.slides.map((s, idx) =>
+          idx === slideIndex
+            ? {
+                ...s,
+                borderEnabled: border.borderEnabled !== undefined ? border.borderEnabled : s.borderEnabled,
+                borderWidth: border.borderWidth !== undefined ? border.borderWidth : s.borderWidth,
+                borderColor: border.borderColor !== undefined ? border.borderColor : s.borderColor,
+              }
+            : s
+        ),
+      },
+    });
+    get().saveCarouselToDb();
+  },
+
+  applyBorderToAllSpreads: (border) => {
+    const { currentCarousel, pushHistory } = get();
+    if (!currentCarousel) return;
+
+    pushHistory();
+
+    set({
+      currentCarousel: {
+        ...currentCarousel,
+        slides: currentCarousel.slides.map((s) => ({
+          ...s,
+          borderEnabled: border.borderEnabled !== undefined ? border.borderEnabled : s.borderEnabled,
+          borderWidth: border.borderWidth !== undefined ? border.borderWidth : s.borderWidth,
+          borderColor: border.borderColor !== undefined ? border.borderColor : s.borderColor,
+        })),
+      },
+    });
+    get().saveCarouselToDb();
+  },
+
+  setSlideBackgroundImage: (slideIndex, image) => {
+    get().setSpreadBackgroundImage(slideIndex, image);
+  },
+
+  updateSlideBackgroundImage: (slideIndex, patch) => {
+    get().updateSpreadBackgroundImage(slideIndex, patch);
+  },
+
+  clearSlideBackgroundImage: (slideIndex) => {
+    get().clearSpreadBackgroundImage(slideIndex);
+  },
+
+  setSlideBackgroundColorNoise: (slideIndex, noise) => {
+    get().setSpreadBackgroundColorNoise(slideIndex, noise);
+  },
+
+  applyBackgroundNoiseToAllSlides: (noise) => {
+    get().applyBackgroundNoiseToAllSpreads(noise);
+  },
+
+  updateSlideBorder: (slideIndex, border) => {
+    get().updateSpreadBorder(slideIndex, border);
+  },
+
+  applyBorderToAllSlides: (border) => {
+    get().applyBorderToAllSpreads(border);
   },
 
   addPhotoFrame: (slideIndex, frame) => {

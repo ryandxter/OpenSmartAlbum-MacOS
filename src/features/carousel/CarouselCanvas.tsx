@@ -21,7 +21,8 @@ import { DividerOverlayLayer } from '../editor/DividerOverlayLayer';
 import { TextInlineEditor } from '../editor/TextInlineEditor';
 import { CarouselTextNode } from './CarouselTextNode';
 import { extractCanvasDividers, findPhotoSwapTarget, RectFrameInput } from '../../domain/layout/dividerGraph';
-import { renderFilteredPhotoToCanvas } from '../../utils/imageFilters';
+import { renderFilteredPhotoToCanvas, getSeededGrainTile } from '../../utils/imageFilters';
+import type { SpreadBackgroundImage } from '../../domain/album';
 import styles from './CarouselCanvas.module.css';
 
 interface CarouselCanvasProps {
@@ -61,6 +62,120 @@ function setCachedImage(src: string, img: HTMLImageElement) {
     }
   }
   carouselImageCache.set(src, img);
+}
+
+// Slide Background Image Node in Carousel
+interface CarouselBackgroundImageNodeProps {
+  backgroundImage: SpreadBackgroundImage;
+  boxW: number;
+  boxH: number;
+}
+
+function CarouselBackgroundImageNode({
+  backgroundImage,
+  boxW,
+  boxH,
+}: CarouselBackgroundImageNodeProps) {
+  const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    const src = backgroundImage.previewPath || backgroundImage.filePath;
+    if (!src) {
+      setImageObj(null);
+      return;
+    }
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.src = convertFileSrc(src);
+    img.onload = () => setImageObj(img);
+    img.onerror = () => {
+      if (
+        backgroundImage.previewPath &&
+        backgroundImage.filePath &&
+        backgroundImage.previewPath !== backgroundImage.filePath
+      ) {
+        const fallback = new window.Image();
+        fallback.crossOrigin = 'anonymous';
+        fallback.src = convertFileSrc(backgroundImage.filePath);
+        fallback.onload = () => setImageObj(fallback);
+      }
+    };
+  }, [backgroundImage.filePath, backgroundImage.previewPath]);
+
+  const naturalW = imageObj?.naturalWidth || imageObj?.width || 1;
+  const naturalH = imageObj?.naturalHeight || imageObj?.height || 1;
+  const fit = backgroundImage.fit || 'fill';
+
+  let baseScaleX = 1;
+  let baseScaleY = 1;
+
+  if (fit === 'fill') {
+    const scale = Math.max(boxW / naturalW, boxH / naturalH);
+    baseScaleX = scale;
+    baseScaleY = scale;
+  } else if (fit === 'fit') {
+    const scale = Math.min(boxW / naturalW, boxH / naturalH);
+    baseScaleX = scale;
+    baseScaleY = scale;
+  } else if (fit === 'stretch') {
+    baseScaleX = boxW / naturalW;
+    baseScaleY = boxH / naturalH;
+  }
+
+  const cropScale = backgroundImage.cropScale ?? 1.0;
+  const imgRenderW = naturalW * baseScaleX * cropScale;
+  const imgRenderH = naturalH * baseScaleY * cropScale;
+
+  const cropX = backgroundImage.cropX ?? 0;
+  const cropY = backgroundImage.cropY ?? 0;
+
+  const posX = (boxW - imgRenderW) / 2 + cropX;
+  const posY = (boxH - imgRenderH) / 2 + cropY;
+
+  const hasEffects = Boolean(
+    (backgroundImage.grayscaleAmount && backgroundImage.grayscaleAmount > 0) ||
+    (backgroundImage.noiseAmount && backgroundImage.noiseAmount > 0) ||
+    (backgroundImage.blurRadius && backgroundImage.blurRadius > 0)
+  );
+
+  const displayCanvasOrImg = useMemo(() => {
+    if (!imageObj) return null;
+    if (!hasEffects) return imageObj;
+    return renderFilteredPhotoToCanvas(imageObj, naturalW, naturalH, {
+      grayscale: backgroundImage.grayscaleAmount || 0,
+      noise: backgroundImage.noiseAmount || 0,
+      blur: backgroundImage.blurRadius || 0,
+      seed: `bg_carousel_${backgroundImage.photoId || 'slide'}`,
+    });
+  }, [
+    imageObj,
+    hasEffects,
+    backgroundImage.grayscaleAmount,
+    backgroundImage.noiseAmount,
+    backgroundImage.blurRadius,
+    backgroundImage.photoId,
+    naturalW,
+    naturalH,
+  ]);
+
+  if (!imageObj || !displayCanvasOrImg) return null;
+
+  return (
+    <Group clipX={0} clipY={0} clipWidth={boxW} clipHeight={boxH} listening={false}>
+      <KonvaImage
+        image={displayCanvasOrImg}
+        x={posX + (backgroundImage.flipHorizontal ? imgRenderW : 0)}
+        y={posY + (backgroundImage.flipVertical ? imgRenderH : 0)}
+        width={naturalW * baseScaleX * cropScale}
+        height={naturalH * baseScaleY * cropScale}
+        scaleX={backgroundImage.flipHorizontal ? -1 : 1}
+        scaleY={backgroundImage.flipVertical ? -1 : 1}
+        rotation={backgroundImage.cropRotation || 0}
+        opacity={(backgroundImage.opacity ?? 100) / 100}
+        listening={false}
+      />
+    </Group>
+  );
 }
 
 // Individual Photo Frame Node in Carousel
@@ -1274,6 +1389,44 @@ export function CarouselCanvas({
                   height={totalHeight}
                   fill={slide.backgroundColor || '#FFFFFF'}
                 />
+
+                {/* Slide Background Image (FX-03) */}
+                {slide.backgroundImage && (
+                  <CarouselBackgroundImageNode
+                    backgroundImage={slide.backgroundImage}
+                    boxW={slideWidth}
+                    boxH={totalHeight}
+                  />
+                )}
+
+                {/* Slide Background Color Noise Pattern Overlay (FX-03) */}
+                {Boolean(slide.backgroundColorNoise && slide.backgroundColorNoise > 0) && (
+                  <Rect
+                    listening={false}
+                    x={0}
+                    y={0}
+                    width={slideWidth}
+                    height={totalHeight}
+                    fillPriority="pattern"
+                    fillPatternImage={getSeededGrainTile(slide.id + '_noise') as unknown as HTMLImageElement}
+                    fillPatternRepeat="repeat"
+                    opacity={Math.min(1, ((slide.backgroundColorNoise ?? 0) / 100) * 0.45)}
+                    globalCompositeOperation="overlay"
+                  />
+                )}
+
+                {/* Slide Inner Border (FX-04) */}
+                {slide.borderEnabled && (
+                  <Rect
+                    listening={false}
+                    x={Math.max(1, (slide.borderWidth || 2) / 2)}
+                    y={Math.max(1, (slide.borderWidth || 2) / 2)}
+                    width={Math.max(0, slideWidth - Math.max(1, slide.borderWidth || 2))}
+                    height={Math.max(0, totalHeight - Math.max(1, slide.borderWidth || 2))}
+                    stroke={slide.borderColor || '#000000'}
+                    strokeWidth={slide.borderWidth || 2}
+                  />
+                )}
 
                 {/* Active Slide Subtle Highlight */}
                 {activeSlideIndex === idx && (
