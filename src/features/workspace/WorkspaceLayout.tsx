@@ -15,7 +15,7 @@ import { FilmstripTray } from '../photos/FilmstripTray';
 import { RelinkDialog } from '../photos/RelinkDialog';
 import { KonvaEditorCanvas } from '../editor/KonvaEditorCanvas';
 import { FrameToolbar } from '../editor/FrameToolbar';
-import { getTextRuns, resolveCssFontFamily } from '../../domain/text';
+import { getTextRuns, resolveCssFontFamily, fitTextFrame } from '../../domain/text';
 import { PageNavigator } from '../album/PageNavigator';
 import { CarouselCanvas } from '../carousel/CarouselCanvas';
 import { SlideNavigator } from '../carousel/SlideNavigator';
@@ -849,6 +849,58 @@ export function WorkspaceLayout() {
         setInspectorTab('assets');
         showToast('🎨 Decorative Frames & Graphics');
         return;
+      }
+
+      // Fit Frame to Content Shortcut: Cmd+Option+C (macOS) / Ctrl+Alt+C (Windows)
+      if (cmdOrCtrl && e.altKey && (e.key === 'c' || e.key === 'C')) {
+        e.preventDefault();
+        const curMode = activeModeRef.current;
+        if (curMode === 'carousel') {
+          const { currentCarousel, selectedFrameId, updateTextFrame } = useCarouselStore.getState();
+          if (currentCarousel && selectedFrameId) {
+            for (const slide of currentCarousel.slides) {
+              const el = slide.elements.find((item) => item.id === selectedFrameId);
+              if (el && el.type === 'text' && !el.locked) {
+                const fitted = fitTextFrame(
+                  el as any,
+                  'content',
+                  'px',
+                  currentProject?.canvasDpi || 300,
+                  currentCarousel.slideWidthPx
+                );
+                updateTextFrame(el.id, fitted);
+                showToast('📐 Fitted text frame to content');
+                return;
+              }
+            }
+          }
+        } else {
+          const { selectedFrameIds, updateTextElement } = useEditorStore.getState();
+          const activeSpread = currentAlbum && [currentAlbum.coverSpread, ...currentAlbum.spreads].find(
+            (s) => s.id === activeSpreadId
+          );
+          if (activeSpread && selectedFrameIds.length > 0) {
+            let fittedCount = 0;
+            for (const frameId of selectedFrameIds) {
+              const el = activeSpread.elements.find((item) => item.id === frameId);
+              if (el && el.type === 'text' && !el.locked) {
+                const fitted = fitTextFrame(
+                  el,
+                  'content',
+                  currentProject?.canvasUnit || 'mm',
+                  currentProject?.canvasDpi || 300,
+                  currentProject?.canvasWidth
+                );
+                updateTextElement(activeSpread.id, el.id, fitted);
+                fittedCount++;
+              }
+            }
+            if (fittedCount > 0) {
+              showToast(`📐 Fitted ${fittedCount} text frame(s) to content`);
+              return;
+            }
+          }
+        }
       }
 
       // 3. Ctrl + Alt + L -> Unlock all items on spread

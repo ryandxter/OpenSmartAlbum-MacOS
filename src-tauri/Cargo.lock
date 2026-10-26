@@ -13,6 +13,7 @@ name = "afsn-smart-album"
 version = "1.4.0"
 dependencies = [
  "base64 0.22.1",
+ "cc",
  "fontdue",
  "image",
  "kamadak-exif",

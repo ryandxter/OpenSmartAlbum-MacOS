@@ -113,42 +113,98 @@ mod win32_color {
     }
 }
 
+#[cfg(target_os = "macos")]
+mod macos_color {
+    use std::ffi::{c_char, c_void, CStr};
+    use std::sync::mpsc::{channel, Sender};
+
+    type ColorCallback = extern "C" fn(*const c_char, *mut c_void);
+
+    extern "C" {
+        fn pick_color_with_nscolorsampler(callback: ColorCallback, context: *mut c_void);
+    }
+
+    extern "C" fn on_color_sampled(hex_ptr: *const c_char, context: *mut c_void) {
+        let sender = unsafe { &*(context as *mut Sender<Option<String>>) };
+        if hex_ptr.is_null() {
+            let _ = sender.send(None);
+        } else {
+            let hex = unsafe { CStr::from_ptr(hex_ptr).to_string_lossy().into_owned() };
+            let _ = sender.send(Some(hex));
+        }
+    }
+
+    pub fn sample_color() -> Result<String, String> {
+        let (tx, rx) = channel::<Option<String>>();
+        let context = Box::into_raw(Box::new(tx)) as *mut c_void;
+
+        unsafe {
+            pick_color_with_nscolorsampler(on_color_sampled, context);
+        }
+
+        match rx.recv() {
+            Ok(Some(hex)) => {
+                let _ = unsafe { Box::from_raw(context as *mut Sender<Option<String>>) };
+                Ok(hex)
+            }
+            Ok(None) => {
+                let _ = unsafe { Box::from_raw(context as *mut Sender<Option<String>>) };
+                Err("USER_CANCELLED".to_string())
+            }
+            Err(e) => {
+                let _ = unsafe { Box::from_raw(context as *mut Sender<Option<String>>) };
+                Err(format!("Color sampling failed: {}", e))
+            }
+        }
+    }
+}
+
 /// Sample exact pixel color from screen using native OS graphics API.
 /// If x and y are provided, samples at that point; otherwise samples at current cursor position.
 #[tauri::command]
-pub fn sample_screen_color(x: Option<i32>, y: Option<i32>) -> Result<String, String> {
+pub async fn sample_screen_color(x: Option<i32>, y: Option<i32>) -> Result<String, String> {
     #[cfg(target_os = "windows")]
-    unsafe {
-        let (px, py) = match (x, y) {
-            (Some(x), Some(y)) => (x, y),
-            _ => {
-                let mut pt = win32_color::POINT { x: 0, y: 0 };
-                win32_color::GetCursorPos(&mut pt);
-                (pt.x, pt.y)
+    {
+        unsafe {
+            let (px, py) = match (x, y) {
+                (Some(x), Some(y)) => (x, y),
+                _ => {
+                    let mut pt = win32_color::POINT { x: 0, y: 0 };
+                    win32_color::GetCursorPos(&mut pt);
+                    (pt.x, pt.y)
+                }
+            };
+
+            let hdc = win32_color::GetDC(std::ptr::null_mut());
+            if hdc.is_null() {
+                return Err("Failed to get screen DC".to_string());
             }
-        };
 
-        let hdc = win32_color::GetDC(std::ptr::null_mut());
-        if hdc.is_null() {
-            return Err("Failed to get screen DC".to_string());
+            let colorref = win32_color::GetPixel(hdc, px, py);
+            win32_color::ReleaseDC(std::ptr::null_mut(), hdc);
+
+            if colorref == 0xFFFFFFFF {
+                return Err("Invalid pixel coordinate".to_string());
+            }
+
+            // COLORREF is 0x00BBGGRR
+            let r = (colorref & 0xFF) as u8;
+            let g = ((colorref >> 8) & 0xFF) as u8;
+            let b = ((colorref >> 16) & 0xFF) as u8;
+
+            Ok(format!("#{:02X}{:02X}{:02X}", r, g, b))
         }
-
-        let colorref = win32_color::GetPixel(hdc, px, py);
-        win32_color::ReleaseDC(std::ptr::null_mut(), hdc);
-
-        if colorref == 0xFFFFFFFF {
-            return Err("Invalid pixel coordinate".to_string());
-        }
-
-        // COLORREF is 0x00BBGGRR
-        let r = (colorref & 0xFF) as u8;
-        let g = ((colorref >> 8) & 0xFF) as u8;
-        let b = ((colorref >> 16) & 0xFF) as u8;
-
-        Ok(format!("#{:02X}{:02X}{:02X}", r, g, b))
     }
 
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
+    {
+        let _ = (x, y);
+        tauri::async_runtime::spawn_blocking(macos_color::sample_color)
+            .await
+            .map_err(|e| e.to_string())?
+    }
+
+    #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
     {
         let _ = (x, y);
         Err("NATIVE_SAMPLING_UNAVAILABLE".to_string())
@@ -299,12 +355,20 @@ pub fn get_system_fonts() -> Result<Vec<SystemFontInfo>, String> {
     {
         use std::collections::HashSet;
         use std::path::Path;
+        use std::sync::OnceLock;
+
+        static CACHED_FONTS: OnceLock<Vec<SystemFontInfo>> = OnceLock::new();
+
+        if let Some(cached) = CACHED_FONTS.get() {
+            return Ok(cached.clone());
+        }
 
         let mut fonts: Vec<SystemFontInfo> = Vec::new();
         let mut seen_families = HashSet::new();
 
         let mut font_dirs = vec![
             Path::new("/System/Library/Fonts").to_path_buf(),
+            Path::new("/System/Library/Fonts/Supplemental").to_path_buf(),
             Path::new("/Library/Fonts").to_path_buf(),
         ];
         if let Ok(home) = std::env::var("HOME") {
@@ -319,40 +383,50 @@ pub fn get_system_fonts() -> Result<Vec<SystemFontInfo>, String> {
                         let ext_lower = ext.to_lowercase();
                         if ext_lower == "ttf" || ext_lower == "otf" || ext_lower == "ttc" {
                             if let Ok(data) = std::fs::read(&path) {
-                                if let Ok(face) = ttf_parser::Face::parse(&data, 0) {
-                                    let mut family_name = None;
-                                    let mut full_name = None;
-                                    for name in face.names() {
-                                        if name.name_id == ttf_parser::name_id::FAMILY {
-                                            if let Some(s) = name.to_string() {
-                                                family_name = Some(s);
-                                            }
-                                        } else if name.name_id == ttf_parser::name_id::FULL_NAME {
-                                            if let Some(s) = name.to_string() {
-                                                full_name = Some(s);
+                                let face_count = ttf_parser::fonts_in_collection(&data).unwrap_or(1);
+                                for face_idx in 0..face_count {
+                                    if let Ok(face) = ttf_parser::Face::parse(&data, face_idx) {
+                                        let mut family_name = None;
+                                        let mut full_name = None;
+                                        for name in face.names() {
+                                            if name.name_id == ttf_parser::name_id::FAMILY {
+                                                if let Some(s) = name.to_string() {
+                                                    family_name = Some(s);
+                                                }
+                                            } else if name.name_id == ttf_parser::name_id::FULL_NAME {
+                                                if let Some(s) = name.to_string() {
+                                                    full_name = Some(s);
+                                                }
                                             }
                                         }
-                                    }
 
-                                    let clean_family = family_name.unwrap_or_else(|| {
-                                        path.file_stem()
-                                            .map(|s| s.to_string_lossy().to_string())
-                                            .unwrap_or_default()
-                                    });
-                                    let clean_family = clean_family.trim().to_string();
-
-                                    let full = full_name.unwrap_or_else(|| clean_family.clone());
-                                    let file_name = path.file_name()
-                                        .map(|s| s.to_string_lossy().to_string())
-                                        .unwrap_or_default();
-
-                                    if !clean_family.is_empty() && !seen_families.contains(&clean_family.to_lowercase()) {
-                                        seen_families.insert(clean_family.to_lowercase());
-                                        fonts.push(SystemFontInfo {
-                                            family: clean_family,
-                                            full_name: full,
-                                            file_name,
+                                        let clean_family = family_name.unwrap_or_else(|| {
+                                            path.file_stem()
+                                                .map(|s| s.to_string_lossy().to_string())
+                                                .unwrap_or_default()
                                         });
+                                        let clean_family = clean_family.trim().to_string();
+
+                                        // Ignore hidden internal Apple fonts (starting with '.')
+                                        if clean_family.starts_with('.') || clean_family.is_empty() {
+                                            continue;
+                                        }
+
+                                        let full = full_name.unwrap_or_else(|| clean_family.clone());
+                                        let file_name = path
+                                            .file_name()
+                                            .map(|s| s.to_string_lossy().to_string())
+                                            .unwrap_or_default();
+
+                                        let key = clean_family.to_lowercase();
+                                        if !seen_families.contains(&key) {
+                                            seen_families.insert(key);
+                                            fonts.push(SystemFontInfo {
+                                                family: clean_family,
+                                                full_name: full,
+                                                file_name,
+                                            });
+                                        }
                                     }
                                 }
                             }
@@ -363,6 +437,7 @@ pub fn get_system_fonts() -> Result<Vec<SystemFontInfo>, String> {
         }
 
         fonts.sort_by(|a, b| a.family.to_lowercase().cmp(&b.family.to_lowercase()));
+        let _ = CACHED_FONTS.set(fonts.clone());
         Ok(fonts)
     }
 
