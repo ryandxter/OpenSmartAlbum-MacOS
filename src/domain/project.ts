@@ -1,6 +1,33 @@
 import { Unit } from './units';
 export type { Unit };
 
+export type RawProjectType = 'print' | 'carousel' | 'album' | 'social_media';
+export type CanonicalProjectType = 'print' | 'carousel';
+
+export function normalizeProjectType(
+  projectType?: string | null,
+  canvasUnit?: string | null
+): CanonicalProjectType {
+  const raw = (projectType || '').trim().toLowerCase();
+  if (raw === 'carousel' || raw === 'social_media' || raw === 'social') {
+    return 'carousel';
+  }
+  if (raw === 'print' || raw === 'album') {
+    return 'print';
+  }
+  if (canvasUnit?.toLowerCase() === 'px') {
+    return 'carousel';
+  }
+  return 'print';
+}
+
+export interface ProjectBorderSettings {
+  borderEnabled: boolean;
+  borderWidth: number;
+  borderUnit: Unit;
+  borderColor: string;
+}
+
 export interface ProjectSettings {
   name: string;
   canvas: {
@@ -32,7 +59,7 @@ export interface ProjectSettings {
     type: 'solid';
     color: string;
   };
-  projectType?: 'print' | 'carousel';
+  projectType?: CanonicalProjectType | RawProjectType;
   carouselRatio?: '1:1' | '4:5' | '9:16';
   carouselSlideCount?: number;
 }
@@ -46,7 +73,7 @@ export interface Project {
   canvasDpi: number;
   spacingValue: number;
   spacingUnit: Unit;
-  projectType?: 'print' | 'carousel';
+  projectType?: CanonicalProjectType | RawProjectType;
   bleed?: number;
   marginEnabled?: boolean;
   marginValue?: number;
@@ -67,6 +94,9 @@ export interface Project {
   borderColor: string;
   backgroundType: string;
   backgroundColor: string;
+  backgroundColorNoise?: number;
+  isMixedDimensions?: boolean;
+  dimensionSummary?: string | null;
   filePath?: string | null;
   createdAt: string;
   updatedAt: string;

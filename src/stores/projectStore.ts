@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Project, ProjectSettings } from '../domain/project';
+import { Project, ProjectSettings, normalizeProjectType } from '../domain/project';
 import { Unit } from '../domain/units';
 import { isAlbumDesignEqual } from '../domain/album';
 import { isCarouselEqual } from '../domain/carousel';
@@ -10,6 +10,7 @@ const persistProjectMargins = async (project: Project): Promise<void> => {
   const { invoke } = await import('@tauri-apps/api/core');
   await invoke('update_project_margins', {
     id: project.id,
+    marginEnabled: project.marginEnabled ?? true,
     marginValue: fallback,
     marginUnit: project.marginUnit || 'mm',
     marginTop: Number(project.marginTop ?? fallback),
@@ -72,6 +73,7 @@ interface ProjectState {
   updateProjectMargin: (marginValue: number, marginUnit?: Unit, side?: 'all' | 'top' | 'bottom' | 'outside' | 'spine') => Promise<void>;
   updateProjectBleed: (bleed: number) => Promise<void>;
   updateProjectBackgroundColor: (backgroundColor: string) => Promise<void>;
+  updateProjectBorder: (border: { enabled: boolean; width: number; unit: Unit; color: string }) => Promise<void>;
   closeProject: () => void;
   loadRecentProjects: () => Promise<void>;
   createNewProject: (settings: ProjectSettings) => Promise<Project>;
@@ -296,6 +298,45 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }
   },
 
+  updateProjectBorder: async (border: { enabled: boolean; width: number; unit: Unit; color: string }) => {
+    const current = get().currentProject;
+    if (!current) return;
+    const updatedProject: Project = {
+      ...current,
+      borderEnabled: Boolean(border.enabled),
+      borderWidth: Number(border.width),
+      borderUnit: border.unit,
+      borderColor: String(border.color),
+      updatedAt: new Date().toISOString(),
+    };
+
+    set((state) => ({
+      currentProject: updatedProject,
+      recentProjects: state.recentProjects.map((p) => (p.id === current.id ? updatedProject : p)),
+    }));
+
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('update_project_border', {
+        id: current.id,
+        borderEnabled: updatedProject.borderEnabled,
+        borderWidth: updatedProject.borderWidth,
+        borderUnit: updatedProject.borderUnit,
+        borderColor: updatedProject.borderColor,
+      });
+    } catch (e) {
+      console.warn('[AFSN] update_project_border via Tauri failed:', e);
+    }
+
+    try {
+      const existing = JSON.parse(localStorage.getItem('afsn_recent_projects') || '[]');
+      const updatedRecents = existing.map((p: Project) => (p.id === current.id ? updatedProject : p));
+      localStorage.setItem('afsn_recent_projects', JSON.stringify(updatedRecents));
+    } catch (e) {
+      console.warn('[AFSN] localStorage write error:', e);
+    }
+  },
+
   closeProject: async () => {
     if (get().isSaving || get().isLoading || usePhotoStore.getState().isRemoving || usePhotoStore.getState().isRelinking) return;
     // 1. Terminate any active or queued photo imports immediately
@@ -397,7 +438,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
     set({ isLoading: true, error: null });
 
-    const isCarousel = settings.canvas.unit === 'px' || settings.projectType === 'carousel';
+    const normalizedType = normalizeProjectType(settings.projectType, settings.canvas.unit);
+    const isCarousel = normalizedType === 'carousel';
 
     const payload = {
       name: settings.name.trim() || (isCarousel ? 'Untitled Carousel' : 'Untitled Album'),
@@ -541,6 +583,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }
 
     if (project) {
+      const normalizedType = normalizeProjectType(project.projectType, project.canvasUnit);
+      project = { ...project, projectType: normalizedType };
+
       set((state) => ({
         currentProject: project,
         recentProjects: [project!, ...state.recentProjects.filter((p) => p.id !== project!.id)].slice(0, 10),
@@ -561,7 +606,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           } catch { /* Keep recovery data unsaved if the file cannot be verified. */ }
         }
 
-        const isCarousel = project.canvasUnit === 'px' || project.projectType === 'carousel';
+        const isCarousel = normalizedType === 'carousel';
         // ISO-01: Synchronously set activeMode BEFORE async loads so the correct canvas mounts immediately,
         // preventing a flash of the wrong canvas before data arrives.
         const { useAppStore } = await import('./appStore');
@@ -601,7 +646,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     if (usePhotoStore.getState().isImporting || usePhotoStore.getState().isRemoving || usePhotoStore.getState().isRelinking) return failed;
     if (!current || get().isSaving || get().isLoading || usePhotoStore.getState().isRemoving || usePhotoStore.getState().isRelinking) return failed;
 
-    const isCarousel = current.canvasUnit === 'px' || current.projectType === 'carousel';
+    const isCarousel = normalizeProjectType(current.projectType, current.canvasUnit) === 'carousel';
 
     // Old database entries may still point at a ZIP opened by a previous release.
     const workingPath = current.filePath && /\.afsn$/i.test(current.filePath) ? current.filePath : null;
@@ -712,7 +757,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   exportProjectAsAfsn: async () => {
     const current = get().currentProject;
     if (!current || get().isSaving || get().isLoading || usePhotoStore.getState().isRemoving || usePhotoStore.getState().isRelinking) return null;
-    const isCarousel = current.canvasUnit === 'px' || current.projectType === 'carousel';
+    const isCarousel = normalizeProjectType(current.projectType, current.canvasUnit) === 'carousel';
     set({ isSaving: true, error: null });
 
     if (isCarousel) {
@@ -816,7 +861,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   exportCompleteProjectPackageWithPhotos: async () => {
     const current = get().currentProject;
     if (!current || get().isSaving || get().isLoading || usePhotoStore.getState().isRemoving || usePhotoStore.getState().isRelinking) return null;
-    const isCarousel = current.canvasUnit === 'px' || current.projectType === 'carousel';
+    const isCarousel = normalizeProjectType(current.projectType, current.canvasUnit) === 'carousel';
     set({ isSaving: true, error: null });
     try {
       const { usePhotoStore } = await import('./photoStore');
@@ -856,6 +901,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const packageData = await invoke<any>('import_afsn_with_dialog');
       if (packageData && packageData.project) {
         const project = packageData.project as Project;
+        project.projectType = normalizeProjectType(project.projectType, project.canvasUnit);
         set((state) => ({
           currentProject: project,
           recentProjects: [project, ...state.recentProjects.filter((p) => p.id !== project.id)].slice(0, 10),
@@ -871,7 +917,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         await usePhotoStore.getState().loadPhotos(project.id);
         await usePhotoStore.getState().loadFolders(project.id);
 
-        const isCarousel = project.canvasUnit === 'px' || project.projectType === 'carousel';
+        const isCarousel = project.projectType === 'carousel';
+        const { useAppStore } = await import('./appStore');
+        useAppStore.getState().setActiveMode(isCarousel ? 'carousel' : 'print');
+        useAppStore.getState().resetViewportForMode(isCarousel ? 'carousel' : 'print');
         if (isCarousel) {
           const { useCarouselStore } = await import('./carouselStore');
           await useCarouselStore.getState().loadCarouselFromDb(project.id);
@@ -906,6 +955,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const packageData = await invoke<any>('import_afsn_package', { sourcePath: filePath });
       if (packageData && packageData.project) {
         const project = packageData.project as Project;
+        project.projectType = normalizeProjectType(project.projectType, project.canvasUnit);
         set((state) => ({
           currentProject: project,
           recentProjects: [project, ...state.recentProjects.filter((p) => p.id !== project.id)].slice(0, 10),
@@ -921,7 +971,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         await usePhotoStore.getState().loadPhotos(project.id);
         await usePhotoStore.getState().loadFolders(project.id);
 
-        const isCarousel = project.canvasUnit === 'px' || project.projectType === 'carousel';
+        const isCarousel = project.projectType === 'carousel';
+        const { useAppStore } = await import('./appStore');
+        useAppStore.getState().setActiveMode(isCarousel ? 'carousel' : 'print');
+        useAppStore.getState().resetViewportForMode(isCarousel ? 'carousel' : 'print');
         if (isCarousel) {
           const { useCarouselStore } = await import('./carouselStore');
           await useCarouselStore.getState().loadCarouselFromDb(project.id);
