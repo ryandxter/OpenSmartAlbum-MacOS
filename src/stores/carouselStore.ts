@@ -30,6 +30,7 @@ import { getCornerRadii, permuteCornerRadiiOnFlip } from '../domain/editor';
 import { StudioFramingPreset, FramingConfig } from '../domain/ai/faceDetection';
 import { calculateOptimalStudioCrop } from '../domain/ai/framingMath';
 import { usePhotoStore } from './photoStore';
+import type { FrameAssetMeta } from '../services/frameAssetService';
 import {
   canvasToUiLayers,
   uiLayersToCanvas,
@@ -141,7 +142,7 @@ export interface CarouselState {
   setPanoramaSpan: ((frameId: string, spanSlides: 2 | 3) => void) &
     ((slideIndex: number, frameId: string, spanSlides: 2 | 3) => void);
   setHeroPhotoOnSlide: (slideIndex: number, frameId: string) => void;
-  batchUpdateFrames: (updates: Array<{ id: string; updates: Partial<CarouselPhotoFrame> | Partial<CarouselTextFrame> }>) => void;
+  batchUpdateFrames: (updates: Array<{ id: string; updates: Partial<CarouselPhotoFrame> | Partial<CarouselTextFrame> | Partial<CarouselGraphicFrame> }>) => void;
   swapFrames: (frameIdA: string, frameIdB: string) => void;
   toggleSliceGuides: () => void;
   setShowSliceGuides: (show: boolean) => void;
@@ -170,6 +171,16 @@ export interface CarouselState {
     mode?: SocialResizeMode
   ) => void;
   toggleExcludeFromAdaptiveLayout: (slideIndex: number, elementIds: string[]) => void;
+
+  // Decorative Frame Overlays & Graphic Elements (Phase 4 / AST-01, AST-02)
+  applyFrameOverlayToPhoto: (frameId: string, asset: FrameAssetMeta) => void;
+  detachFrameOverlay: (frameId: string) => void;
+  addGraphicElement: (
+    slideIndex: number,
+    asset: FrameAssetMeta,
+    position?: { x?: number; y?: number; width?: number; height?: number }
+  ) => string;
+  updateGraphicFrame: (frameId: string, updates: Partial<CarouselGraphicFrame>) => void;
 }
 
 export const useCarouselStore = create<CarouselState>((set, get) => ({
@@ -2646,6 +2657,146 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         }),
       };
     });
+
+    set({
+      currentCarousel: { ...currentCarousel, slides: updatedSlides },
+    });
+    markDirty();
+    get().saveCarouselToDb();
+  },
+
+  applyFrameOverlayToPhoto: (frameId, asset) => {
+    const { currentCarousel, pushHistory, markDirty } = get();
+    if (!currentCarousel) return;
+    pushHistory();
+
+    const updatedSlides = currentCarousel.slides.map((s) => ({
+      ...s,
+      elements: s.elements.map((el): CarouselElement => {
+        if (el.id === frameId && el.type === 'photo') {
+          return {
+            ...el,
+            frameAssetId: asset.id,
+            frameAssetUrl: asset.remote_url || null,
+            frameAssetLocalPath: asset.local_path,
+            frameAssetTitle: asset.title,
+            frameAssetSlot: asset.slot || { slotX: 0, slotY: 0, slotWidth: 1, slotHeight: 1, shape: asset.shape },
+            frameAssetIsPro: false,
+          };
+        }
+        return el;
+      }),
+    }));
+
+    set({
+      currentCarousel: { ...currentCarousel, slides: updatedSlides },
+    });
+    markDirty();
+    get().saveCarouselToDb();
+  },
+
+  detachFrameOverlay: (frameId) => {
+    const { currentCarousel, pushHistory, markDirty } = get();
+    if (!currentCarousel) return;
+    pushHistory();
+
+    const updatedSlides = currentCarousel.slides.map((s) => ({
+      ...s,
+      elements: s.elements.map((el): CarouselElement => {
+        if (el.id === frameId && el.type === 'photo') {
+          return {
+            ...el,
+            frameAssetId: null,
+            frameAssetUrl: null,
+            frameAssetLocalPath: null,
+            frameAssetTitle: null,
+            frameAssetSlot: null,
+            frameAssetIsPro: false,
+          };
+        }
+        return el;
+      }),
+    }));
+
+    set({
+      currentCarousel: { ...currentCarousel, slides: updatedSlides },
+    });
+    markDirty();
+    get().saveCarouselToDb();
+  },
+
+  addGraphicElement: (slideIndex, asset, position) => {
+    const { currentCarousel, pushHistory, markDirty } = get();
+    if (!currentCarousel) return '';
+    const slide = currentCarousel.slides[slideIndex] || currentCarousel.slides[0];
+    if (!slide) return '';
+    pushHistory();
+
+    const slideStartX = (slide.slideIndex ?? slideIndex) * currentCarousel.slideWidthPx;
+    const graphicId = `graphic-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+    const w = position?.width ?? Math.round(currentCarousel.slideWidthPx * 0.35);
+    const h = position?.height ?? Math.round(currentCarousel.slideWidthPx * 0.35);
+    const x = position?.x ?? Math.round(slideStartX + (currentCarousel.slideWidthPx - w) / 2);
+    const y = position?.y ?? Math.round((currentCarousel.slideHeightPx - h) / 2);
+
+    const newGraphic: CarouselGraphicFrame = {
+      type: 'graphic',
+      id: graphicId,
+      name: asset.title || 'Graphic Element',
+      x,
+      y,
+      width: w,
+      height: h,
+      rotation: 0,
+      opacity: 1,
+      zIndex: slide.elements.length + 1,
+      locked: false,
+      excludeFromAdaptiveLayout: true,
+      frameAssetId: asset.id,
+      frameAssetUrl: asset.remote_url || null,
+      frameAssetLocalPath: asset.local_path,
+      frameAssetTitle: asset.title,
+      frameAssetSlot: asset.slot || null,
+      frameAssetIsPro: false,
+      filePath: asset.local_path,
+      fileName: asset.title,
+      fileUrl: asset.remote_url || null,
+      previewPath: asset.local_path,
+      thumbnailPath: asset.thumb_path || asset.local_path,
+    };
+
+    const targetIdx = slide.slideIndex ?? slideIndex;
+    const updatedSlides = currentCarousel.slides.map((s, idx) =>
+      idx === targetIdx
+        ? { ...s, elements: [...s.elements, newGraphic] }
+        : s
+    );
+
+    set({
+      currentCarousel: { ...currentCarousel, slides: updatedSlides },
+      selectedFrameId: graphicId,
+      selectedFrameIds: [graphicId],
+    });
+    markDirty();
+    get().saveCarouselToDb();
+    return graphicId;
+  },
+
+  updateGraphicFrame: (frameId, updates) => {
+    const { currentCarousel, pushHistory, markDirty } = get();
+    if (!currentCarousel) return;
+
+    pushHistory();
+    const updatedSlides = currentCarousel.slides.map((s) => ({
+      ...s,
+      elements: s.elements.map((el): CarouselElement => {
+        if (el.id === frameId && el.type === 'graphic') {
+          return { ...el, ...updates };
+        }
+        return el;
+      }),
+    }));
 
     set({
       currentCarousel: { ...currentCarousel, slides: updatedSlides },

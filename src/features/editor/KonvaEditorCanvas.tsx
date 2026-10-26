@@ -47,12 +47,14 @@ import {
   calculateCoverDimensions,
   computeInnerBorderRects,
   MAX_CROP_SCALE,
+  type GraphicElement,
 } from '../../domain/editor';
 import { getAllAlbumSpreads, mergeFramePhotoAsset, SpreadBackgroundImage } from '../../domain/album';
 import { getProjectDimensionsInCanvasUnit } from '../../domain/templates';
 import { calculateSpreadViewport, calculatePasteboardViewport, preservePasteboardView, screenToSpreadPoint, type PasteboardViewport } from '../../domain/viewport';
 import { Photo } from '../../domain/photo';
 import { TextNode } from './TextNode';
+import { GraphicNode } from './GraphicNode';
 import { TextInlineEditor } from './TextInlineEditor';
 import { TextNodeElement, fitTextFrame } from '../../domain/text';
 import { convertPtToUnit, convertUnit, Unit } from '../../domain/units';
@@ -397,6 +399,41 @@ function PhotoFrameNode({
     };
   }, [frame.photoId, frame.previewPath, frame.thumbnailPath, frame.isMissing, assetVersion]);
 
+  // Load decorative frame overlay image if present (AST-01)
+  const overlaySrc = frame.frameAssetLocalPath
+    ? convertFileSrc(frame.frameAssetLocalPath)
+    : (frame.frameAssetUrl || null);
+
+  const [frameOverlayImage, setFrameOverlayImage] = useState<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    if (!overlaySrc) {
+      setFrameOverlayImage(null);
+      return;
+    }
+    const cacheKey = `frame_overlay::${overlaySrc}`;
+    const cached = getCachedPhotoImage(cacheKey);
+    if (cached && cached.complete && cached.naturalWidth > 0) {
+      setFrameOverlayImage(cached);
+      return;
+    }
+    let isMounted = true;
+    const img = new window.Image();
+    img.crossOrigin = 'Anonymous';
+    img.src = overlaySrc;
+    img.onload = () => {
+      if (!isMounted) return;
+      setCachedPhotoImage(cacheKey, img);
+      setFrameOverlayImage(img);
+    };
+    img.onerror = () => {
+      if (isMounted) setFrameOverlayImage(null);
+    };
+    return () => {
+      isMounted = false;
+    };
+  }, [overlaySrc]);
+
   const faceData = usePhotoStore((s) => (frame.photoId ? s.faceDataMap[frame.photoId] : undefined));
 
   // Convert physical geometry (mm/cm) to screen pixels (px)
@@ -404,6 +441,15 @@ function PhotoFrameNode({
   const pixelY = frame.y * scaleFactor;
   const pixelW = frame.width * scaleFactor;
   const pixelH = frame.height * scaleFactor;
+
+  // Frame overlay slot aperture calculation (normalized 0..1 to physical)
+  const hasFrameOverlay = Boolean(frame.frameAssetLocalPath || frame.frameAssetUrl);
+  const frameSlot = frame.frameAssetSlot || (hasFrameOverlay ? { slotX: 0, slotY: 0, slotWidth: 1, slotHeight: 1 } : null);
+
+  const targetPhysicalW = frameSlot ? frame.width * frameSlot.slotWidth : frame.width;
+  const targetPhysicalH = frameSlot ? frame.height * frameSlot.slotHeight : frame.height;
+  const targetSlotPhysicalX = frameSlot ? frame.width * frameSlot.slotX : 0;
+  const targetSlotPhysicalY = frameSlot ? frame.height * frameSlot.slotY : 0;
 
   // Compute per-corner radii in screen pixels (clamped to half dimension)
   const [crTl, crTr, crBr, crBl] = getCornerRadii(frame);
@@ -423,11 +469,11 @@ function PhotoFrameNode({
   const effectiveCropRot = liveRotation !== null ? liveRotation : (frame.cropRotation || 0);
   const effectiveCropScale = liveScale !== null ? liveScale : Math.max(1.0, frame.cropScale || 1.0);
 
-  // Calculate cover dimensions and clamped pixel offset inside frame
+  // Calculate cover dimensions and clamped pixel offset inside frame aperture
   const { offsetX: baseOffsetPhysicalX, offsetY: baseOffsetPhysicalY, width: imgPhysicalW, height: imgPhysicalH } =
     calculateImageOffset(
-      frame.width,
-      frame.height,
+      targetPhysicalW,
+      targetPhysicalH,
       naturalAspect,
       effectiveCropScale,
       frame.cropX || 0,
@@ -436,8 +482,8 @@ function PhotoFrameNode({
 
   const renderImgW = imgPhysicalW * scaleFactor;
   const renderImgH = imgPhysicalH * scaleFactor;
-  const offsetX = baseOffsetPhysicalX * scaleFactor;
-  const offsetY = baseOffsetPhysicalY * scaleFactor;
+  const offsetX = (targetSlotPhysicalX + baseOffsetPhysicalX) * scaleFactor;
+  const offsetY = (targetSlotPhysicalY + baseOffsetPhysicalY) * scaleFactor;
 
   // Exact center of photo relative to frame (frame top-left is 0,0)
   const photoCenterX = offsetX + renderImgW / 2;
@@ -803,6 +849,38 @@ function PhotoFrameNode({
       {/* Clipped Photo Viewport */}
       <Group
         clipFunc={(ctx) => {
+          if (hasFrameOverlay && frameSlot) {
+            const sx = frameSlot.slotX * pixelW;
+            const sy = frameSlot.slotY * pixelH;
+            const sw = frameSlot.slotWidth * pixelW;
+            const sh = frameSlot.slotHeight * pixelH;
+            if (frameSlot.shape === 'circle' || frameSlot.shape === 'oval') {
+              ctx.beginPath();
+              ctx.ellipse(sx + sw / 2, sy + sh / 2, sw / 2, sh / 2, 0, 0, Math.PI * 2);
+              ctx.closePath();
+            } else if (frameSlot.shape === 'arch') {
+              const archRadius = sw / 2;
+              ctx.beginPath();
+              ctx.moveTo(sx, sy + sh);
+              ctx.lineTo(sx, sy + archRadius);
+              ctx.arc(sx + archRadius, sy + archRadius, archRadius, Math.PI, 0, false);
+              ctx.lineTo(sx + sw, sy + sh);
+              ctx.closePath();
+            } else if (frameSlot.shape === 'rounded') {
+              const r = Math.min(sw, sh) * 0.1;
+              if (typeof ctx.roundRect === 'function') {
+                ctx.beginPath();
+                ctx.roundRect(sx, sy, sw, sh, r);
+                ctx.closePath();
+              } else {
+                ctx.rect(sx, sy, sw, sh);
+              }
+            } else {
+              ctx.rect(sx, sy, sw, sh);
+            }
+            return;
+          }
+
           if (frame.shapeType && frame.shapeType !== 'rectangle') {
             drawShapeToContext(ctx, frame.shapeType, pixelW, pixelH, cornerRadiiArray, frame.customSvgPath);
           } else if (hasRounding && typeof ctx.roundRect === 'function') {
@@ -861,12 +939,14 @@ function PhotoFrameNode({
             onDragMove={(e) => {
               if (isCropMode) {
                 e.cancelBubble = true;
-                const maxExcessX = Math.max(0, renderImgW - pixelW);
-                const maxExcessY = Math.max(0, renderImgH - pixelH);
+                const viewportW = frameSlot ? frameSlot.slotWidth * pixelW : pixelW;
+                const viewportH = frameSlot ? frameSlot.slotHeight * pixelH : pixelH;
+                const maxExcessX = Math.max(0, renderImgW - viewportW);
+                const maxExcessY = Math.max(0, renderImgH - viewportH);
                 const maxShiftX = maxExcessX / 2;
                 const maxShiftY = maxExcessY / 2;
-                const fcX = pixelW / 2;
-                const fcY = pixelH / 2;
+                const fcX = (frameSlot ? frameSlot.slotX * pixelW : 0) + viewportW / 2;
+                const fcY = (frameSlot ? frameSlot.slotY * pixelH : 0) + viewportH / 2;
 
                 let targetX = fcX;
                 let targetY = fcY;
@@ -894,12 +974,14 @@ function PhotoFrameNode({
             onDragEnd={(e) => {
               if (isCropMode) {
                 e.cancelBubble = true;
-                const maxExcessX = Math.max(0, renderImgW - pixelW);
-                const maxExcessY = Math.max(0, renderImgH - pixelH);
+                const viewportW = frameSlot ? frameSlot.slotWidth * pixelW : pixelW;
+                const viewportH = frameSlot ? frameSlot.slotHeight * pixelH : pixelH;
+                const maxExcessX = Math.max(0, renderImgW - viewportW);
+                const maxExcessY = Math.max(0, renderImgH - viewportH);
                 const maxShiftX = maxExcessX / 2;
                 const maxShiftY = maxExcessY / 2;
-                const fcX = pixelW / 2;
-                const fcY = pixelH / 2;
+                const fcX = (frameSlot ? frameSlot.slotX * pixelW : 0) + viewportW / 2;
+                const fcY = (frameSlot ? frameSlot.slotY * pixelH : 0) + viewportH / 2;
 
                 let normX = 0;
                 let normY = 0;
@@ -1001,6 +1083,18 @@ function PhotoFrameNode({
           />
         );
       })()}
+
+      {/* Decorative Frame Asset Overlay on topmost layer of frame (AST-01) */}
+      {frameOverlayImage && (
+        <KonvaImage
+          image={frameOverlayImage}
+          x={0}
+          y={0}
+          width={pixelW}
+          height={pixelH}
+          listening={false}
+        />
+      )}
 
       {/* Ghost Reveal and Interactive Crop Overlay (ALWAYS ON TOP OF FRAME) */}
       {isCropMode && imageObj && (
@@ -3889,6 +3983,239 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool: propActiv
                       updateTextElement(activeSpread.id, textEl.id, finalUpdates, skipHistory);
                     }}
                     onDoubleClick={() => { if (!textEl.locked) setEditingTextElementId(textEl.id); }}
+                  />
+                );
+              }
+
+              if (element.type === 'graphic') {
+                const graphicEl = element as GraphicElement;
+                const isSelected = selectedFrameIds.includes(graphicEl.id);
+
+                return (
+                  <GraphicNode
+                    key={graphicEl.id}
+                    element={graphicEl}
+                    isSelected={isSelected}
+                    isMultiSelectActive={transformableSelectionCount > 1}
+                    scaleFactor={scaleFactor}
+                    getActiveResizeAnchor={() => trRef.current?.getActiveAnchor() || activeTransformAnchorRef.current}
+                    onSelect={(e) => {
+                      if (justDroppedRef.current) return;
+                      if (e) {
+                        e.cancelBubble = true;
+                        if ('button' in e.evt && e.evt.button !== 0) return;
+                        if ('which' in e.evt && e.evt.which !== 1) return;
+                        const isMulti = Boolean(e.evt?.shiftKey || e.evt?.ctrlKey || e.evt?.metaKey);
+                        selectFrame(graphicEl.id, isMulti);
+                      } else {
+                        selectFrame(graphicEl.id);
+                      }
+                    }}
+                    onDragStart={() => {
+                      setIsFrameMoveDragging(true);
+                      const isThisSelected = selectedFrameIds.includes(graphicEl.id);
+                      let currentGroupIds = isThisSelected ? [...selectedFrameIds] : [graphicEl.id];
+                      if (!isThisSelected) {
+                        selectFrame(graphicEl.id);
+                        currentGroupIds = [graphicEl.id];
+                      }
+
+                      const initialPositions = new Map<string, { x: number; y: number }>();
+                      currentGroupIds.forEach((id) => {
+                        const f = (activeSpread.elements || []).find((el) => el.id === id);
+                        if (f && !f.locked) {
+                          initialPositions.set(id, { x: f.x, y: f.y });
+                        }
+                      });
+                      dragInitialPhysicalPositionsRef.current = initialPositions;
+                      syncAltDragPreview(isAltPressedRef.current);
+                    }}
+                    onDragMove={(e) => {
+                      if (dragInitialPhysicalPositionsRef.current.size === 0) return;
+                      syncAltDragPreview(Boolean(e.evt?.altKey || isAltPressedRef.current));
+                      const draggedNode = (stageRef.current?.findOne(`#${graphicEl.id}`) || e.currentTarget || e.target) as Konva.Node;
+                      if (!draggedNode) return;
+
+                      let currentPhysX = draggedNode.x() / scaleFactor;
+                      let currentPhysY = draggedNode.y() / scaleFactor;
+                      let deltaPhysX = currentPhysX - graphicEl.x;
+                      let deltaPhysY = currentPhysY - graphicEl.y;
+
+                      if (e.evt?.shiftKey) {
+                        if (Math.abs(deltaPhysX) >= Math.abs(deltaPhysY)) {
+                          deltaPhysY = 0;
+                          currentPhysY = graphicEl.y;
+                          draggedNode.y(graphicEl.y * scaleFactor);
+                        } else {
+                          deltaPhysX = 0;
+                          currentPhysX = graphicEl.x;
+                          draggedNode.x(graphicEl.x * scaleFactor);
+                        }
+                      }
+
+                      if (!snapEnabled || e.evt?.ctrlKey) {
+                        clearSnapLines();
+                      } else {
+                        const otherRects = getDragNeighborRects(Boolean(e.evt?.altKey || isAltPressedRef.current));
+
+                        const snapRes = calculateSelectionDragSnapping(
+                          { x: currentPhysX, y: currentPhysY, width: graphicEl.width, height: graphicEl.height, rotation: graphicEl.rotation },
+                          graphicEl,
+                          getInitialDragRects(),
+                          totalSpreadPhysicalW,
+                          totalSpreadPhysicalH,
+                          safeAreaMargins,
+                          gutterPhysicalW,
+                          otherRects,
+                          { ...snappingConfig, threshold: snappingThresholdUnits },
+                          unit,
+                          preferredGap,
+                          activePhysicalInnerBorderRects
+                        );
+
+                        if (snapRes.snapLines.length > 0 || snapRes.gapGuides.length > 0) {
+                          setSnapLines(snapRes.snapLines, snapRes.gapGuides);
+                          const snappedPhysX = snapRes.snappedX;
+                          const snappedPhysY = snapRes.snappedY;
+                          deltaPhysX = snappedPhysX - graphicEl.x;
+                          deltaPhysY = snappedPhysY - graphicEl.y;
+                          draggedNode.x(snappedPhysX * scaleFactor);
+                          draggedNode.y(snappedPhysY * scaleFactor);
+                        } else {
+                          clearSnapLines();
+                        }
+                      }
+
+                      if (dragInitialPhysicalPositionsRef.current.size > 1) {
+                        dragInitialPhysicalPositionsRef.current.forEach((initPhys, id) => {
+                          if (id !== graphicEl.id) {
+                            const node = stageRef.current?.findOne(`#${id}`) as Konva.Node | undefined;
+                            if (node) {
+                              node.x((initPhys.x + deltaPhysX) * scaleFactor);
+                              node.y((initPhys.y + deltaPhysY) * scaleFactor);
+                            }
+                          }
+                        });
+                        if (multiGroupRef.current && multiGroupInfo) {
+                          multiGroupRef.current.x((multiGroupInfo.groupX + deltaPhysX) * scaleFactor);
+                          multiGroupRef.current.y((multiGroupInfo.groupY + deltaPhysY) * scaleFactor);
+                        }
+                      }
+                    }}
+                    onDragEnd={(e) => {
+                      clearSnapLines();
+                      const draggedNode = (stageRef.current?.findOne(`#${graphicEl.id}`) || e.currentTarget || e.target) as Konva.Node;
+                      const isAltPressed = Boolean(e.evt?.altKey || isAltPressedRef.current);
+
+                      if (draggedNode && dragInitialPhysicalPositionsRef.current.size > 0) {
+                        let finalCurrentPhysX = draggedNode.x() / scaleFactor;
+                        let finalCurrentPhysY = draggedNode.y() / scaleFactor;
+                        const isShiftConstrained = Boolean(e.evt?.shiftKey);
+                        const initPos = dragInitialPhysicalPositionsRef.current.get(graphicEl.id) || { x: graphicEl.x, y: graphicEl.y };
+                        const rawDx = finalCurrentPhysX - initPos.x;
+                        const rawDy = finalCurrentPhysY - initPos.y;
+                        const isHorizontalConstraint = Math.abs(rawDx) >= Math.abs(rawDy);
+
+                        const otherRects = getDragNeighborRects(isAltPressed);
+
+                        const snapRes =
+                          !snapEnabled || e.evt?.ctrlKey
+                            ? { snappedX: finalCurrentPhysX, snappedY: finalCurrentPhysY }
+                            : calculateSelectionDragSnapping(
+                                { x: finalCurrentPhysX, y: finalCurrentPhysY, width: graphicEl.width, height: graphicEl.height, rotation: graphicEl.rotation },
+                                graphicEl,
+                                getInitialDragRects(),
+                                totalSpreadPhysicalW,
+                                totalSpreadPhysicalH,
+                                safeAreaMargins,
+                                gutterPhysicalW,
+                                otherRects,
+                                { ...snappingConfig, threshold: snappingThresholdUnits },
+                                unit,
+                                preferredGap,
+                                activePhysicalInnerBorderRects
+                              );
+
+                        let deltaPhysX = snapRes.snappedX - graphicEl.x;
+                        let deltaPhysY = snapRes.snappedY - graphicEl.y;
+
+                        if (isShiftConstrained) {
+                          if (isHorizontalConstraint) {
+                            deltaPhysY = 0;
+                          } else {
+                            deltaPhysX = 0;
+                          }
+                        }
+
+                        if (Number.isFinite(deltaPhysX) && Number.isFinite(deltaPhysY)) {
+                          const pixelDist = Math.hypot(deltaPhysX, deltaPhysY) * scaleFactor;
+                          if (isAltPressed && (pixelDist >= 3 || Math.abs(deltaPhysX) > 0.05 || Math.abs(deltaPhysY) > 0.05)) {
+                            dragInitialPhysicalPositionsRef.current.forEach((initPhys, id) => {
+                              const node = stageRef.current?.findOne(`#${id}`) as Konva.Node | undefined;
+                              if (node) {
+                                node.x(initPhys.x * scaleFactor);
+                                node.y(initPhys.y * scaleFactor);
+                              }
+                            });
+
+                            const duplicates = Array.from(dragInitialPhysicalPositionsRef.current.entries()).map(([id, initPhys]) => {
+                              const el = (activeSpread.elements || []).find((e) => e.id === id);
+                              const elW = el?.width ?? 0;
+                              const rawX = initPhys.x + deltaPhysX;
+                              const rawY = initPhys.y + deltaPhysY;
+                              return {
+                                sourceId: id,
+                                x: finalizeDraggedX(rawX, elW),
+                                y: roundToHundredth(rawY),
+                              };
+                            });
+
+                            duplicateFramesToPosition(activeSpread.id, duplicates);
+                            if (onToast) {
+                              onToast(`✓ Duplicated ${duplicates.length} item(s) via Alt+Drag`);
+                            }
+                          } else if (Math.abs(deltaPhysX) > 0.05 || Math.abs(deltaPhysY) > 0.05) {
+                            const updates = Array.from(dragInitialPhysicalPositionsRef.current.entries()).map(([id, initPhys]) => {
+                              const el = (activeSpread.elements || []).find((e) => e.id === id);
+                              const elW = el?.width ?? 0;
+                              const rawX = initPhys.x + deltaPhysX;
+                              const rawY = initPhys.y + deltaPhysY;
+                              return {
+                                id,
+                                geometry: {
+                                  x: finalizeDraggedX(rawX, elW),
+                                  y: roundToHundredth(rawY),
+                                },
+                              };
+                            });
+
+                            batchUpdateFrames(activeSpread.id, updates);
+                          }
+                        }
+                      }
+                      clearAltDragPreview();
+                      dragInitialPhysicalPositionsRef.current.clear();
+                    }}
+                    onContextMenu={(e) => {
+                      e.evt.preventDefault();
+                      e.cancelBubble = true;
+                      if (!isSelected) {
+                        selectFrame(graphicEl.id);
+                      }
+                      openContextMenuAt(e.evt.clientX, e.evt.clientY);
+                    }}
+                    onElementChange={(updates) => {
+                      let finalUpdates = { ...updates };
+                      if (typeof updates.x === 'number') {
+                        const w = typeof updates.width === 'number' ? updates.width : graphicEl.width;
+                        finalUpdates.x = alignElementPositionToSpine(updates.x, w, totalSpreadPhysicalW, gutterPhysicalW);
+                        const singlePageW = (totalSpreadPhysicalW - gutterPhysicalW) / 2;
+                        if (typeof updates.width === 'number' && Math.abs(finalUpdates.x + updates.width - singlePageW) < 0.05) {
+                          finalUpdates.width = Number((singlePageW - finalUpdates.x).toFixed(4));
+                        }
+                      }
+                      updateFrameGeometry(activeSpread.id, graphicEl.id, finalUpdates);
+                    }}
                   />
                 );
               }

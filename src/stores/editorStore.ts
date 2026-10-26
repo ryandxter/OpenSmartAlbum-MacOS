@@ -121,7 +121,7 @@ export interface EditorState {
   updateFrameGeometry: (
     spreadId: string,
     frameId: string,
-    geometry: Partial<PhotoFrameElement>
+    geometry: Partial<AlbumElement>
   ) => void;
   batchUpdateFrames: (
     spreadId: string,

@@ -41,6 +41,7 @@ import { getCornerRadii, permuteCornerRadiiOnFlip, type PhotoFrameElement } from
 import { convertUnit } from '../domain/units';
 import { StudioFramingPreset, FramingConfig } from '../domain/ai/faceDetection';
 import { calculateOptimalStudioCrop } from '../domain/ai/framingMath';
+import type { FrameAssetMeta } from '../services/frameAssetService';
 import {
   canvasToUiLayers,
   uiLayersToCanvas,
@@ -478,6 +479,15 @@ export interface AlbumState {
     effects: Partial<PhotoFrameElement>
   ) => void;
   toggleExcludeFromAdaptiveLayout: (spreadId: string, elementIds: string[]) => void;
+
+  // Decorative Frame Overlays & Graphic Elements (Phase 4 / AST-01, AST-02)
+  applyFrameOverlayToPhoto: (spreadId: string, frameId: string, asset: FrameAssetMeta) => void;
+  detachFrameOverlay: (spreadId: string, frameId: string) => void;
+  addGraphicElement: (
+    spreadId: string,
+    asset: FrameAssetMeta,
+    position?: { x?: number; y?: number; width?: number; height?: number }
+  ) => string;
 }
 
 export function hydrateElement(el: any): AlbumElement {
@@ -3117,5 +3127,176 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
       saveStatus: 'unsaved',
     });
     get().saveAlbumToDb();
+  },
+
+  applyFrameOverlayToPhoto: (spreadId, frameId, asset) => {
+    const { currentAlbum } = get();
+    if (!currentAlbum) return;
+    useHistoryStore.getState().pushState(currentAlbum);
+
+    const updateEl = (el: AlbumElement): AlbumElement => {
+      if (el.id !== frameId || el.type !== 'photo') return el;
+      const pEl = el as PhotoFrameElement;
+      return {
+        ...pEl,
+        frameAssetId: asset.id,
+        frameAssetUrl: asset.remote_url || null,
+        frameAssetLocalPath: asset.local_path,
+        frameAssetTitle: asset.title,
+        frameAssetSlot: asset.slot || { slotX: 0, slotY: 0, slotWidth: 1, slotHeight: 1, shape: asset.shape },
+        frameAssetIsPro: false,
+      };
+    };
+
+    let updatedCover = currentAlbum.coverSpread;
+    if (updatedCover && updatedCover.id === spreadId) {
+      updatedCover = {
+        ...updatedCover,
+        elements: (updatedCover.elements || []).map(updateEl),
+      };
+    }
+
+    const updatedSpreads = currentAlbum.spreads.map((s) => {
+      if (s.id !== spreadId) return s;
+      return {
+        ...s,
+        elements: (s.elements || []).map(updateEl),
+      };
+    });
+
+    set({
+      currentAlbum: {
+        ...currentAlbum,
+        coverSpread: updatedCover,
+        spreads: updatedSpreads,
+      },
+      saveStatus: 'unsaved',
+    });
+    get().saveAlbumToDb();
+  },
+
+  detachFrameOverlay: (spreadId, frameId) => {
+    const { currentAlbum } = get();
+    if (!currentAlbum) return;
+    useHistoryStore.getState().pushState(currentAlbum);
+
+    const clearEl = (el: AlbumElement): AlbumElement => {
+      if (el.id !== frameId || el.type !== 'photo') return el;
+      const pEl = el as PhotoFrameElement;
+      return {
+        ...pEl,
+        frameAssetId: null,
+        frameAssetUrl: null,
+        frameAssetLocalPath: null,
+        frameAssetTitle: null,
+        frameAssetSlot: null,
+        frameAssetIsPro: false,
+      };
+    };
+
+    let updatedCover = currentAlbum.coverSpread;
+    if (updatedCover && updatedCover.id === spreadId) {
+      updatedCover = {
+        ...updatedCover,
+        elements: (updatedCover.elements || []).map(clearEl),
+      };
+    }
+
+    const updatedSpreads = currentAlbum.spreads.map((s) => {
+      if (s.id !== spreadId) return s;
+      return {
+        ...s,
+        elements: (s.elements || []).map(clearEl),
+      };
+    });
+
+    set({
+      currentAlbum: {
+        ...currentAlbum,
+        coverSpread: updatedCover,
+        spreads: updatedSpreads,
+      },
+      saveStatus: 'unsaved',
+    });
+    get().saveAlbumToDb();
+  },
+
+  addGraphicElement: (spreadId, asset, position) => {
+    const { currentAlbum } = get();
+    const currentProject = useProjectStore.getState().currentProject;
+    if (!currentAlbum || !currentProject) return '';
+    useHistoryStore.getState().pushState(currentAlbum);
+
+    const targetSpread = currentAlbum.coverSpread.id === spreadId
+      ? currentAlbum.coverSpread
+      : currentAlbum.spreads.find((s) => s.id === spreadId);
+    if (!targetSpread) return '';
+
+    const unit = currentProject.canvasUnit || 'mm';
+    const dpi = currentProject.canvasDpi || 300;
+    const pageW = currentProject.canvasWidth;
+    const pageH = currentProject.canvasHeight;
+    const gutterW = convertUnit(targetSpread.gutterWidth, targetSpread.gutterUnit, unit, dpi, 8);
+    const totalW = targetSpread.leftPage && targetSpread.rightPage ? pageW * 2 + gutterW : pageW;
+
+    const defaultDim = convertUnit(60, 'mm', unit, dpi, 4);
+    const w = position?.width ?? defaultDim;
+    const h = position?.height ?? defaultDim;
+    const x = position?.x ?? Math.max(0, (totalW - w) / 2);
+    const y = position?.y ?? Math.max(0, (pageH - h) / 2);
+
+    const graphicId = `graphic-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const newGraphic: GraphicElement = {
+      id: graphicId,
+      type: 'graphic',
+      name: asset.title || 'Graphic Element',
+      x,
+      y,
+      width: w,
+      height: h,
+      rotation: 0,
+      opacity: 1,
+      zIndex: (targetSpread.elements || []).length + 1,
+      locked: false,
+      excludeFromAdaptiveLayout: true,
+      frameAssetId: asset.id,
+      frameAssetUrl: asset.remote_url || null,
+      frameAssetLocalPath: asset.local_path,
+      frameAssetTitle: asset.title,
+      frameAssetSlot: asset.slot || null,
+      frameAssetIsPro: false,
+      filePath: asset.local_path,
+      fileName: asset.title,
+      fileUrl: asset.remote_url || null,
+      previewPath: asset.local_path,
+      thumbnailPath: asset.thumb_path || asset.local_path,
+    };
+
+    if (currentAlbum.coverSpread.id === spreadId) {
+      set({
+        currentAlbum: {
+          ...currentAlbum,
+          coverSpread: {
+            ...currentAlbum.coverSpread,
+            elements: [...(currentAlbum.coverSpread.elements || []), newGraphic],
+          },
+        },
+        saveStatus: 'unsaved',
+      });
+    } else {
+      const updatedSpreads = currentAlbum.spreads.map((s) =>
+        s.id === spreadId
+          ? { ...s, elements: [...(s.elements || []), newGraphic] }
+          : s
+      );
+      set({
+        currentAlbum: { ...currentAlbum, spreads: updatedSpreads },
+        saveStatus: 'unsaved',
+      });
+    }
+
+    useEditorStore.getState().selectFrame(graphicId);
+    get().saveAlbumToDb();
+    return graphicId;
   },
 }));

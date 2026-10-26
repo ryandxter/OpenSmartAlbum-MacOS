@@ -12,6 +12,7 @@ import { KonvaFaceReticleOverlay } from '../editor/KonvaFaceReticleOverlay';
 import {
   CarouselPhotoFrame,
   CarouselTextFrame,
+  CarouselGraphicFrame,
   getCarouselTotalWidth,
   getSlideXOffset,
   getSlideIndexAtX,
@@ -22,6 +23,7 @@ import { DEFAULT_TEXT_STYLE } from '../../domain/text';
 import { DividerOverlayLayer } from '../editor/DividerOverlayLayer';
 import { TextInlineEditor } from '../editor/TextInlineEditor';
 import { CarouselTextNode } from './CarouselTextNode';
+import { CarouselGraphicNode } from './CarouselGraphicNode';
 import { extractCanvasDividers, findPhotoSwapTarget, RectFrameInput } from '../../domain/layout/dividerGraph';
 import { renderFilteredPhotoToCanvas, getSeededGrainTile } from '../../utils/imageFilters';
 import type { SpreadBackgroundImage } from '../../domain/album';
@@ -242,6 +244,41 @@ function CarouselFrameNode({
     };
   }, [displaySrc, frame.id, frame.photoAspect]);
 
+  // Load decorative frame overlay image if present (AST-01)
+  const overlaySrc = frame.frameAssetLocalPath
+    ? convertFileSrc(frame.frameAssetLocalPath)
+    : (frame.frameAssetUrl || null);
+
+  const [frameOverlayImage, setFrameOverlayImage] = useState<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    if (!overlaySrc) {
+      setFrameOverlayImage(null);
+      return;
+    }
+    const cacheKey = `frame_overlay::${overlaySrc}`;
+    const cached = getCachedImage(cacheKey);
+    if (cached && cached.complete && cached.naturalWidth > 0) {
+      setFrameOverlayImage(cached);
+      return;
+    }
+    let isMounted = true;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = overlaySrc;
+    img.onload = () => {
+      if (!isMounted) return;
+      setCachedImage(cacheKey, img);
+      setFrameOverlayImage(img);
+    };
+    img.onerror = () => {
+      if (isMounted) setFrameOverlayImage(null);
+    };
+    return () => {
+      isMounted = false;
+    };
+  }, [overlaySrc]);
+
   const faceData = usePhotoStore((s) => (frame.photoId ? s.faceDataMap[frame.photoId] : undefined));
 
   const cornerRadiiArray: [number, number, number, number] = [
@@ -257,20 +294,31 @@ function CarouselFrameNode({
     ? [Math.max(1.5, strokePx * 3), Math.max(1.0, strokePx * 2)]
     : undefined;
 
+  const hasFrameOverlay = Boolean(frame.frameAssetLocalPath || frame.frameAssetUrl);
+  const frameSlot = frame.frameAssetSlot || (hasFrameOverlay ? { slotX: 0, slotY: 0, slotWidth: 1, slotHeight: 1 } : null);
+
+  const targetW = frameSlot ? frame.width * frameSlot.slotWidth : frame.width;
+  const targetH = frameSlot ? frame.height * frameSlot.slotHeight : frame.height;
+  const targetSlotX = frameSlot ? frame.width * frameSlot.slotX : 0;
+  const targetSlotY = frameSlot ? frame.height * frameSlot.slotY : 0;
+
   // Real natural photo aspect ratio from loaded image or frame metadata
   const naturalAspect = (imageObj && imageObj.naturalWidth > 0 && imageObj.naturalHeight > 0)
     ? imageObj.naturalWidth / imageObj.naturalHeight
     : (frame.photoAspect && frame.photoAspect > 0 ? frame.photoAspect : 1.0);
 
-  // Proportional aspect-cover fit geometry and centered offset inside frame
-  const { offsetX, offsetY, width: imgW, height: imgH } = calculateImageOffset(
-    frame.width,
-    frame.height,
+  // Proportional aspect-cover fit geometry and centered offset inside frame aperture
+  const { offsetX: baseOffsetX, offsetY: baseOffsetY, width: imgW, height: imgH } = calculateImageOffset(
+    targetW,
+    targetH,
     naturalAspect,
     frame.cropScale || 1.0,
     frame.cropX || 0,
     frame.cropY || 0
   );
+
+  const offsetX = targetSlotX + baseOffsetX;
+  const offsetY = targetSlotY + baseOffsetY;
 
   const hasVisualEffects = Boolean(
     (frame.grayscaleAmount && frame.grayscaleAmount > 0) ||
@@ -325,6 +373,38 @@ function CarouselFrameNode({
       {/* Clipped Photo Viewport */}
       <Group
         clipFunc={(ctx) => {
+          if (hasFrameOverlay && frameSlot) {
+            const sx = frameSlot.slotX * frame.width;
+            const sy = frameSlot.slotY * frame.height;
+            const sw = frameSlot.slotWidth * frame.width;
+            const sh = frameSlot.slotHeight * frame.height;
+            if (frameSlot.shape === 'circle' || frameSlot.shape === 'oval') {
+              ctx.beginPath();
+              ctx.ellipse(sx + sw / 2, sy + sh / 2, sw / 2, sh / 2, 0, 0, Math.PI * 2);
+              ctx.closePath();
+            } else if (frameSlot.shape === 'arch') {
+              const archRadius = sw / 2;
+              ctx.beginPath();
+              ctx.moveTo(sx, sy + sh);
+              ctx.lineTo(sx, sy + archRadius);
+              ctx.arc(sx + archRadius, sy + archRadius, archRadius, Math.PI, 0, false);
+              ctx.lineTo(sx + sw, sy + sh);
+              ctx.closePath();
+            } else if (frameSlot.shape === 'rounded') {
+              const r = Math.min(sw, sh) * 0.1;
+              if (typeof ctx.roundRect === 'function') {
+                ctx.beginPath();
+                ctx.roundRect(sx, sy, sw, sh, r);
+                ctx.closePath();
+              } else {
+                ctx.rect(sx, sy, sw, sh);
+              }
+            } else {
+              ctx.rect(sx, sy, sw, sh);
+            }
+            return;
+          }
+
           if (frame.shapeType && frame.shapeType !== 'rectangle') {
             drawShapeToContext(ctx, frame.shapeType, frame.width, frame.height, cornerRadiiArray, frame.customSvgPath);
           } else if (hasRounding && typeof ctx.roundRect === 'function') {
@@ -429,6 +509,18 @@ function CarouselFrameNode({
           />
         );
       })()}
+
+      {/* Decorative Frame Overlay (AST-01) */}
+      {frameOverlayImage && (
+        <KonvaImage
+          image={frameOverlayImage}
+          x={0}
+          y={0}
+          width={frame.width}
+          height={frame.height}
+          listening={false}
+        />
+      )}
 
       {/* Frame boundary indication if selected */}
       {isSelected && (
@@ -948,6 +1040,10 @@ export function CarouselCanvas({
     ? currentCarousel.slides.flatMap((s) => s.elements.filter((el): el is CarouselTextFrame => el.type === 'text'))
     : [];
 
+  const allGraphicFrames: CarouselGraphicFrame[] = currentCarousel
+    ? currentCarousel.slides.flatMap((s) => s.elements.filter((el): el is CarouselGraphicFrame => el.type === 'graphic'))
+    : [];
+
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const editingTextFrame = allTextFrames.find((f) => f.id === editingTextId) || null;
 
@@ -1057,7 +1153,7 @@ export function CarouselCanvas({
   useEffect(() => {
     if (!trRef.current || !stageRef.current) return;
     if (selectedFrameIds.length > 0) {
-      const allElements = [...allFrames, ...allTextFrames];
+      const allElements = [...allFrames, ...allTextFrames, ...allGraphicFrames];
       const transformableIds = selectedFrameIds.filter((id) => {
         const el = allElements.find((item) => item.id === id);
         return el && !el.locked && !el.hidden;
@@ -1071,10 +1167,35 @@ export function CarouselCanvas({
     }
     trRef.current.nodes([]);
     trRef.current.getLayer()?.batchDraw();
-  }, [selectedFrameIds, allFrames, allTextFrames]);
+  }, [selectedFrameIds, allFrames, allTextFrames, allGraphicFrames]);
 
   const getCarouselContextMenuItems = (): ContextMenuItem[] => {
     if (!contextMenu.frameId) return [];
+
+    // Check if target is a graphic frame
+    const targetGraphicFrame = allGraphicFrames.find((f) => f.id === contextMenu.frameId);
+    if (targetGraphicFrame) {
+      return [
+        {
+          id: 'toggle-lock',
+          label: targetGraphicFrame.locked ? 'Unlock Graphic' : 'Lock Graphic',
+          onClick: () => {
+            useCarouselStore.getState().updateGraphicFrame(targetGraphicFrame.id, { locked: !targetGraphicFrame.locked });
+          },
+        },
+        { id: 'divider-graphic', label: '', divider: true },
+        {
+          id: 'delete-graphic',
+          label: 'Delete Graphic',
+          icon: <Trash2 size={14} />,
+          danger: true,
+          onClick: () => {
+            useCarouselStore.getState().deleteSelectedFrames();
+            onToast?.('Deleted graphic element');
+          },
+        },
+      ];
+    }
 
     // Check if target is a text frame
     const targetTextFrame = allTextFrames.find((f) => f.id === contextMenu.frameId);
@@ -1753,6 +1874,106 @@ export function CarouselCanvas({
               );
             })}
 
+            {/* Interactive Graphic / Sticker Nodes (AST-02) */}
+            {allGraphicFrames.map((graphicFrame) => {
+              if (graphicFrame.hidden) return null;
+              return (
+                <CarouselGraphicNode
+                  key={graphicFrame.id}
+                  frame={graphicFrame}
+                  isSelected={selectedFrameIds.includes(graphicFrame.id)}
+                  onSelect={(e) => {
+                    if (e) e.cancelBubble = true;
+                    const isShift = Boolean(e?.evt?.shiftKey);
+                    toggleFrameSelection(graphicFrame.id, isShift);
+                    if (currentCarousel) {
+                      const centerX = graphicFrame.x + graphicFrame.width / 2;
+                      const targetIdx = getSlideIndexAtX(currentCarousel, centerX);
+                      setActiveSlide(targetIdx);
+                    }
+                  }}
+                  onChange={(updates) => {
+                    useCarouselStore.getState().updateGraphicFrame(graphicFrame.id, updates);
+                  }}
+                  onContextMenu={(e) => {
+                    if (!selectedFrameIds.includes(graphicFrame.id)) {
+                      setSelectedFrameId(graphicFrame.id);
+                    }
+                    if (currentCarousel) {
+                      const centerX = graphicFrame.x + graphicFrame.width / 2;
+                      const targetIdx = getSlideIndexAtX(currentCarousel, centerX);
+                      setActiveSlide(targetIdx);
+                    }
+                    setContextMenu({
+                      isOpen: true,
+                      x: e.evt.clientX,
+                      y: e.evt.clientY,
+                      frameId: graphicFrame.id,
+                    });
+                  }}
+                  onDragStart={() => {
+                    if (selectedFrameIds.includes(graphicFrame.id) && selectedFrameIds.length > 1) {
+                      const initMap = new Map<string, { x: number; y: number }>();
+                      for (const id of selectedFrameIds) {
+                        const f = [...allFrames, ...allTextFrames, ...allGraphicFrames].find((item) => item.id === id);
+                        if (f) initMap.set(id, { x: f.x, y: f.y });
+                      }
+                      dragInitialPositionsRef.current = initMap;
+                    } else {
+                      dragInitialPositionsRef.current.clear();
+                    }
+                  }}
+                  onDragMove={(e) => {
+                    const node = e.target;
+                    if (dragInitialPositionsRef.current.size > 1) {
+                      const initSelf = dragInitialPositionsRef.current.get(graphicFrame.id);
+                      if (initSelf) {
+                        const dx = node.x() - initSelf.x;
+                        const dy = node.y() - initSelf.y;
+                        dragInitialPositionsRef.current.forEach((initPos, otherId) => {
+                          if (otherId !== graphicFrame.id) {
+                            const otherNode = stageRef.current?.findOne(`#${otherId}`);
+                            if (otherNode) {
+                              otherNode.position({ x: initPos.x + dx, y: initPos.y + dy });
+                            }
+                          }
+                        });
+                        node.getLayer()?.batchDraw();
+                      }
+                    }
+                  }}
+                  onDragEnd={(e) => {
+                    const finalX = Math.round(e.target.x());
+                    const finalY = Math.round(e.target.y());
+                    if (dragInitialPositionsRef.current.size > 1) {
+                      const initSelf = dragInitialPositionsRef.current.get(graphicFrame.id);
+                      if (initSelf) {
+                        const dx = finalX - initSelf.x;
+                        const dy = finalY - initSelf.y;
+                        const batchUpdates: Array<{ id: string; updates: Partial<CarouselPhotoFrame> | Partial<CarouselTextFrame> | Partial<CarouselGraphicFrame> }> = [];
+                        dragInitialPositionsRef.current.forEach((initPos, otherId) => {
+                          batchUpdates.push({
+                            id: otherId,
+                            updates: {
+                              x: Math.round(initPos.x + dx),
+                              y: Math.round(initPos.y + dy),
+                            },
+                          });
+                        });
+                        useCarouselStore.getState().batchUpdateFrames(batchUpdates);
+                        dragInitialPositionsRef.current.clear();
+                        return;
+                      }
+                    }
+                    useCarouselStore.getState().updateGraphicFrame(graphicFrame.id, {
+                      x: finalX,
+                      y: finalY,
+                    });
+                  }}
+                />
+              );
+            })}
+
             {/* Selection Transformer */}
             <Transformer
               ref={trRef}
@@ -1772,7 +1993,7 @@ export function CarouselCanvas({
               }}
               onTransformEnd={() => {
                 const nodes = trRef.current?.nodes() || [];
-                const updates: Array<{ id: string; updates: Partial<CarouselPhotoFrame> | Partial<CarouselTextFrame> }> = [];
+                const updates: Array<{ id: string; updates: Partial<CarouselPhotoFrame> | Partial<CarouselTextFrame> | Partial<CarouselGraphicFrame> }> = [];
                 for (const node of nodes) {
                   const id = node.id();
                   const scaleX = node.scaleX();
