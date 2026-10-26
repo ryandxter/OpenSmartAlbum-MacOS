@@ -454,8 +454,11 @@ pub fn compute_focal_point_and_eyeline(
     ((group_center_x, group_focal_y), avg_eye_y)
 }
 
-/// Full detection entry point for a single image file path.
-pub fn detect_faces_in_image(image_path: &str) -> Result<PhotoFaceData, String> {
+/// Full detection entry point for a single image file path with custom sensitivity threshold.
+pub fn detect_faces_in_image_with_threshold(
+    image_path: &str,
+    threshold: Option<f32>,
+) -> Result<PhotoFaceData, String> {
     let start_time = Instant::now();
     let path = Path::new(image_path);
     let mut img = image::open(path)
@@ -477,6 +480,7 @@ pub fn detect_faces_in_image(image_path: &str) -> Result<PhotoFaceData, String> 
 
     // YuNet produces 12 output tensors (4 per stride: cls, obj, bbox, kps)
     let mut candidates = Vec::new();
+    let conf_threshold = threshold.unwrap_or(CONFIDENCE_THRESHOLD);
 
     // Strides: 8, 16, 32
     // Output tensor groups in YuNet ONNX: [cls 8, cls 16, cls 32, obj 8, obj 16, obj 32, bbox 8, bbox 16, bbox 32, kps 8, kps 16, kps 32]
@@ -496,7 +500,7 @@ pub fn detect_faces_in_image(image_path: &str) -> Result<PhotoFaceData, String> 
             .map_err(|e| e.to_string())?;
 
         let stride_candidates =
-            decode_stride_heads(stride, &cls, &obj, &bbox, &kps, CONFIDENCE_THRESHOLD);
+            decode_stride_heads(stride, &cls, &obj, &bbox, &kps, conf_threshold);
         candidates.extend(stride_candidates);
     }
 
@@ -516,6 +520,11 @@ pub fn detect_faces_in_image(image_path: &str) -> Result<PhotoFaceData, String> 
         eye_level_y,
         detection_time_ms,
     })
+}
+
+/// Full detection entry point for a single image file path using default threshold.
+pub fn detect_faces_in_image(image_path: &str) -> Result<PhotoFaceData, String> {
+    detect_faces_in_image_with_threshold(image_path, None)
 }
 
 /// Batch detection across multiple photos utilizing Rayon thread pool.

@@ -1,6 +1,7 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex as StdMutex, OnceLock};
 use rayon::prelude::*;
 use tauri::async_runtime::Mutex;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -715,4 +716,148 @@ fn chrono_now() -> String {
     let duration = now.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
     let secs = duration.as_secs();
     format!("{}", secs)
+}
+
+static PHOTO_AI_JOB_CANCELLATIONS: OnceLock<StdMutex<HashMap<String, Arc<AtomicBool>>>> = OnceLock::new();
+
+fn get_ai_cancellations() -> &'static StdMutex<HashMap<String, Arc<AtomicBool>>> {
+    PHOTO_AI_JOB_CANCELLATIONS.get_or_init(|| StdMutex::new(HashMap::new()))
+}
+
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PhotoAiProgressPayload {
+    pub project_id: String,
+    pub completed: usize,
+    pub total: usize,
+    pub current_photo_id: Option<String>,
+}
+
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PhotoAiReadyPayload {
+    pub project_id: String,
+    pub total_analyzed: usize,
+}
+
+#[tauri::command]
+pub async fn analyze_project_photos(
+    app: AppHandle,
+    project_id: String,
+    sensitivity: Option<f32>,
+) -> Result<(), String> {
+    let db = app.state::<Database>();
+    let photos = db.get_photos_for_project(&project_id).map_err(|e| e.to_string())?;
+
+    if photos.is_empty() {
+        let _ = app.emit("photo-ai-analysis-ready", PhotoAiReadyPayload {
+            project_id: project_id.clone(),
+            total_analyzed: 0,
+        });
+        return Ok(());
+    }
+
+    let cancel_flag = Arc::new(AtomicBool::new(false));
+    {
+        let mut map = get_ai_cancellations().lock().unwrap();
+        if let Some(existing) = map.get(&project_id) {
+            existing.store(true, Ordering::SeqCst);
+        }
+        map.insert(project_id.clone(), Arc::clone(&cancel_flag));
+    }
+
+    let app_handle = app.clone();
+    let proj_id = project_id.clone();
+    let total = photos.len();
+
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut completed = 0;
+
+        for photo in photos {
+            if cancel_flag.load(Ordering::SeqCst) {
+                break;
+            }
+
+            let photo_id = photo.id.clone();
+            let file_path = photo.file_path.clone();
+
+            // Run YuNet face detection with custom sensitivity
+            if let Ok(face_data) = crate::photo_engine::face_detector::detect_faces_in_image_with_threshold(&file_path, sensitivity) {
+                let face_count = face_data.faces.len() as i32;
+                let face_focus_score = face_data.hero_score as f64;
+                let largest_face_ratio = face_data.faces.iter()
+                    .map(|f| (f.bbox_width * f.bbox_height) as f64)
+                    .fold(0.0, f64::max);
+                let faces_json = serde_json::to_string(&face_data.faces).unwrap_or_else(|_| "[]".to_string());
+
+                let analysis_row = crate::db::PhotoAiAnalysisRow {
+                    photo_id: photo_id.clone(),
+                    project_id: proj_id.clone(),
+                    model_version: "yunet-v1".to_string(),
+                    source_signature: String::new(),
+                    face_count,
+                    face_focus_score,
+                    largest_face_ratio,
+                    faces_json,
+                    analyzed_at: chrono_now(),
+                };
+
+                let db = app_handle.state::<Database>();
+                let _ = db.save_photo_ai_analysis(&analysis_row);
+            }
+
+            completed += 1;
+            let _ = app_handle.emit(
+                "photo-ai-analysis-progress",
+                PhotoAiProgressPayload {
+                    project_id: proj_id.clone(),
+                    completed,
+                    total,
+                    current_photo_id: Some(photo_id),
+                },
+            );
+        }
+
+        {
+            let mut map = get_ai_cancellations().lock().unwrap();
+            map.remove(&proj_id);
+        }
+
+        let _ = app_handle.emit(
+            "photo-ai-analysis-ready",
+            PhotoAiReadyPayload {
+                project_id: proj_id,
+                total_analyzed: completed,
+            },
+        );
+    });
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn cancel_photo_ai_analysis(project_id: String) -> Result<(), String> {
+    let map = get_ai_cancellations().lock().unwrap();
+    if let Some(flag) = map.get(&project_id) {
+        flag.store(true, Ordering::SeqCst);
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_photo_ai_analyses(
+    app: AppHandle,
+    project_id: String,
+) -> Result<Vec<crate::db::PhotoAiAnalysisRow>, String> {
+    let db = app.state::<Database>();
+    db.get_photo_ai_analyses_for_project(&project_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn clear_photo_ai_analyses(
+    app: AppHandle,
+    project_id: String,
+) -> Result<(), String> {
+    let db = app.state::<Database>();
+    db.clear_photo_ai_analyses_for_project(&project_id).map_err(|e| e.to_string())
 }

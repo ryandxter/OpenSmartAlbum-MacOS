@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Photo, PhotoFolder, ImportProgress, ImportNotice, PhotoFilter, PhotoSortBy, getRangeSelection } from '../domain/photo';
 import { detachRemovedAlbumPhotos, detachRemovedPhotos } from '../domain/photoRemoval';
 import { PhotoFaceData, detectPhotoFaces, detectPhotosFacesBatch } from '../domain/ai/faceDetection';
+import { photoAiService, type PhotoAiAnalysisRow } from '../services/photoAiService';
 
 interface PhotoRemovalResult { removedIds: string[]; warnings: string[] }
 interface RelinkProgress { projectId: string; current: number; total: number; currentFile: string; phase: 'scanning' | 'processing' }
@@ -188,6 +189,14 @@ interface PhotoState {
   getPhotoFaceData: (photoId: string) => PhotoFaceData | undefined;
   setPhotoFaceData: (photoId: string, data: PhotoFaceData) => void;
 
+  // Persistent Photo AI Analysis Pipeline (AI-01)
+  photoAiAnalyses: Record<string, PhotoAiAnalysisRow>;
+  aiProgress: { isAnalyzing: boolean; completed: number; total: number } | null;
+  startProjectAiAnalysis: (projectId: string, sensitivity?: number) => Promise<void>;
+  cancelProjectAiAnalysis: (projectId: string) => Promise<void>;
+  loadProjectAiAnalyses: (projectId: string) => Promise<void>;
+  clearProjectAiAnalyses: (projectId: string) => Promise<void>;
+
   // Photo actions
   loadPhotos: (projectId: string) => Promise<void>;
   enqueueImport: (projectId: string, paths: string[], folderId: string | null, label: string) => void;
@@ -286,6 +295,9 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
   faceDataMap: {},
   isAnalyzingFaces: false,
 
+  photoAiAnalyses: {},
+  aiProgress: null,
+
   analyzePhotoFaces: async (photoId: string) => {
     const photo = get().photos.find((p) => p.id === photoId);
     if (!photo || !photo.filePath) return null;
@@ -337,6 +349,47 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
     set((s) => ({
       faceDataMap: { ...s.faceDataMap, [photoId]: data },
     }));
+  },
+
+  startProjectAiAnalysis: async (projectId: string, sensitivity?: number) => {
+    set({ aiProgress: { isAnalyzing: true, completed: 0, total: get().photos.length } });
+    try {
+      await photoAiService.analyzeProjectPhotos(projectId, sensitivity);
+    } catch (err) {
+      console.error('[photoStore] startProjectAiAnalysis error:', err);
+      set({ aiProgress: null });
+    }
+  },
+
+  cancelProjectAiAnalysis: async (projectId: string) => {
+    try {
+      await photoAiService.cancelPhotoAiAnalysis(projectId);
+      set({ aiProgress: null });
+    } catch (err) {
+      console.error('[photoStore] cancelProjectAiAnalysis error:', err);
+    }
+  },
+
+  loadProjectAiAnalyses: async (projectId: string) => {
+    try {
+      const list = await photoAiService.getPhotoAiAnalyses(projectId);
+      const map: Record<string, PhotoAiAnalysisRow> = {};
+      for (const item of list) {
+        map[item.photoId] = item;
+      }
+      set({ photoAiAnalyses: map });
+    } catch (err) {
+      console.warn('[photoStore] loadProjectAiAnalyses error:', err);
+    }
+  },
+
+  clearProjectAiAnalyses: async (projectId: string) => {
+    try {
+      await photoAiService.clearPhotoAiAnalyses(projectId);
+      set({ photoAiAnalyses: {} });
+    } catch (err) {
+      console.error('[photoStore] clearProjectAiAnalyses error:', err);
+    }
   },
 
   dismissImportNotice: () => set({ importNotice: null }),
@@ -495,12 +548,34 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
         const unlistenError = await listen<{ projectId: string; message: string }>('photo-processing-error', (event) => {
           if (isCurrentProject(event.payload.projectId)) set({ error: event.payload.message });
         });
+
+        const unlistenAiProgress = await photoAiService.onProgress((payload) => {
+          if (isCurrentProject(payload.projectId)) {
+            set({
+              aiProgress: {
+                isAnalyzing: true,
+                completed: payload.completed,
+                total: payload.total,
+              },
+            });
+          }
+        });
+
+        const unlistenAiReady = await photoAiService.onReady((payload) => {
+          if (isCurrentProject(payload.projectId)) {
+            set({ aiProgress: null });
+            void get().loadProjectAiAnalyses(payload.projectId);
+          }
+        });
+
         const unlistenAll = () => {
           unlistenError();
           unlistenProgress();
           unlistenItem();
           unlistenPreview();
           unlistenComplete();
+          unlistenAiProgress();
+          unlistenAiReady();
         };
 
         if (activeListenersCount === 0) {
@@ -538,6 +613,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
       set({ photos: photos || [], error: null });
       await get().loadFolders(projectId);
       await get().checkMissing(projectId);
+      await get().loadProjectAiAnalyses(projectId);
       await syncAlbumFramePhotoAssets(get().photos);
 
       // Existing projects receive previews in the background without delaying the initial photo library load.

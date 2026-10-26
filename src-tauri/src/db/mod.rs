@@ -4078,6 +4078,116 @@ impl Database {
             slides,
         }))
     }
+
+    // =========================================================================
+    // Photo AI Analysis Persistence (Requirement AI-01)
+    // =========================================================================
+
+    pub fn save_photo_ai_analysis(&self, row: &PhotoAiAnalysisRow) -> SqliteResult<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO photo_ai_analysis (
+                photo_id, project_id, model_version, source_signature,
+                face_count, face_focus_score, largest_face_ratio,
+                faces_json, analyzed_at
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+            ON CONFLICT(photo_id) DO UPDATE SET
+                model_version = excluded.model_version,
+                source_signature = excluded.source_signature,
+                face_count = excluded.face_count,
+                face_focus_score = excluded.face_focus_score,
+                largest_face_ratio = excluded.largest_face_ratio,
+                faces_json = excluded.faces_json,
+                analyzed_at = excluded.analyzed_at;",
+            rusqlite::params![
+                row.photo_id,
+                row.project_id,
+                row.model_version,
+                row.source_signature,
+                row.face_count,
+                row.face_focus_score,
+                row.largest_face_ratio,
+                row.faces_json,
+                row.analyzed_at,
+            ],
+        )?;
+        Ok(())
+    }
+
+    pub fn get_photo_ai_analyses_for_project(&self, project_id: &str) -> SqliteResult<Vec<PhotoAiAnalysisRow>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT photo_id, project_id, model_version, source_signature,
+                    face_count, face_focus_score, largest_face_ratio,
+                    faces_json, analyzed_at
+             FROM photo_ai_analysis
+             WHERE project_id = ?1
+             ORDER BY analyzed_at ASC",
+        )?;
+
+        let rows = stmt.query_map([project_id], |row| {
+            Ok(PhotoAiAnalysisRow {
+                photo_id: row.get(0)?,
+                project_id: row.get(1)?,
+                model_version: row.get(2)?,
+                source_signature: row.get(3)?,
+                face_count: row.get(4)?,
+                face_focus_score: row.get(5)?,
+                largest_face_ratio: row.get(6)?,
+                faces_json: row.get(7)?,
+                analyzed_at: row.get(8)?,
+            })
+        })?;
+
+        let mut result = Vec::new();
+        for r in rows {
+            result.push(r?);
+        }
+        Ok(result)
+    }
+
+    pub fn get_photo_ai_analysis(&self, photo_id: &str) -> SqliteResult<Option<PhotoAiAnalysisRow>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT photo_id, project_id, model_version, source_signature,
+                    face_count, face_focus_score, largest_face_ratio,
+                    faces_json, analyzed_at
+             FROM photo_ai_analysis
+             WHERE photo_id = ?1",
+        )?;
+
+        let mut rows = stmt.query_map([photo_id], |row| {
+            Ok(PhotoAiAnalysisRow {
+                photo_id: row.get(0)?,
+                project_id: row.get(1)?,
+                model_version: row.get(2)?,
+                source_signature: row.get(3)?,
+                face_count: row.get(4)?,
+                face_focus_score: row.get(5)?,
+                largest_face_ratio: row.get(6)?,
+                faces_json: row.get(7)?,
+                analyzed_at: row.get(8)?,
+            })
+        })?;
+
+        if let Some(first) = rows.next() {
+            Ok(Some(first?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn delete_photo_ai_analysis(&self, photo_id: &str) -> SqliteResult<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute("DELETE FROM photo_ai_analysis WHERE photo_id = ?1", [photo_id])?;
+        Ok(())
+    }
+
+    pub fn clear_photo_ai_analyses_for_project(&self, project_id: &str) -> SqliteResult<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute("DELETE FROM photo_ai_analysis WHERE project_id = ?1", [project_id])?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -5303,6 +5413,79 @@ mod tests {
         assert_eq!(loaded_c_photo.noise_amount, 20.0);
         assert_eq!(loaded_c_photo.shadow_enabled, true);
         assert_eq!(loaded_c_photo.shadow_blur, 20.0);
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_photo_ai_analysis_crud_and_cascade() {
+        let temp_dir = std::env::temp_dir().join(format!("afsn_test_ai_analysis_{}", uuid::Uuid::new_v4()));
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        let db_path = temp_dir.join("test.db");
+        let db = Database::init(db_path).expect("Database::init failed");
+
+        let project_id = "proj-ai-test";
+        db.create_project(
+            project_id, "AI Test Project", 300.0, 300.0, "mm", 300,
+            2.0, "mm", true, 10.0, "mm", 10.0, 10.0, 10.0, 10.0,
+            false, 0.0, "mm", "#FFFFFF", "solid", "#FFFFFF"
+        ).expect("Create project");
+
+        let photo = PhotoRow {
+            id: "photo-ai-1".to_string(),
+            project_id: project_id.to_string(),
+            file_path: "/photos/portrait.jpg".to_string(),
+            file_name: "portrait.jpg".to_string(),
+            file_size: 1024,
+            width: 1920,
+            height: 1080,
+            format: "jpg".to_string(),
+            thumbnail_path: None,
+            thumbnail_base64: None,
+            preview_path: None,
+            is_favorite: false,
+            used_count: 0,
+            is_missing: false,
+            created_at: "2026-10-27".to_string(),
+            updated_at: "2026-10-27".to_string(),
+        };
+        db.add_photo(&photo).expect("Add photo");
+
+        // 1. Insert analysis
+        let analysis = PhotoAiAnalysisRow {
+            photo_id: "photo-ai-1".to_string(),
+            project_id: project_id.to_string(),
+            model_version: "yunet-v1".to_string(),
+            source_signature: "sig123".to_string(),
+            face_count: 1,
+            face_focus_score: 92.5,
+            largest_face_ratio: 0.28,
+            faces_json: "[{\"score\": 0.95}]".to_string(),
+            analyzed_at: "2026-10-27T06:00:00Z".to_string(),
+        };
+        db.save_photo_ai_analysis(&analysis).expect("Save AI analysis");
+
+        // 2. Query
+        let fetched = db.get_photo_ai_analysis("photo-ai-1").expect("Query AI analysis").expect("Must exist");
+        assert_eq!(fetched.face_count, 1);
+        assert_eq!(fetched.face_focus_score, 92.5);
+        assert_eq!(fetched.model_version, "yunet-v1");
+
+        let project_analyses = db.get_photo_ai_analyses_for_project(project_id).expect("Query for project");
+        assert_eq!(project_analyses.len(), 1);
+        assert_eq!(project_analyses[0].photo_id, "photo-ai-1");
+
+        // 3. Upsert update
+        let mut updated = analysis.clone();
+        updated.face_focus_score = 98.0;
+        db.save_photo_ai_analysis(&updated).expect("Upsert AI analysis");
+        let fetched_updated = db.get_photo_ai_analysis("photo-ai-1").unwrap().unwrap();
+        assert_eq!(fetched_updated.face_focus_score, 98.0);
+
+        // 4. Cascade delete on project delete
+        db.delete_project(project_id).expect("Delete project");
+        let fetched_after_delete = db.get_photo_ai_analysis("photo-ai-1").expect("Query after cascade");
+        assert!(fetched_after_delete.is_none());
 
         let _ = std::fs::remove_dir_all(&temp_dir);
     }
