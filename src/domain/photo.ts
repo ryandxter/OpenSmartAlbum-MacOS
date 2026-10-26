@@ -65,8 +65,19 @@ export interface ImportNotice {
 import type { PhotoFaceData } from './ai/faceDetection';
 import { isHeroShot } from './ai/faceDetection';
 
-export type PhotoFilter = 'all' | 'unused' | 'used' | 'favorites' | 'hero' | 'faces';
-export type PhotoSortBy = 'name' | 'date' | 'size' | 'quality';
+export type PhotoFilter =
+  | 'all'
+  | 'unused'
+  | 'used'
+  | 'favorites'
+  | 'hero'
+  | 'faces'
+  | 'portraits'
+  | 'group'
+  | 'scenery'
+  | 'review_needed';
+
+export type PhotoSortBy = 'name' | 'date' | 'size' | 'quality' | 'hero_score';
 
 export function formatFileSize(bytes: number): string {
   if (bytes <= 0) return '0 B';
@@ -109,6 +120,32 @@ export function filterPhotos(
       const data = faceDataMap?.[p.id];
       return Boolean(data && data.faces && data.faces.length > 0);
     });
+  } else if (filter === 'portraits') {
+    result = result.filter((p) => {
+      const data = faceDataMap?.[p.id];
+      const count = data?.faces?.length ?? 0;
+      return count >= 1 && count <= 2;
+    });
+  } else if (filter === 'group') {
+    result = result.filter((p) => {
+      const data = faceDataMap?.[p.id];
+      const count = data?.faces?.length ?? 0;
+      return count >= 3;
+    });
+  } else if (filter === 'scenery') {
+    result = result.filter((p) => {
+      const data = faceDataMap?.[p.id];
+      const count = data?.faces?.length ?? 0;
+      return count === 0;
+    });
+  } else if (filter === 'review_needed') {
+    result = result.filter((p) => {
+      const data = faceDataMap?.[p.id];
+      if (!data || !data.faces || data.faces.length === 0) return false;
+      const hasBlink = data.faces.some((f) => f.isEyesClosed);
+      const isSoft = (data.sharpnessScore ?? 100) < 35 || data.faces.some((f) => f.sharpnessScore < 25);
+      return hasBlink || isSoft;
+    });
   }
 
   if (query && query.trim()) {
@@ -134,11 +171,11 @@ export function sortPhotos(
     if (sortBy === 'size') {
       return b.fileSize - a.fileSize;
     }
-    if (sortBy === 'quality') {
+    if (sortBy === 'quality' || sortBy === 'hero_score') {
       const dataA = faceDataMap?.[a.id];
       const dataB = faceDataMap?.[b.id];
-      const scoreA = dataA?.sharpnessScore ?? (dataA?.faces?.length ? 70 : 0);
-      const scoreB = dataB?.sharpnessScore ?? (dataB?.faces?.length ? 70 : 0);
+      const scoreA = dataA?.heroScore ?? (dataA?.sharpnessScore ?? (dataA?.faces?.length ? 70 : 0));
+      const scoreB = dataB?.heroScore ?? (dataB?.sharpnessScore ?? (dataB?.faces?.length ? 70 : 0));
       return scoreB - scoreA;
     }
     return 0;

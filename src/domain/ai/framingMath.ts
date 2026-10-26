@@ -13,6 +13,17 @@ export interface FrameDimensions {
   imageHeight: number;
 }
 
+export interface StudioCropOptions {
+  spineX?: number;            // X coordinate of book spine fold relative to frame left [px/mm]
+  spineSafetyMargin?: number; // Clearance buffer around spine (default: 20)
+  contentSlot?: {             // Decorative frame inner aperture
+    slotX: number;
+    slotY: number;
+    slotWidth: number;
+    slotHeight: number;
+  };
+}
+
 /**
  * Calculates rendered cover photo dimensions inside a frame given a zoom scale.
  */
@@ -96,9 +107,16 @@ export function calculateOptimalStudioCrop(
   dims: FrameDimensions,
   faceData?: PhotoFaceData | null,
   preset: StudioFramingPreset = 'natural_center',
-  customConfig?: Partial<FramingConfig>
+  customConfig?: Partial<FramingConfig>,
+  options?: StudioCropOptions
 ): CropFramingResult {
-  const { frameWidth, frameHeight, imageWidth, imageHeight } = dims;
+  let { frameWidth, frameHeight, imageWidth, imageHeight } = dims;
+
+  // 0. Support decorative frame inner aperture cutout (contentSlot)
+  if (options?.contentSlot) {
+    frameWidth = Math.max(10, frameWidth * options.contentSlot.slotWidth);
+    frameHeight = Math.max(10, frameHeight * options.contentSlot.slotHeight);
+  }
 
   // Fallback if no faces detected or no face data provided: Optical Center
   if (!faceData || !faceData.faces || faceData.faces.length === 0) {
@@ -186,10 +204,17 @@ export function calculateOptimalStudioCrop(
   }
 
   // Target Y based on eyeLineTargetRatio (e.g. 0.333 for upper third, 0.40 for formal ID)
-  const yTarget = frameHeight * config.eyeLineTargetRatio;
+  let yTarget = frameHeight * config.eyeLineTargetRatio;
+
+  // Headroom guard: Ensure 12% - 15% clearance from frame top to top of head
+  const coverDims = calculateCoverDimensions(frameWidth, frameHeight, imageWidth, imageHeight, cropScale);
+  const minHeadroomPx = frameHeight * Math.max(0.12, config.headroomRatio || 0.15);
+  const headTopDistancePx = (normFaceHeight * 0.40) * coverDims.renderedHeight;
+  if (yTarget - headTopDistancePx < minHeadroomPx) {
+    yTarget = minHeadroomPx + headTopDistancePx;
+  }
 
   // 4. Invert photo coordinates to solve for cropX and cropY
-  const coverDims = calculateCoverDimensions(frameWidth, frameHeight, imageWidth, imageHeight, cropScale);
   const { cropX, cropY } = solveCropPanOffsets(
     uTarget,
     vTarget,
@@ -201,7 +226,41 @@ export function calculateOptimalStudioCrop(
     coverDims.renderedHeight
   );
 
-  return { cropX, cropY, cropScale };
+  // 5. Spine Gutter Avoidance (AI-02): Shift cropX if face intersects book spine fold
+  let finalCropX = cropX;
+  let finalCropScale = cropScale;
+  let activeCoverDims = coverDims;
+
+  if (options?.spineX !== undefined) {
+    const margin = options.spineSafetyMargin || 20;
+    let currentFaceX = (frameWidth / 2) + finalCropX * (activeCoverDims.deltaX / 2);
+    let distToSpine = currentFaceX - options.spineX;
+
+    if (Math.abs(distToSpine) < margin) {
+      // If deltaX is insufficient to provide lateral clearance, increase zoom scale slightly
+      if (activeCoverDims.deltaX < margin * 2) {
+        const minScaleForMargin = Math.max(
+          finalCropScale * 1.15,
+          (frameWidth + margin * 2) / (frameWidth / finalCropScale)
+        );
+        finalCropScale = Math.min(3.5, Number(minScaleForMargin.toFixed(3)));
+        activeCoverDims = calculateCoverDimensions(frameWidth, frameHeight, imageWidth, imageHeight, finalCropScale);
+        currentFaceX = (frameWidth / 2) + finalCropX * (activeCoverDims.deltaX / 2);
+        distToSpine = currentFaceX - options.spineX;
+      }
+
+      if (activeCoverDims.deltaX > 0) {
+        // Shift away from spine
+        const shiftDirection = distToSpine >= 0 ? 1 : -1;
+        const shiftAmount = (margin - Math.abs(distToSpine) + 8) / (activeCoverDims.deltaX / 2);
+        finalCropX = Math.max(-1.0, Math.min(1.0, Number((finalCropX + shiftDirection * shiftAmount).toFixed(4))));
+      } else {
+        finalCropX = 0.2;
+      }
+    }
+  }
+
+  return { cropX: finalCropX, cropY, cropScale: finalCropScale };
 }
 
 /**

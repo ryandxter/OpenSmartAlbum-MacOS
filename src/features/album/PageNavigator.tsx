@@ -9,6 +9,7 @@ import {
   X,
   LayoutGrid,
   SlidersHorizontal,
+  Sparkles,
 } from 'lucide-react';
 import { QuickGuidesPopover } from '../editor/QuickGuidesPopover';
 import { convertFileSrc } from '@tauri-apps/api/core';
@@ -299,6 +300,12 @@ export function PageNavigator() {
     selectAllSpreads,
     clearSpreadSelection,
   } = useAlbumStore();
+
+  const photos = usePhotoStore((s) => s.photos);
+  const photoAiAnalyses = usePhotoStore((s) => s.photoAiAnalyses);
+  const aiProgress = usePhotoStore((s) => s.aiProgress);
+  const startProjectAiAnalysis = usePhotoStore((s) => s.startProjectAiAnalysis);
+  const unanalyzedPhotosCount = photos.filter((p) => !photoAiAnalyses[p.id]).length;
 
   const [spreadsToDelete, setSpreadsToDelete] = useState<Spread[] | null>(null);
   const [draggedSpreadIndex, setDraggedSpreadIndex] = useState<number | null>(null);
@@ -841,6 +848,24 @@ export function PageNavigator() {
             />
           </div>
         </div>
+
+        {/* AI Face Analysis Status / Trigger */}
+        {aiProgress?.isAnalyzing ? (
+          <div className={styles.aiNavStatus} title="AI Face Analysis in progress">
+            <Sparkles size={12} className={styles.aiSpinning} />
+            <span>AI {aiProgress.completed}/{aiProgress.total}</span>
+          </div>
+        ) : photos.length > 0 && unanalyzedPhotosCount > 0 ? (
+          <button
+            type="button"
+            className={styles.aiNavTrigger}
+            onClick={() => currentProject && void startProjectAiAnalysis(currentProject.id)}
+            title={`${unanalyzedPhotosCount} photo(s) unanalyzed. Click to run embedded YuNet AI face scan.`}
+          >
+            <Sparkles size={12} />
+            <span>AI Scan ({unanalyzedPhotosCount})</span>
+          </button>
+        ) : null}
 
         <div className={styles.divider} />
 

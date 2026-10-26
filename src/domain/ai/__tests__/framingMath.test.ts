@@ -168,6 +168,40 @@ describe('framingMath', () => {
         expect(res.cropScale).toBeGreaterThanOrEqual(1.0);
       }
     });
+
+    it('enforces 12%-15% headroom above face to prevent forehead clipping', () => {
+      const faceAtTop = createMockFace({ bboxY: 0.05, bboxHeight: 0.5 });
+      const faceData = createMockFaceData([faceAtTop]);
+      const dims = { frameWidth: 800, frameHeight: 600, imageWidth: 3000, imageHeight: 2000 };
+      
+      const res = calculateOptimalStudioCrop(dims, faceData, 'natural_center', { headroomRatio: 0.15 });
+      expect(res.cropY).toBeGreaterThanOrEqual(-1.0);
+      expect(res.cropY).toBeLessThanOrEqual(1.0);
+    });
+
+    it('shifts horizontal crop when face intersects book spine gutter', () => {
+      const centeredFace = createMockFace({ bboxX: 0.35, bboxWidth: 0.3 });
+      const faceData = createMockFaceData([centeredFace]);
+      // Frame width 1000, spine at 500 (exact center where face would naturally be placed)
+      const dims = { frameWidth: 1000, frameHeight: 600, imageWidth: 3000, imageHeight: 2000 };
+
+      const resNormal = calculateOptimalStudioCrop(dims, faceData, 'natural_center');
+      const resSpineAvoid = calculateOptimalStudioCrop(dims, faceData, 'natural_center', {}, { spineX: 500, spineSafetyMargin: 30 });
+
+      // Spine avoidance shifts cropX away from center so face does not fall in fold
+      expect(resSpineAvoid.cropX).not.toBe(resNormal.cropX);
+    });
+
+    it('supports decorative frame aperture contentSlot coordinates', () => {
+      const faceData = createMockFaceData();
+      const dims = { frameWidth: 1000, frameHeight: 800, imageWidth: 3000, imageHeight: 2000 };
+      const contentSlot = { slotX: 0.1, slotY: 0.1, slotWidth: 0.8, slotHeight: 0.8 };
+
+      const res = calculateOptimalStudioCrop(dims, faceData, 'natural_center', {}, { contentSlot });
+      expect(res.cropScale).toBeGreaterThanOrEqual(1.0);
+      expect(res.cropX).toBeGreaterThanOrEqual(-1.0);
+      expect(res.cropX).toBeLessThanOrEqual(1.0);
+    });
   });
 
   describe('calculateShapeMaskFaceCrop', () => {

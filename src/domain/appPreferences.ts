@@ -1,11 +1,17 @@
 export type StartupBehavior = 'welcome' | 'reopen_last';
 export type AutoSaveIntervalSeconds = 10 | 30 | 60 | 300;
+export type AiSensitivityLevel = 'high' | 'balanced' | 'strict';
 
 export interface AppPreferences {
   startupBehavior: StartupBehavior;
   autoSaveEnabled: boolean;
   autoSaveIntervalSeconds: AutoSaveIntervalSeconds;
   automaticUpdateChecks: boolean;
+  aiAutoAnalyzeOnImport: boolean;
+  aiSensitivity: AiSensitivityLevel;
+  aiPrioritizeHeroFaces: boolean;
+  aiFaceAwareOrientation: boolean;
+  aiSpineGutterAvoidance: boolean;
 }
 
 export const APP_PREFERENCES_STORAGE_KEY = 'afsn_app_preferences_v1';
@@ -15,9 +21,15 @@ export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   autoSaveEnabled: true,
   autoSaveIntervalSeconds: 10,
   automaticUpdateChecks: true,
+  aiAutoAnalyzeOnImport: true,
+  aiSensitivity: 'balanced',
+  aiPrioritizeHeroFaces: true,
+  aiFaceAwareOrientation: true,
+  aiSpineGutterAvoidance: true,
 };
 
 const AUTO_SAVE_INTERVALS = new Set<number>([10, 30, 60, 300]);
+const AI_SENSITIVITY_LEVELS = new Set<string>(['high', 'balanced', 'strict']);
 
 export function normalizeAppPreferences(value: unknown): AppPreferences {
   if (!value || typeof value !== 'object') return { ...DEFAULT_APP_PREFERENCES };
@@ -36,6 +48,25 @@ export function normalizeAppPreferences(value: unknown): AppPreferences {
       typeof candidate.automaticUpdateChecks === 'boolean'
         ? candidate.automaticUpdateChecks
         : DEFAULT_APP_PREFERENCES.automaticUpdateChecks,
+    aiAutoAnalyzeOnImport:
+      typeof candidate.aiAutoAnalyzeOnImport === 'boolean'
+        ? candidate.aiAutoAnalyzeOnImport
+        : DEFAULT_APP_PREFERENCES.aiAutoAnalyzeOnImport,
+    aiSensitivity: AI_SENSITIVITY_LEVELS.has(String(candidate.aiSensitivity))
+      ? (String(candidate.aiSensitivity) as AiSensitivityLevel)
+      : DEFAULT_APP_PREFERENCES.aiSensitivity,
+    aiPrioritizeHeroFaces:
+      typeof candidate.aiPrioritizeHeroFaces === 'boolean'
+        ? candidate.aiPrioritizeHeroFaces
+        : DEFAULT_APP_PREFERENCES.aiPrioritizeHeroFaces,
+    aiFaceAwareOrientation:
+      typeof candidate.aiFaceAwareOrientation === 'boolean'
+        ? candidate.aiFaceAwareOrientation
+        : DEFAULT_APP_PREFERENCES.aiFaceAwareOrientation,
+    aiSpineGutterAvoidance:
+      typeof candidate.aiSpineGutterAvoidance === 'boolean'
+        ? candidate.aiSpineGutterAvoidance
+        : DEFAULT_APP_PREFERENCES.aiSpineGutterAvoidance,
   };
 }
 

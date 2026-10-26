@@ -33,6 +33,7 @@ import { SNAPPING_LEVELS, SnappingLevel } from '../../domain/editor';
 import type { AutoSaveIntervalSeconds, StartupBehavior } from '../../domain/appPreferences';
 import { isTauri, isMac } from '../../utils/platform';
 import { StorageSettingsTab } from './tabs/StorageSettingsTab';
+import { AiSettingsTab } from './tabs/AiSettingsTab';
 import styles from './SettingsDialog.module.css';
 
 function normalizeKeyToken(token: string): string {
@@ -841,7 +842,19 @@ export function SettingsDialog() {
               <span>Shortcuts</span>
             </button>
 
-            {/* Tab 5: Local Storage & Cache */}
+            {/* Tab 5: AI & Smart Framing */}
+            <button
+              type="button"
+              className={`${styles.tabBtn} ${activeTab === 'ai' ? styles.tabBtnActive : ''}`}
+              onClick={() => setActiveTab('ai')}
+            >
+              <span className={styles.tabIcon}>
+                <Sparkles size={18} strokeWidth={1.5} />
+              </span>
+              <span>AI &amp; Framing</span>
+            </button>
+
+            {/* Tab 6: Local Storage & Cache */}
             <button
               type="button"
               className={`${styles.tabBtn} ${activeTab === 'storage' ? styles.tabBtnActive : ''}`}
@@ -850,7 +863,7 @@ export function SettingsDialog() {
               <span className={styles.tabIcon}>
                 <HardDrive size={18} strokeWidth={1.5} />
               </span>
-              <span>Storage & Cache</span>
+              <span>Storage &amp; Cache</span>
             </button>
           </div>
 
@@ -1511,7 +1524,12 @@ export function SettingsDialog() {
           )}
 
           {/* ================================================================ */}
-          {/* 5. Storage & Cache Tab                                            */}
+          {/* 5. AI & Smart Framing Tab                                         */}
+          {/* ================================================================ */}
+          {activeTab === 'ai' && <AiSettingsTab />}
+
+          {/* ================================================================ */}
+          {/* 6. Storage & Cache Tab                                            */}
           {/* ================================================================ */}
           {activeTab === 'storage' && <StorageSettingsTab />}
         </div>

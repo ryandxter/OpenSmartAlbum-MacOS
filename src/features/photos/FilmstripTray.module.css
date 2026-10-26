@@ -964,3 +964,77 @@
   backdrop-filter: blur(4px);
 }
 
+.warningBadge {
+  position: absolute;
+  bottom: 22px;
+  left: 4px;
+  background-color: rgba(239, 68, 68, 0.25);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #f87171;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  z-index: 3;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
+.aiProgressPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  color: #c084fc;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.aiSpinning {
+  animation: aiSpin 2s linear infinite;
+}
+
+@keyframes aiSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.aiCancelBtn {
+  background: none;
+  border: none;
+  color: #c084fc;
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 11px;
+  line-height: 1;
+  border-radius: 2px;
+}
+.aiCancelBtn:hover {
+  color: #f87171;
+}
+
+.aiScanBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  color: #c084fc;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.aiScanBtn:hover {
+  background: rgba(168, 85, 247, 0.22);
+  border-color: rgba(168, 85, 247, 0.55);
+  color: #e9d5ff;
+}
+
+

@@ -9,6 +9,7 @@ import {
   ImagePlus,
   FolderPlus,
   Loader2,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
@@ -72,6 +73,9 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
     setSearchQuery,
     openRelink,
     healThumbnail,
+    aiProgress,
+    startProjectAiAnalysis,
+    cancelProjectAiAnalysis,
   } = usePhotoStore();
   const [isImportMenuOpen, setIsImportMenuOpen] = useState(false);
   const [copyNotice, setCopyNotice] = useState<string | null>(null);
@@ -306,6 +310,28 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
   const faceDetectedCount = currentPhotoPool.filter((p) => {
     const data = faceDataMap[p.id];
     return Boolean(data && data.faces && data.faces.length > 0);
+  }).length;
+  const portraitsCount = currentPhotoPool.filter((p) => {
+    const data = faceDataMap[p.id];
+    const count = data?.faces?.length ?? 0;
+    return count >= 1 && count <= 2;
+  }).length;
+  const groupCount = currentPhotoPool.filter((p) => {
+    const data = faceDataMap[p.id];
+    const count = data?.faces?.length ?? 0;
+    return count >= 3;
+  }).length;
+  const sceneryCount = currentPhotoPool.filter((p) => {
+    const data = faceDataMap[p.id];
+    const count = data?.faces?.length ?? 0;
+    return count === 0;
+  }).length;
+  const reviewNeededCount = currentPhotoPool.filter((p) => {
+    const data = faceDataMap[p.id];
+    if (!data || !data.faces || data.faces.length === 0) return false;
+    const hasBlink = data.faces.some((f) => f.isEyesClosed);
+    const isSoft = (data.sharpnessScore ?? 100) < 35 || data.faces.some((f) => f.sharpnessScore < 25);
+    return hasBlink || isSoft;
   }).length;
   const missingCount = photos.filter((p) => p.isMissing).length;
 
@@ -554,6 +580,10 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
                 <option value="favorites">Filter: Favorites ({favCount})</option>
                 <option value="hero">Filter: ✨ Hero Shots ({heroCount})</option>
                 <option value="faces">Filter: 👤 Faces Detected ({faceDetectedCount})</option>
+                <option value="portraits">Filter: 👤 Portraits (1-2) ({portraitsCount})</option>
+                <option value="group">Filter: 👥 Group Shots (3+) ({groupCount})</option>
+                <option value="scenery">Filter: 🏞️ Scenery ({sceneryCount})</option>
+                <option value="review_needed">Filter: ⚠️ Review Needed ({reviewNeededCount})</option>
               </select>
 
               {/* Sort Dropdown */}
@@ -566,8 +596,39 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
                 <option value="name">Sort: Name</option>
                 <option value="date">Sort: Date</option>
                 <option value="size">Sort: Size</option>
-                <option value="quality">Sort: AI Quality / Hero Score</option>
+                <option value="quality">Sort: AI Quality</option>
+                <option value="hero_score">Sort: Hero Score</option>
               </select>
+
+              {/* AI Analysis Progress or Trigger */}
+              {aiProgress?.isAnalyzing ? (
+                <div className={styles.aiProgressPill} title="AI Face Analysis in progress">
+                  <Sparkles size={12} className={styles.aiSpinning} />
+                  <span>AI {aiProgress.completed}/{aiProgress.total}</span>
+                  <button
+                    type="button"
+                    className={styles.aiCancelBtn}
+                    onClick={() => currentProject && void cancelProjectAiAnalysis(currentProject.id)}
+                    title="Cancel face analysis"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.aiScanBtn}
+                  onClick={() => {
+                    if (currentProject) {
+                      void startProjectAiAnalysis(currentProject.id);
+                    }
+                  }}
+                  title="Scan photos for faces, hero shots, and sharpness using embedded YuNet AI"
+                >
+                  <Sparkles size={12} />
+                  <span>Scan Faces</span>
+                </button>
+              )}
 
               <input
                 type="text"
@@ -748,8 +809,12 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
                 const isUsed = usedPhotoIdSet.has(photo.id) || photo.usedCount > 0;
                 const faceData = faceDataMap[photo.id];
                 const faceCount = faceData?.faces?.length || 0;
-                const isHero = faceData ? isHeroShot(faceData) : false;
+                const isHero = faceData ? (faceData.heroScore >= 80 || faceData.faces?.some((f) => f.isHeroCandidate) || isHeroShot(faceData)) : false;
                 const isSharp = (faceData?.sharpnessScore ?? 0) >= 75;
+                const hasBlink = faceData?.faces?.some((f) => f.isEyesClosed);
+                const isSoft = faceData && faceData.faces && faceData.faces.length > 0 && ((faceData.sharpnessScore ?? 100) < 35 || faceData.faces.some((f) => f.sharpnessScore < 25));
+                const hasWarning = Boolean(hasBlink || isSoft);
+                const warningText = hasBlink ? 'Blink' : 'Soft';
 
                 return (
                   <div
@@ -861,21 +926,28 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
                               )}
 
                               {/* Top Left: Hero Shot Badge */}
-                              {isHero && <span className={styles.heroBadge}>✨ HERO</span>}
+                              {isHero && <span className={styles.heroBadge}>⭐ HERO</span>}
 
                               {/* Top Right: Faces Detected Pill */}
                               {faceCount > 0 && (
                                 <span className={styles.faceBadge} title={`${faceCount} face(s) detected via YuNet AI`}>
-                                  {faceCount > 1 ? `👥 ${faceCount}` : `👤 ${faceCount}`}
+                                  {faceCount > 1 ? `👥 ${faceCount}` : `👤 1`}
                                 </span>
                               )}
 
-                              {/* Bottom Left: Sharpness Badge */}
-                              {isSharp && (
+                              {/* Bottom Left: Warning (Blink/Soft) OR Sharpness Badge */}
+                              {hasWarning ? (
+                                <span
+                                  className={styles.warningBadge}
+                                  title={hasBlink ? 'Subject blink / eyes closed detected' : 'Low face sharpness / motion blur detected'}
+                                >
+                                  ⚠️ {warningText}
+                                </span>
+                              ) : isSharp ? (
                                 <span className={styles.sharpBadge} title={`Sharpness Score: ${faceData?.sharpnessScore?.toFixed(0)}`}>
                                   🎯 SHARP
                                 </span>
-                              )}
+                              ) : null}
 
                               {/* Top Right: Favorite Star */}
                               <button
