@@ -86,13 +86,152 @@ fn default_opacity() -> f64 { 1.0 }
 fn default_gutter_unit() -> String { "mm".to_string() }
 fn default_bg_color() -> String { "#FFFFFF".to_string() }
 fn default_bg_type() -> String { "solid".to_string() }
+fn default_bg_fit() -> String { "fill".to_string() }
+fn default_shadow_blur() -> f64 { 10.0 }
+fn default_shadow_offset_y() -> f64 { 5.0 }
+fn default_shadow_opacity() -> f64 { 35.0 }
+fn default_shadow_color() -> String { "#000000".to_string() }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+pub fn normalize_project_type(raw: &str, canvas_unit: &str) -> String {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "carousel" | "social_media" | "social" => "carousel".to_string(),
+        "print" | "album" => "print".to_string(),
+        _ => {
+            if canvas_unit.eq_ignore_ascii_case("px") {
+                "carousel".to_string()
+            } else {
+                "print".to_string()
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum CornerRadiusPayload {
     Single(f64),
     Array([f64; 4]),
     List(Vec<f64>),
+}
+
+impl Default for CornerRadiusPayload {
+    fn default() -> Self {
+        CornerRadiusPayload::Single(0.0)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameSlotPayload {
+    pub slot_x: f64,
+    pub slot_y: f64,
+    pub slot_width: f64,
+    pub slot_height: f64,
+    #[serde(default)]
+    pub shape: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SpreadBackgroundImagePayload {
+    pub photo_id: String,
+    pub file_path: String,
+    pub file_name: String,
+    #[serde(default)]
+    pub preview_path: Option<String>,
+    #[serde(default)]
+    pub thumbnail_path: Option<String>,
+    #[serde(default)]
+    pub width: f64,
+    #[serde(default)]
+    pub height: f64,
+    #[serde(default = "default_bg_fit")]
+    pub fit: String,
+    #[serde(default = "default_one_hundred")]
+    pub opacity: f64,
+    #[serde(default)]
+    pub crop_x: f64,
+    #[serde(default)]
+    pub crop_y: f64,
+    #[serde(default = "default_crop_scale")]
+    pub crop_scale: f64,
+    #[serde(default)]
+    pub crop_rotation: f64,
+    #[serde(default)]
+    pub flip_horizontal: Option<bool>,
+    #[serde(default)]
+    pub flip_vertical: Option<bool>,
+    #[serde(default)]
+    pub blur_radius: Option<f64>,
+    #[serde(default)]
+    pub grayscale_amount: Option<f64>,
+    #[serde(default)]
+    pub noise_amount: Option<f64>,
+    #[serde(default)]
+    pub is_missing: Option<bool>,
+    #[serde(default)]
+    pub target: Option<String>,
+}
+
+impl Default for SpreadBackgroundImagePayload {
+    fn default() -> Self {
+        Self {
+            photo_id: String::new(),
+            file_path: String::new(),
+            file_name: String::new(),
+            preview_path: None,
+            thumbnail_path: None,
+            width: 0.0,
+            height: 0.0,
+            fit: default_bg_fit(),
+            opacity: default_one_hundred(),
+            crop_x: 0.0,
+            crop_y: 0.0,
+            crop_scale: default_crop_scale(),
+            crop_rotation: 0.0,
+            flip_horizontal: None,
+            flip_vertical: None,
+            blur_radius: None,
+            grayscale_amount: None,
+            noise_amount: None,
+            is_missing: None,
+            target: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PhotoAiAnalysisRow {
+    pub photo_id: String,
+    pub project_id: String,
+    pub model_version: String,
+    pub source_signature: String,
+    pub face_count: i32,
+    pub face_focus_score: f64,
+    pub largest_face_ratio: f64,
+    pub faces_json: String,
+    pub analyzed_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct LayoutTemplateRow {
+    pub id: String,
+    pub payload: String,
+    pub is_favorite: bool,
+    pub folder_id: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct LayoutTemplateFolderRow {
+    pub id: String,
+    pub name: String,
+    pub created_at: String,
+    pub updated_at: String,
 }
 
 /// Represents an element / photo frame on a spread.
@@ -382,7 +521,36 @@ pub struct Database {
 
 impl Database {
     pub fn expected_version() -> i32 {
-        16
+        30
+    }
+
+    pub fn has_column(conn: &Connection, table: &str, column: &str) -> SqliteResult<bool> {
+        let mut stmt = conn.prepare(&format!("PRAGMA table_info({table})"))?;
+        let mut rows = stmt.query([])?;
+        while let Some(row) = rows.next()? {
+            let name: String = row.get(1)?;
+            if name.eq_ignore_ascii_case(column) {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
+    pub fn add_column_if_missing(
+        conn: &Connection,
+        table: &str,
+        column: &str,
+        definition: &str,
+    ) -> SqliteResult<bool> {
+        if !Self::has_column(conn, table, column)? {
+            conn.execute(
+                &format!("ALTER TABLE {table} ADD COLUMN {column} {definition}"),
+                [],
+            )?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 
     /// Initialize the database at the given path.
@@ -498,6 +666,48 @@ impl Database {
         }
         if current_version < 16 {
             Self::migrate_v16(conn)?;
+        }
+        if current_version < 17 {
+            Self::migrate_v17(conn)?;
+        }
+        if current_version < 18 {
+            Self::migrate_v18(conn)?;
+        }
+        if current_version < 19 {
+            Self::migrate_v19(conn)?;
+        }
+        if current_version < 20 {
+            Self::migrate_v20(conn)?;
+        }
+        if current_version < 21 {
+            Self::migrate_v21(conn)?;
+        }
+        if current_version < 22 {
+            Self::migrate_v22(conn)?;
+        }
+        if current_version < 23 {
+            Self::migrate_v23(conn)?;
+        }
+        if current_version < 24 {
+            Self::migrate_v24(conn)?;
+        }
+        if current_version < 25 {
+            Self::migrate_v25(conn)?;
+        }
+        if current_version < 26 {
+            Self::migrate_v26(conn)?;
+        }
+        if current_version < 27 {
+            Self::migrate_v27(conn)?;
+        }
+        if current_version < 28 {
+            Self::migrate_v28(conn)?;
+        }
+        if current_version < 29 {
+            Self::migrate_v29(conn)?;
+        }
+        if current_version < 30 {
+            Self::migrate_v30(conn)?;
         }
 
         Ok(())
@@ -1056,6 +1266,401 @@ impl Database {
             }
         }
         log::info!("Applied database migration v16");
+        Ok(())
+    }
+
+    /// Schema version 17: Per-Spread & Per-Slide Custom Dimensions
+    fn migrate_v17(conn: &Connection) -> SqliteResult<()> {
+        conn.execute_batch("BEGIN;")?;
+        let result = (|| -> SqliteResult<()> {
+            Self::add_column_if_missing(conn, "album_spreads", "page_width", "REAL")?;
+            Self::add_column_if_missing(conn, "album_spreads", "page_height", "REAL")?;
+            Self::add_column_if_missing(conn, "album_spreads", "page_unit", "TEXT")?;
+            conn.execute(
+                "UPDATE album_spreads SET
+                    page_width = COALESCE(page_width, (SELECT canvas_width FROM projects WHERE projects.id = album_spreads.project_id)),
+                    page_height = COALESCE(page_height, (SELECT canvas_height FROM projects WHERE projects.id = album_spreads.project_id)),
+                    page_unit = COALESCE(page_unit, (SELECT canvas_unit FROM projects WHERE projects.id = album_spreads.project_id))",
+                [],
+            )?;
+
+            Self::add_column_if_missing(conn, "carousel_slides", "page_width", "REAL")?;
+            Self::add_column_if_missing(conn, "carousel_slides", "page_height", "REAL")?;
+            Self::add_column_if_missing(conn, "carousel_slides", "page_unit", "TEXT")?;
+            conn.execute(
+                "UPDATE carousel_slides SET
+                    page_width = COALESCE(page_width, CAST(width_px AS REAL)),
+                    page_height = COALESCE(page_height, CAST(height_px AS REAL)),
+                    page_unit = COALESCE(page_unit, 'px')",
+                [],
+            )?;
+
+            conn.execute("INSERT INTO schema_version (version) VALUES (17)", [])?;
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => conn.execute_batch("COMMIT;")?,
+            Err(error) => {
+                let _ = conn.execute_batch("ROLLBACK;");
+                return Err(error);
+            }
+        }
+        log::info!("Applied database migration v17");
+        Ok(())
+    }
+
+    /// Schema version 18: Flip, Blur, and Carousel Parity
+    fn migrate_v18(conn: &Connection) -> SqliteResult<()> {
+        conn.execute_batch("BEGIN;")?;
+        let result = (|| -> SqliteResult<()> {
+            Self::add_column_if_missing(conn, "spread_elements", "flip_horizontal", "INTEGER NOT NULL DEFAULT 0")?;
+            Self::add_column_if_missing(conn, "spread_elements", "flip_vertical", "INTEGER NOT NULL DEFAULT 0")?;
+            Self::add_column_if_missing(conn, "spread_elements", "blur_radius", "REAL NOT NULL DEFAULT 0.0")?;
+
+            Self::add_column_if_missing(conn, "carousel_frames", "flip_horizontal", "INTEGER NOT NULL DEFAULT 0")?;
+            Self::add_column_if_missing(conn, "carousel_frames", "flip_vertical", "INTEGER NOT NULL DEFAULT 0")?;
+            Self::add_column_if_missing(conn, "carousel_frames", "blur_radius", "REAL NOT NULL DEFAULT 0.0")?;
+
+            Self::add_column_if_missing(conn, "carousel_frames", "element_type", "TEXT NOT NULL DEFAULT 'photo'")?;
+            Self::add_column_if_missing(conn, "carousel_frames", "group_id", "TEXT")?;
+            Self::add_column_if_missing(conn, "carousel_frames", "text_payload", "TEXT")?;
+            Self::add_column_if_missing(conn, "carousel_frames", "original_width", "REAL NOT NULL DEFAULT 1080.0")?;
+            Self::add_column_if_missing(conn, "carousel_frames", "original_height", "REAL NOT NULL DEFAULT 1080.0")?;
+
+            conn.execute("INSERT INTO schema_version (version) VALUES (18)", [])?;
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => conn.execute_batch("COMMIT;")?,
+            Err(error) => {
+                let _ = conn.execute_batch("ROLLBACK;");
+                return Err(error);
+            }
+        }
+        log::info!("Applied database migration v18");
+        Ok(())
+    }
+
+    /// Schema version 19: Grayscale Amount
+    fn migrate_v19(conn: &Connection) -> SqliteResult<()> {
+        conn.execute_batch("BEGIN;")?;
+        let result = (|| -> SqliteResult<()> {
+            Self::add_column_if_missing(conn, "spread_elements", "grayscale_amount", "REAL NOT NULL DEFAULT 0.0")?;
+            Self::add_column_if_missing(conn, "carousel_frames", "grayscale_amount", "REAL NOT NULL DEFAULT 0.0")?;
+            conn.execute("INSERT INTO schema_version (version) VALUES (19)", [])?;
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => conn.execute_batch("COMMIT;")?,
+            Err(error) => {
+                let _ = conn.execute_batch("ROLLBACK;");
+                return Err(error);
+            }
+        }
+        log::info!("Applied database migration v19");
+        Ok(())
+    }
+
+    /// Schema version 20: Adaptive Layout Exclusion
+    fn migrate_v20(conn: &Connection) -> SqliteResult<()> {
+        conn.execute_batch("BEGIN;")?;
+        let result = (|| -> SqliteResult<()> {
+            Self::add_column_if_missing(conn, "spread_elements", "exclude_from_adaptive_layout", "INTEGER NOT NULL DEFAULT 0")?;
+            Self::add_column_if_missing(conn, "carousel_frames", "exclude_from_adaptive_layout", "INTEGER NOT NULL DEFAULT 0")?;
+            conn.execute("INSERT INTO schema_version (version) VALUES (20)", [])?;
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => conn.execute_batch("COMMIT;")?,
+            Err(error) => {
+                let _ = conn.execute_batch("ROLLBACK;");
+                return Err(error);
+            }
+        }
+        log::info!("Applied database migration v20");
+        Ok(())
+    }
+
+    /// Schema version 21: Photo AI Analysis Table
+    fn migrate_v21(conn: &Connection) -> SqliteResult<()> {
+        conn.execute_batch("BEGIN;")?;
+        let result = (|| -> SqliteResult<()> {
+            conn.execute_batch(
+                "CREATE TABLE IF NOT EXISTS photo_ai_analysis (
+                    photo_id TEXT PRIMARY KEY,
+                    project_id TEXT NOT NULL,
+                    model_version TEXT NOT NULL DEFAULT '',
+                    source_signature TEXT NOT NULL DEFAULT '',
+                    face_count INTEGER NOT NULL DEFAULT 0,
+                    face_focus_score REAL NOT NULL DEFAULT 0.0,
+                    largest_face_ratio REAL NOT NULL DEFAULT 0.0,
+                    faces_json TEXT NOT NULL DEFAULT '[]',
+                    analyzed_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    FOREIGN KEY(photo_id) REFERENCES photos(id) ON DELETE CASCADE,
+                    FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+                );
+                CREATE INDEX IF NOT EXISTS idx_photo_ai_analysis_project ON photo_ai_analysis(project_id);"
+            )?;
+            conn.execute("INSERT INTO schema_version (version) VALUES (21)", [])?;
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => conn.execute_batch("COMMIT;")?,
+            Err(error) => {
+                let _ = conn.execute_batch("ROLLBACK;");
+                return Err(error);
+            }
+        }
+        log::info!("Applied database migration v21");
+        Ok(())
+    }
+
+    /// Schema version 22: Layout Templates Table
+    fn migrate_v22(conn: &Connection) -> SqliteResult<()> {
+        conn.execute_batch("BEGIN;")?;
+        let result = (|| -> SqliteResult<()> {
+            conn.execute_batch(
+                "CREATE TABLE IF NOT EXISTS layout_templates (
+                    id TEXT PRIMARY KEY,
+                    payload TEXT NOT NULL,
+                    is_favorite INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+                );"
+            )?;
+            conn.execute("INSERT INTO schema_version (version) VALUES (22)", [])?;
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => conn.execute_batch("COMMIT;")?,
+            Err(error) => {
+                let _ = conn.execute_batch("ROLLBACK;");
+                return Err(error);
+            }
+        }
+        log::info!("Applied database migration v22");
+        Ok(())
+    }
+
+    /// Schema version 23: Layout Template Folders Table
+    fn migrate_v23(conn: &Connection) -> SqliteResult<()> {
+        conn.execute_batch("BEGIN;")?;
+        let result = (|| -> SqliteResult<()> {
+            conn.execute_batch(
+                "CREATE TABLE IF NOT EXISTS layout_template_folders (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL COLLATE NOCASE UNIQUE,
+                    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+                );"
+            )?;
+            Self::add_column_if_missing(conn, "layout_templates", "folder_id", "TEXT REFERENCES layout_template_folders(id) ON DELETE SET NULL")?;
+            conn.execute("CREATE INDEX IF NOT EXISTS layout_templates_folder_idx ON layout_templates(folder_id);", [])?;
+            conn.execute("INSERT INTO schema_version (version) VALUES (23)", [])?;
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => conn.execute_batch("COMMIT;")?,
+            Err(error) => {
+                let _ = conn.execute_batch("ROLLBACK;");
+                return Err(error);
+            }
+        }
+        log::info!("Applied database migration v23");
+        Ok(())
+    }
+
+    /// Schema version 24: Spread & Slide Background Image
+    fn migrate_v24(conn: &Connection) -> SqliteResult<()> {
+        conn.execute_batch("BEGIN;")?;
+        let result = (|| -> SqliteResult<()> {
+            Self::add_column_if_missing(conn, "album_spreads", "background_image", "TEXT")?;
+            Self::add_column_if_missing(conn, "carousel_slides", "background_image", "TEXT")?;
+            conn.execute("INSERT INTO schema_version (version) VALUES (24)", [])?;
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => conn.execute_batch("COMMIT;")?,
+            Err(error) => {
+                let _ = conn.execute_batch("ROLLBACK;");
+                return Err(error);
+            }
+        }
+        log::info!("Applied database migration v24");
+        Ok(())
+    }
+
+    /// Schema version 25: Element Drop Shadow Properties
+    fn migrate_v25(conn: &Connection) -> SqliteResult<()> {
+        conn.execute_batch("BEGIN;")?;
+        let result = (|| -> SqliteResult<()> {
+            Self::add_column_if_missing(conn, "spread_elements", "shadow_enabled", "INTEGER NOT NULL DEFAULT 0")?;
+            Self::add_column_if_missing(conn, "spread_elements", "shadow_blur", "REAL NOT NULL DEFAULT 10.0")?;
+            Self::add_column_if_missing(conn, "spread_elements", "shadow_offset_x", "REAL NOT NULL DEFAULT 0.0")?;
+            Self::add_column_if_missing(conn, "spread_elements", "shadow_offset_y", "REAL NOT NULL DEFAULT 5.0")?;
+            Self::add_column_if_missing(conn, "spread_elements", "shadow_opacity", "REAL NOT NULL DEFAULT 35.0")?;
+            Self::add_column_if_missing(conn, "spread_elements", "shadow_color", "TEXT NOT NULL DEFAULT '#000000'")?;
+
+            Self::add_column_if_missing(conn, "carousel_frames", "shadow_enabled", "INTEGER NOT NULL DEFAULT 0")?;
+            Self::add_column_if_missing(conn, "carousel_frames", "shadow_blur", "REAL NOT NULL DEFAULT 10.0")?;
+            Self::add_column_if_missing(conn, "carousel_frames", "shadow_offset_x", "REAL NOT NULL DEFAULT 0.0")?;
+            Self::add_column_if_missing(conn, "carousel_frames", "shadow_offset_y", "REAL NOT NULL DEFAULT 5.0")?;
+            Self::add_column_if_missing(conn, "carousel_frames", "shadow_opacity", "REAL NOT NULL DEFAULT 35.0")?;
+            Self::add_column_if_missing(conn, "carousel_frames", "shadow_color", "TEXT NOT NULL DEFAULT '#000000'")?;
+
+            conn.execute("INSERT INTO schema_version (version) VALUES (25)", [])?;
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => conn.execute_batch("COMMIT;")?,
+            Err(error) => {
+                let _ = conn.execute_batch("ROLLBACK;");
+                return Err(error);
+            }
+        }
+        log::info!("Applied database migration v25");
+        Ok(())
+    }
+
+    /// Schema version 26: Grain Noise & Frame Asset Properties
+    fn migrate_v26(conn: &Connection) -> SqliteResult<()> {
+        conn.execute_batch("BEGIN;")?;
+        let result = (|| -> SqliteResult<()> {
+            Self::add_column_if_missing(conn, "spread_elements", "noise_amount", "REAL NOT NULL DEFAULT 0.0")?;
+            Self::add_column_if_missing(conn, "spread_elements", "frame_asset_id", "TEXT")?;
+            Self::add_column_if_missing(conn, "spread_elements", "frame_asset_url", "TEXT")?;
+            Self::add_column_if_missing(conn, "spread_elements", "frame_asset_local_path", "TEXT")?;
+            Self::add_column_if_missing(conn, "spread_elements", "frame_asset_title", "TEXT")?;
+            Self::add_column_if_missing(conn, "spread_elements", "frame_asset_slot", "TEXT")?;
+            Self::add_column_if_missing(conn, "spread_elements", "frame_asset_is_pro", "INTEGER DEFAULT 0")?;
+
+            Self::add_column_if_missing(conn, "carousel_frames", "noise_amount", "REAL NOT NULL DEFAULT 0.0")?;
+            Self::add_column_if_missing(conn, "carousel_frames", "frame_asset_id", "TEXT")?;
+            Self::add_column_if_missing(conn, "carousel_frames", "frame_asset_url", "TEXT")?;
+            Self::add_column_if_missing(conn, "carousel_frames", "frame_asset_local_path", "TEXT")?;
+            Self::add_column_if_missing(conn, "carousel_frames", "frame_asset_title", "TEXT")?;
+            Self::add_column_if_missing(conn, "carousel_frames", "frame_asset_slot", "TEXT")?;
+            Self::add_column_if_missing(conn, "carousel_frames", "frame_asset_is_pro", "INTEGER DEFAULT 0")?;
+
+            conn.execute("INSERT INTO schema_version (version) VALUES (26)", [])?;
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => conn.execute_batch("COMMIT;")?,
+            Err(error) => {
+                let _ = conn.execute_batch("ROLLBACK;");
+                return Err(error);
+            }
+        }
+        log::info!("Applied database migration v26");
+        Ok(())
+    }
+
+    /// Schema version 27: Spread & Slide Borders
+    fn migrate_v27(conn: &Connection) -> SqliteResult<()> {
+        conn.execute_batch("BEGIN;")?;
+        let result = (|| -> SqliteResult<()> {
+            Self::add_column_if_missing(conn, "album_spreads", "border_enabled", "INTEGER")?;
+            Self::add_column_if_missing(conn, "album_spreads", "border_width", "REAL")?;
+            Self::add_column_if_missing(conn, "album_spreads", "border_color", "TEXT")?;
+            Self::add_column_if_missing(conn, "album_spreads", "left_page_border_enabled", "INTEGER")?;
+            Self::add_column_if_missing(conn, "album_spreads", "left_page_border_width", "REAL")?;
+            Self::add_column_if_missing(conn, "album_spreads", "left_page_border_color", "TEXT")?;
+            Self::add_column_if_missing(conn, "album_spreads", "right_page_border_enabled", "INTEGER")?;
+            Self::add_column_if_missing(conn, "album_spreads", "right_page_border_width", "REAL")?;
+            Self::add_column_if_missing(conn, "album_spreads", "right_page_border_color", "TEXT")?;
+
+            Self::add_column_if_missing(conn, "carousel_slides", "border_enabled", "INTEGER")?;
+            Self::add_column_if_missing(conn, "carousel_slides", "border_width", "REAL")?;
+            Self::add_column_if_missing(conn, "carousel_slides", "border_color", "TEXT")?;
+
+            conn.execute("INSERT INTO schema_version (version) VALUES (27)", [])?;
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => conn.execute_batch("COMMIT;")?,
+            Err(error) => {
+                let _ = conn.execute_batch("ROLLBACK;");
+                return Err(error);
+            }
+        }
+        log::info!("Applied database migration v27");
+        Ok(())
+    }
+
+    /// Schema version 28: Clean No-Op Marker (OAuth Anti-Feature Excluded)
+    fn migrate_v28(conn: &Connection) -> SqliteResult<()> {
+        conn.execute_batch("BEGIN;")?;
+        let result = (|| -> SqliteResult<()> {
+            conn.execute("INSERT INTO schema_version (version) VALUES (28)", [])?;
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => conn.execute_batch("COMMIT;")?,
+            Err(error) => {
+                let _ = conn.execute_batch("ROLLBACK;");
+                return Err(error);
+            }
+        }
+        log::info!("Applied database migration v28 (no-op marker)");
+        Ok(())
+    }
+
+    /// Schema version 29: Clean No-Op Marker (DRM Anti-Feature Excluded)
+    fn migrate_v29(conn: &Connection) -> SqliteResult<()> {
+        conn.execute_batch("BEGIN;")?;
+        let result = (|| -> SqliteResult<()> {
+            conn.execute("INSERT INTO schema_version (version) VALUES (29)", [])?;
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => conn.execute_batch("COMMIT;")?,
+            Err(error) => {
+                let _ = conn.execute_batch("ROLLBACK;");
+                return Err(error);
+            }
+        }
+        log::info!("Applied database migration v29 (no-op marker)");
+        Ok(())
+    }
+
+    /// Schema version 30: Background Noise for Spreads, Slides, and Projects
+    fn migrate_v30(conn: &Connection) -> SqliteResult<()> {
+        conn.execute_batch("BEGIN;")?;
+        let result = (|| -> SqliteResult<()> {
+            Self::add_column_if_missing(conn, "album_spreads", "background_color_noise", "REAL DEFAULT 0.0")?;
+            Self::add_column_if_missing(conn, "album_spreads", "left_page_background_color_noise", "REAL")?;
+            Self::add_column_if_missing(conn, "album_spreads", "right_page_background_color_noise", "REAL")?;
+
+            Self::add_column_if_missing(conn, "carousel_slides", "background_color_noise", "REAL DEFAULT 0.0")?;
+
+            Self::add_column_if_missing(conn, "projects", "background_color_noise", "REAL NOT NULL DEFAULT 0.0")?;
+
+            conn.execute("INSERT INTO schema_version (version) VALUES (30)", [])?;
+            Ok(())
+        })();
+
+        match result {
+            Ok(()) => conn.execute_batch("COMMIT;")?,
+            Err(error) => {
+                let _ = conn.execute_batch("ROLLBACK;");
+                return Err(error);
+            }
+        }
+        log::info!("Applied database migration v30");
         Ok(())
     }
 
@@ -3149,8 +3754,8 @@ mod tests {
         let _ = std::fs::remove_dir_all(&temp_dir);
         let db = Database::init(temp_dir.join("test.db")).expect("Failed to init DB");
 
-        assert_eq!(db.get_schema_version().unwrap(), 16);
-        assert_eq!(Database::expected_version(), 16);
+        assert_eq!(db.get_schema_version().unwrap(), 30);
+        assert_eq!(Database::expected_version(), 30);
 
         // Verify tables exist
         let conn = db.conn.lock().unwrap();
@@ -3165,6 +3770,11 @@ mod tests {
         assert!(tables.contains(&"carousels".to_string()));
         assert!(tables.contains(&"carousel_slides".to_string()));
         assert!(tables.contains(&"carousel_frames".to_string()));
+        assert!(tables.contains(&"photo_ai_analysis".to_string()));
+        assert!(tables.contains(&"layout_templates".to_string()));
+        assert!(tables.contains(&"layout_template_folders".to_string()));
+        assert!(!tables.contains(&"google_session".to_string()));
+        assert!(!tables.contains(&"device_access".to_string()));
 
         // Verify project_type column exists
         let project_cols: Vec<String> = conn
@@ -3175,6 +3785,7 @@ mod tests {
             .filter_map(|r| r.ok())
             .collect();
         assert!(project_cols.contains(&"project_type".to_string()));
+        assert!(project_cols.contains(&"background_color_noise".to_string()));
 
         drop(conn);
         let _ = std::fs::remove_dir_all(&temp_dir);
