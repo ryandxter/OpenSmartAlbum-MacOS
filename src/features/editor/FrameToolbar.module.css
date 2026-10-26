@@ -1,26 +1,25 @@
 .verticalDockContainer {
   position: absolute;
-  top: 50%;
-  left: 14px;
-  transform: translateY(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 5px;
-  background-color: rgba(15, 23, 42, 0.94);
+  background-color: rgba(30, 30, 34, 0.92);
   backdrop-filter: blur(12px);
-  border: 1px solid var(--color-border);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border, #27272a);
   padding: 6px 4px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md, 6px);
   box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.6);
   z-index: 30;
   user-select: none;
-  animation: slideRight 0.15s ease-out;
+  animation: fadeIn 0.15s ease-out;
+  transition: left 0.12s ease-out, top 0.12s ease-out;
 }
 
-@keyframes slideRight {
-  from { opacity: 0; transform: translate(-6px, -50%); }
-  to { opacity: 1; transform: translate(0, -50%); }
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .toolBtn {
@@ -30,51 +29,51 @@
   width: 30px;
   height: 30px;
   padding: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-sm, 4px);
   background-color: transparent;
   border: 1px solid transparent;
-  color: var(--color-text-secondary);
+  color: var(--color-text-secondary, #a1a1aa);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all var(--transition-fast, 0.15s ease);
 }
 
 .toolBtn:hover {
-  background-color: var(--color-surface-hover);
-  color: var(--color-text-primary);
+  background-color: var(--color-surface-hover, rgba(255, 255, 255, 0.08));
+  color: var(--color-text-primary, #ffffff);
 }
 
 .toolBtn:focus-visible {
-  outline: 2px solid rgba(56, 189, 248, 0.85);
+  outline: 2px solid var(--color-accent, #e4e4e7);
   outline-offset: 2px;
 }
 
 .toolBtnActive {
-  background-color: rgba(56, 189, 248, 0.18) !important;
-  color: var(--color-accent) !important;
-  border-color: var(--color-accent) !important;
+  background-color: var(--color-surface-active, rgba(255, 255, 255, 0.14)) !important;
+  color: var(--color-accent-hover, #ffffff) !important;
+  border-color: var(--color-accent-border, rgba(255, 255, 255, 0.25)) !important;
 }
 
 .toolBtnCropActive {
   background-color: rgba(245, 158, 11, 0.18) !important;
-  color: var(--color-warning) !important;
-  border-color: var(--color-warning) !important;
+  color: var(--color-warning, #f59e0b) !important;
+  border-color: var(--color-warning, #f59e0b) !important;
 }
 
 .toolBtnCropDone {
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
-  color: #ffffff !important;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+  background: var(--color-accent, #e4e4e7) !important;
+  color: var(--color-text-inverse, #18181b) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .toolBtnCropDone:hover {
-  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%) !important;
+  background: #ffffff !important;
   transform: scale(1.06);
 }
 
 .zoomPercentPill {
   font-size: 9px;
   font-weight: 700;
-  color: #94a3b8;
+  color: var(--color-text-muted, #71717a);
   padding: 1px 0;
   text-align: center;
   font-variant-numeric: tabular-nums;
@@ -84,29 +83,29 @@
 
 .toolBtnDanger:hover {
   background-color: rgba(239, 68, 68, 0.2) !important;
-  color: var(--color-danger) !important;
+  color: var(--color-danger, #ef4444) !important;
 }
 
 .divider {
   width: 18px;
   height: 1px;
-  background-color: var(--color-border);
+  background-color: var(--color-border, #27272a);
   margin: 2px 0;
 }
 
 .toolBtnCropRotate {
-  color: #38bdf8 !important;
+  color: var(--color-text-secondary, #a1a1aa);
 }
 
 .toolBtnCropRotate:hover {
-  background-color: rgba(56, 189, 248, 0.18) !important;
-  color: #7dd3fc !important;
-  border-color: rgba(56, 189, 248, 0.45) !important;
+  background-color: var(--color-surface-hover, rgba(255, 255, 255, 0.08));
+  color: var(--color-text-primary, #ffffff);
+  border-color: var(--color-border, #27272a);
   transform: scale(1.06);
 }
 
 .toolBtnCropReset {
-  color: var(--color-text-secondary);
+  color: var(--color-text-secondary, #a1a1aa);
 }
 
 .toolBtnCropReset:hover {

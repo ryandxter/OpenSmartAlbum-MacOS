@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import {
   Check,
   ZoomIn,
@@ -12,15 +13,22 @@ import {
   Lock,
   Unlock,
   Trash2,
+  Unlink,
 } from 'lucide-react';
 import { useEditorStore } from '../../stores/editorStore';
 import { useAlbumStore } from '../../stores/albumStore';
 import { getAllAlbumSpreads } from '../../domain/album';
 import { zoomCropAtPoint, PhotoFrameElement } from '../../domain/editor';
 import { isMac } from '../../utils/platform';
+import { computeContextDockPosition, DockScreenRect } from './dockPositioning';
 import styles from './FrameToolbar.module.css';
 
+export { computeContextDockPosition, type DockScreenRect };
+
 export function FrameToolbar() {
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const [dockPos, setDockPos] = useState<{ x: number; y: number } | null>(null);
+
   const { currentAlbum, activeSpreadId } = useAlbumStore();
   const {
     selectedFrameIds,
@@ -36,21 +44,19 @@ export function FrameToolbar() {
     groupSelectedFrames,
     ungroupSelectedFrames,
     updateFrameGeometry,
+    batchUpdateFrames,
     updateCrop,
   } = useEditorStore();
 
-  if (!currentAlbum || selectedFrameIds.length === 0) return null;
-
-  const allSpreads = getAllAlbumSpreads(currentAlbum);
+  const allSpreads = currentAlbum ? getAllAlbumSpreads(currentAlbum) : [];
   const activeSpread = allSpreads.find((s) => s.id === activeSpreadId) || allSpreads[0];
-  if (!activeSpread) return null;
 
   const primaryFrameId = selectedFrameIds[0];
-  const foundFrame = (activeSpread.elements || []).find((f) => f.id === primaryFrameId);
-  if (!foundFrame || foundFrame.type !== 'photo') return null;
-  const frame = foundFrame as PhotoFrameElement;
+  const foundFrame = (activeSpread?.elements || []).find((f) => f.id === primaryFrameId);
+  const isPhoto = foundFrame?.type === 'photo';
+  const frame = isPhoto ? (foundFrame as PhotoFrameElement) : null;
 
-  const selectedElements = (activeSpread.elements || []).filter((f) =>
+  const selectedElements = (activeSpread?.elements || []).filter((f) =>
     selectedFrameIds.includes(f.id)
   );
   const distinctGroupIds = new Set(selectedElements.map((f) => f.groupId).filter(Boolean));
@@ -59,7 +65,68 @@ export function FrameToolbar() {
   const canUngroup = distinctGroupIds.size > 0;
   const isGroupActive = distinctGroupIds.size === 1 && !hasUngrouped;
 
-  const isCrop = editingCropFrameId === frame.id;
+  const hasDecorativeFrame = selectedElements.some(
+    (f) => f.type === 'photo' && Boolean((f as PhotoFrameElement).frameAssetId)
+  );
+
+  const isCrop = Boolean(frame && editingCropFrameId === frame.id);
+
+  // Dynamic Screen-Space Dock Positioning
+  const updatePosition = () => {
+    if (!toolbarRef.current || !primaryFrameId) return;
+    const parent = toolbarRef.current.parentElement;
+    if (!parent) return;
+
+    const parentRect = parent.getBoundingClientRect();
+    const stage = typeof window !== 'undefined' ? (window as any).Konva?.stages?.[0] : null;
+
+    if (stage) {
+      const node = stage.findOne('#' + primaryFrameId);
+      if (node) {
+        const clientRect = node.getClientRect();
+        const stageContainerRect = stage.container().getBoundingClientRect();
+        const frameScreenRect: DockScreenRect = {
+          left: stageContainerRect.left + clientRect.x - parentRect.left,
+          right: stageContainerRect.left + clientRect.x + clientRect.width - parentRect.left,
+          top: stageContainerRect.top + clientRect.y - parentRect.top,
+          bottom: stageContainerRect.top + clientRect.y + clientRect.height - parentRect.top,
+        };
+
+        const dockW = toolbarRef.current.offsetWidth || 38;
+        const dockH = toolbarRef.current.offsetHeight || 280;
+        const pos = computeContextDockPosition(
+          frameScreenRect,
+          parentRect.width,
+          parentRect.height,
+          dockW,
+          dockH
+        );
+        setDockPos(pos);
+        return;
+      }
+    }
+
+    // Fallback if node not found in stage
+    setDockPos({ x: 14, y: Math.max(14, Math.round(parentRect.height / 2 - 140)) });
+  };
+
+  useLayoutEffect(() => {
+    updatePosition();
+  });
+
+  useEffect(() => {
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [primaryFrameId, selectedFrameIds, frame?.x, frame?.y, frame?.width, frame?.height, frame?.cropScale, isCrop]);
+
+  if (!currentAlbum || selectedFrameIds.length === 0 || !activeSpread || !foundFrame || !frame) {
+    return null;
+  }
+
   const updateCropZoom = (delta: number) => {
     const nextCrop = zoomCropAtPoint(
       frame,
@@ -76,7 +143,16 @@ export function FrameToolbar() {
   };
 
   return (
-    <div className={styles.verticalDockContainer}>
+    <div
+      ref={toolbarRef}
+      className={styles.verticalDockContainer}
+      style={{
+        left: dockPos ? `${dockPos.x}px` : undefined,
+        top: dockPos ? `${dockPos.y}px` : undefined,
+      }}
+      role="toolbar"
+      aria-label="Frame Context Dock"
+    >
       {/* When in Crop Mode: Clean Pure Icon Dock */}
       {isCrop ? (
         <>
@@ -165,7 +241,11 @@ export function FrameToolbar() {
                 ? resetSelectedRatio(activeSpread.id)
                 : resetToOriginalRatio(activeSpread.id, frame.id)
             }
-            title={selectedFrameIds.length > 1 ? `Reset ${selectedFrameIds.length} Frames to Original Aspect Ratio` : 'Reset to Original Aspect Ratio (3:2 / 4:3)'}
+            title={
+              selectedFrameIds.length > 1
+                ? `Reset ${selectedFrameIds.length} Frames to Original Aspect Ratio`
+                : 'Reset to Original Aspect Ratio (3:2 / 4:3)'
+            }
           >
             <Ratio size={15} strokeWidth={1.75} />
           </button>
@@ -175,7 +255,11 @@ export function FrameToolbar() {
             type="button"
             className={styles.toolBtn}
             onClick={() => rotateSelectedFrames(activeSpread.id, 'cw')}
-            title={selectedFrameIds.length > 1 ? `Rotate ${selectedFrameIds.length} Frames 90° (R)` : 'Rotate 90° (R)'}
+            title={
+              selectedFrameIds.length > 1
+                ? `Rotate ${selectedFrameIds.length} Frames 90° (R)`
+                : 'Rotate 90° (R)'
+            }
           >
             <RotateCw size={15} strokeWidth={1.75} />
           </button>
@@ -223,10 +307,40 @@ export function FrameToolbar() {
                   ? `Ungroup Selected Frames (${isMac() ? '⌘⇧G' : 'Ctrl+Shift+G'})`
                   : `Group ${selectedFrameIds.length} Selected Frames (${isMac() ? '⌘G' : 'Ctrl+G'})`
               }
-              aria-label={isGroupActive ? 'Ungroup selected frames' : `Group ${selectedFrameIds.length} selected frames`}
+              aria-label={
+                isGroupActive ? 'Ungroup selected frames' : `Group ${selectedFrameIds.length} selected frames`
+              }
               aria-pressed={isGroupActive}
             >
               <Group size={15} strokeWidth={1.75} />
+            </button>
+          )}
+
+          {/* Contextual: Detach Decorative Frame Overlay */}
+          {hasDecorativeFrame && (
+            <button
+              type="button"
+              className={styles.toolBtn}
+              onClick={() => {
+                batchUpdateFrames(
+                  activeSpread.id,
+                  selectedElements
+                    .filter((el) => el.type === 'photo' && Boolean((el as PhotoFrameElement).frameAssetId))
+                    .map((el) => ({
+                      id: el.id,
+                      geometry: {
+                        frameAssetId: undefined,
+                        frameAssetUrl: undefined,
+                        frameAssetLocalPath: undefined,
+                        frameAssetTitle: undefined,
+                        frameAssetSlot: undefined,
+                      } as Partial<PhotoFrameElement>,
+                    }))
+                );
+              }}
+              title="Detach Decorative Frame"
+            >
+              <Unlink size={15} strokeWidth={1.75} />
             </button>
           )}
 
@@ -258,7 +372,7 @@ export function FrameToolbar() {
 
           <div className={styles.divider} />
 
-          {/* 5. Delete Frame */}
+          {/* Delete Frame */}
           <button
             type="button"
             className={`${styles.toolBtn} ${styles.toolBtnDanger}`}
