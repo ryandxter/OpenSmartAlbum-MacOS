@@ -1150,10 +1150,8 @@ mod tests {
             .export_project_package("source", zip.to_str().unwrap())
             .is_err());
         let destination = root.join("extracted");
-        zip::ZipArchive::new(File::open(&zip).unwrap())
-            .unwrap()
-            .extract(&destination)
-            .unwrap();
+        let mut archive = zip::ZipArchive::new(File::open(&zip).unwrap()).unwrap();
+        safe_extract_zip(&mut archive, &destination).unwrap();
         let project_file = destination.join("project.afsn");
         let opened = db
             .import_project_package(project_file.to_str().unwrap())
@@ -1446,6 +1444,310 @@ mod tests {
         drop(archive);
         drop(db);
         drop(db2);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn test_v1_4_14_album_and_social_media_afsn_bidirectional_compat() {
+        let root = std::env::temp_dir().join(format!("afsn-compat-test-{}", uuid::Uuid::new_v4()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+
+        let db = Database::init(root.join("compat.db")).unwrap();
+        let photo_file = root.join("photo.jpg");
+        fs::write(&photo_file, b"sample image bytes for compat").unwrap();
+
+        // 1. Synthetic v1.4.14 .afsn with project_type: "album"
+        let album_afsn_content = serde_json::json!({
+            "version": 1,
+            "project": {
+                "id": "proj-album-v1414",
+                "name": "Legacy Album",
+                "canvasWidth": 30.0,
+                "canvasHeight": 20.0,
+                "canvasUnit": "cm",
+                "canvasDpi": 300,
+                "spacingValue": 0.5,
+                "spacingUnit": "cm",
+                "marginEnabled": true,
+                "marginValue": 1.0,
+                "marginUnit": "cm",
+                "borderEnabled": false,
+                "borderWidth": 0.0,
+                "borderUnit": "mm",
+                "borderColor": "#000000",
+                "backgroundType": "color",
+                "backgroundColor": "#FFFFFF",
+                "projectType": "album",
+                "createdAt": "2026-10-26T12:00:00Z",
+                "updatedAt": "2026-10-26T12:00:00Z"
+            },
+            "photos": [
+                {
+                    "id": "photo-1",
+                    "projectId": "proj-album-v1414",
+                    "filePath": "photo.jpg",
+                    "fileName": "photo.jpg",
+                    "fileSize": 30,
+                    "width": 1000,
+                    "height": 1000,
+                    "format": "jpg",
+                    "isFavorite": false,
+                    "usedCount": 1,
+                    "isMissing": false,
+                    "createdAt": "2026-10-26T12:00:00Z",
+                    "updatedAt": "2026-10-26T12:00:00Z"
+                }
+            ],
+            "folders": [],
+            "folderMembers": [],
+            "album": {
+                "id": "album-proj-album-v1414",
+                "projectId": "proj-album-v1414",
+                "coverSpread": {
+                    "id": "cover-1",
+                    "spreadIndex": 0,
+                    "type": "cover",
+                    "name": "Cover",
+                    "elements": []
+                },
+                "spreads": [
+                    {
+                        "id": "spread-1",
+                        "spreadIndex": 1,
+                        "type": "spread",
+                        "name": "Spread 1",
+                        "elements": [
+                            {
+                                "id": "elem-1",
+                                "type": "photo",
+                                "photoId": "photo-1",
+                                "filePath": "photo.jpg",
+                                "fileName": "photo.jpg",
+                                "x": 10.0,
+                                "y": 10.0,
+                                "width": 100.0,
+                                "height": 100.0,
+                                "rotation": 0.0,
+                                "flipHorizontal": true,
+                                "blurRadius": 4.5
+                            }
+                        ]
+                    }
+                ],
+                "totalSpreads": 1,
+                "totalPages": 2
+            }
+        });
+
+        let album_path = root.join("album_v1414.afsn");
+        fs::write(&album_path, serde_json::to_string_pretty(&album_afsn_content).unwrap()).unwrap();
+
+        let imported_album = db.import_project_package(album_path.to_str().unwrap()).unwrap();
+        assert_eq!(imported_album.project.project_type, "print");
+        let p_in_db = db.get_project(&imported_album.project.id).unwrap().unwrap();
+        assert_eq!(p_in_db.project_type, "print");
+
+        // 2. Synthetic v1.4.14 .afsn with project_type: "social_media"
+        let sm_afsn_content = serde_json::json!({
+            "version": 1,
+            "project": {
+                "id": "proj-sm-v1414",
+                "name": "Social Media Project",
+                "canvasWidth": 1080.0,
+                "canvasHeight": 1080.0,
+                "canvasUnit": "px",
+                "canvasDpi": 72,
+                "spacingValue": 0.0,
+                "spacingUnit": "px",
+                "marginEnabled": false,
+                "marginValue": 0.0,
+                "marginUnit": "px",
+                "borderEnabled": false,
+                "borderWidth": 0.0,
+                "borderUnit": "px",
+                "borderColor": "#000000",
+                "backgroundType": "color",
+                "backgroundColor": "#112233",
+                "projectType": "social_media",
+                "createdAt": "2026-10-26T12:00:00Z",
+                "updatedAt": "2026-10-26T12:00:00Z"
+            },
+            "photos": [
+                {
+                    "id": "photo-sm-1",
+                    "projectId": "proj-sm-v1414",
+                    "filePath": "photo.jpg",
+                    "fileName": "photo.jpg",
+                    "fileSize": 30,
+                    "width": 1080,
+                    "height": 1080,
+                    "format": "jpg",
+                    "isFavorite": false,
+                    "usedCount": 1,
+                    "isMissing": false,
+                    "createdAt": "2026-10-26T12:00:00Z",
+                    "updatedAt": "2026-10-26T12:00:00Z"
+                }
+            ],
+            "folders": [],
+            "folderMembers": [],
+            "album": {
+                "id": "album-proj-sm-v1414",
+                "projectId": "proj-sm-v1414",
+                "coverSpread": {
+                    "id": "cover-sm",
+                    "spreadIndex": 0,
+                    "type": "cover",
+                    "name": "Cover",
+                    "elements": []
+                },
+                "spreads": [
+                    {
+                        "id": "sm-spread-1",
+                        "spreadIndex": 1,
+                        "type": "single_page",
+                        "name": "Slide 1",
+                        "pageWidth": 1080.0,
+                        "pageHeight": 1080.0,
+                        "pageUnit": "px",
+                        "backgroundColor": "#112233",
+                        "backgroundColorNoise": 15.0,
+                        "borderEnabled": true,
+                        "borderWidth": 2.0,
+                        "borderColor": "#FF0000",
+                        "elements": [
+                            {
+                                "id": "sm-elem-1",
+                                "type": "photo",
+                                "photoId": "photo-sm-1",
+                                "filePath": "photo.jpg",
+                                "fileName": "photo.jpg",
+                                "x": 50.0,
+                                "y": 50.0,
+                                "width": 980.0,
+                                "height": 980.0,
+                                "rotation": 0.0,
+                                "flipVertical": true,
+                                "grayscaleAmount": 50.0,
+                                "shadowEnabled": true,
+                                "shadowBlur": 12.0
+                            }
+                        ]
+                    }
+                ],
+                "totalSpreads": 1,
+                "totalPages": 1
+            }
+        });
+
+        let sm_path = root.join("sm_v1414.afsn");
+        fs::write(&sm_path, serde_json::to_string_pretty(&sm_afsn_content).unwrap()).unwrap();
+
+        let imported_sm = db.import_project_package(sm_path.to_str().unwrap()).unwrap();
+        assert_eq!(imported_sm.project.project_type, "carousel");
+        assert!(imported_sm.carousel.is_some());
+
+        let carousel = imported_sm.carousel.unwrap();
+        assert_eq!(carousel.ratio, "1:1");
+        assert_eq!(carousel.slides.len(), 1);
+        let slide = &carousel.slides[0];
+        assert_eq!(slide.id, "sm-spread-1");
+        assert_eq!(slide.background_color_noise, Some(15.0));
+        assert_eq!(slide.border_enabled, Some(true));
+        assert_eq!(slide.border_width, Some(2.0));
+        assert_eq!(slide.border_color.as_deref(), Some("#FF0000"));
+
+        assert_eq!(slide.elements.len(), 1);
+        let frame = &slide.elements[0];
+        assert_eq!(frame.id, "sm-elem-1");
+        assert!(frame.flip_vertical);
+        assert_eq!(frame.grayscale_amount, 50.0);
+        assert!(frame.shadow_enabled);
+        assert_eq!(frame.shadow_blur, 12.0);
+
+        // Check SQLite has carousel slides and frames
+        let loaded_c = db.load_carousel_structure(&imported_sm.project.id).unwrap().unwrap();
+        assert_eq!(loaded_c.slides.len(), 1);
+        assert_eq!(loaded_c.slides[0].elements[0].grayscale_amount, 50.0);
+
+        // Check round-trip export synthesizes album for external v1.4.14 compatibility
+        let exported_pkg = db.project_package(&imported_sm.project.id).unwrap();
+        assert!(exported_pkg.album.is_some());
+        let synth_album = exported_pkg.album.unwrap();
+        assert_eq!(synth_album.spreads.len(), 1);
+        assert_eq!(synth_album.spreads[0].elements[0].grayscale_amount, 50.0);
+
+        drop(db);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn test_macos_temp_dir_canonicalization_and_zip_traversal_rejection() {
+        let root = std::env::temp_dir().join(format!("afsn-zip-test-{}", uuid::Uuid::new_v4()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&root).unwrap();
+
+        // 1. Build a valid zip file and extract with safe_extract_zip
+        let valid_zip_path = root.join("valid.zip");
+        {
+            let file = File::create(&valid_zip_path).unwrap();
+            let mut zip = zip::ZipWriter::new(file);
+            let options = zip::write::SimpleFileOptions::default()
+                .compression_method(zip::CompressionMethod::Stored);
+
+            zip.start_file("hello.txt", options).unwrap();
+            zip.write_all(b"Hello world").unwrap();
+
+            zip.start_file("nested/sub.txt", options).unwrap();
+            zip.write_all(b"Sub file content").unwrap();
+
+            zip.finish().unwrap();
+        }
+
+        let extract_dest = root.join("extracted_valid");
+        {
+            let file = File::open(&valid_zip_path).unwrap();
+            let mut archive = zip::ZipArchive::new(file).unwrap();
+            safe_extract_zip(&mut archive, &extract_dest).expect("Safe extract on valid zip should succeed");
+        }
+
+        assert!(extract_dest.join("hello.txt").exists());
+        assert_eq!(fs::read_to_string(extract_dest.join("hello.txt")).unwrap(), "Hello world");
+        assert!(extract_dest.join("nested/sub.txt").exists());
+        assert_eq!(fs::read_to_string(extract_dest.join("nested/sub.txt")).unwrap(), "Sub file content");
+
+        // 2. Build a zip file with path traversal entry and ensure rejection
+        let malicious_zip_path = root.join("malicious.zip");
+        {
+            let file = File::create(&malicious_zip_path).unwrap();
+            let mut zip = zip::ZipWriter::new(file);
+            let options = zip::write::SimpleFileOptions::default()
+                .compression_method(zip::CompressionMethod::Stored);
+
+            zip.start_file("../escaped.txt", options).unwrap();
+            zip.write_all(b"Malicious content").unwrap();
+
+            zip.finish().unwrap();
+        }
+
+        let malicious_extract_dest = root.join("extracted_malicious");
+        {
+            let file = File::open(&malicious_zip_path).unwrap();
+            let mut archive = zip::ZipArchive::new(file).unwrap();
+            let res = safe_extract_zip(&mut archive, &malicious_extract_dest);
+            assert!(res.is_err(), "Extracting zip with path traversal must fail");
+            let err_msg = format!("{:?}", res.unwrap_err());
+            assert!(
+                err_msg.contains("Path traversal"),
+                "Error should mention path traversal, got: {}",
+                err_msg
+            );
+        }
+
+        // Verify malicious file was NOT written outside
+        assert!(!root.join("escaped.txt").exists());
+
         let _ = fs::remove_dir_all(root);
     }
 }
