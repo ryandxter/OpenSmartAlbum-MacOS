@@ -75,6 +75,7 @@ fn test_live_e2e_export_print_album_and_carousel() {
         project_type: "print".to_string(),
         created_at: "2026-09-23T00:00:00Z".to_string(),
         updated_at: "2026-09-23T00:00:00Z".to_string(),
+        ..Default::default()
     };
 
     let make_photo_element = |id: &str, file: &str, x: f64, y: f64, w: f64, h: f64, shape: Option<&str>| -> ElementPayload {
@@ -115,6 +116,7 @@ fn test_live_e2e_export_print_album_and_carousel() {
             corner_radius: None,
             shape_type: shape.map(|s| s.to_string()),
             custom_svg_path: None,
+            ..Default::default()
         }
     };
 
@@ -142,6 +144,7 @@ fn test_live_e2e_export_print_album_and_carousel() {
             elements: vec![
                 make_photo_element("f1", &valid_photos[0], 25.0, 20.0, 350.0, 160.0, None),
             ],
+            ..Default::default()
         },
         // Spread 2: 2-Photos Split
         SpreadPayload {
@@ -166,6 +169,7 @@ fn test_live_e2e_export_print_album_and_carousel() {
                 make_photo_element("f2a", &valid_photos[1 % valid_photos.len()], 20.0, 20.0, 175.0, 160.0, None),
                 make_photo_element("f2b", &valid_photos[2 % valid_photos.len()], 205.0, 20.0, 175.0, 160.0, None),
             ],
+            ..Default::default()
         },
         // Spread 3: 3-Photos Split
         SpreadPayload {
@@ -191,6 +195,7 @@ fn test_live_e2e_export_print_album_and_carousel() {
                 make_photo_element("f3b", &valid_photos[4 % valid_photos.len()], 205.0, 20.0, 175.0, 75.0, None),
                 make_photo_element("f3c", &valid_photos[5 % valid_photos.len()], 205.0, 105.0, 175.0, 75.0, None),
             ],
+            ..Default::default()
         },
         // Spread 4: 4-Photos 2x2 Grid
         SpreadPayload {
@@ -217,6 +222,7 @@ fn test_live_e2e_export_print_album_and_carousel() {
                 make_photo_element("f4c", &valid_photos[2 % valid_photos.len()], 20.0, 105.0, 175.0, 75.0, None),
                 make_photo_element("f4d", &valid_photos[3 % valid_photos.len()], 205.0, 105.0, 175.0, 75.0, None),
             ],
+            ..Default::default()
         },
         // Spread 5: Reshuffle with Vector Shape Masks (Heart, Star, Circle, Scallop)
         SpreadPayload {
@@ -243,6 +249,7 @@ fn test_live_e2e_export_print_album_and_carousel() {
                 make_photo_element("f5c", &valid_photos[6 % valid_photos.len()], 205.0, 30.0, 80.0, 80.0, Some("star")),
                 make_photo_element("f5d", &valid_photos[0], 295.0, 30.0, 80.0, 80.0, Some("scallop")),
             ],
+            ..Default::default()
         },
     ];
 

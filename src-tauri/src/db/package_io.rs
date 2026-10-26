@@ -996,8 +996,10 @@ mod tests {
                             corner_radius_tr: None,
                             corner_radius_br: None,
                             corner_radius_bl: None,
+                            ..Default::default()
                         }
                     ],
+                    ..Default::default()
                 },
                 CarouselSlidePayload {
                     id: "slide-c2".to_string(),
@@ -1006,6 +1008,7 @@ mod tests {
                     height_px: 1080,
                     background_color: "#654321".to_string(),
                     elements: vec![],
+                    ..Default::default()
                 }
             ],
         };

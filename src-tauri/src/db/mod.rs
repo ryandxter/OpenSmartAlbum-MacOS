@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 mod package_io;
 
 /// Represents a project record from SQLite.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectRow {
     pub id: String,
@@ -36,12 +36,18 @@ pub struct ProjectRow {
     pub file_path: Option<String>,
     #[serde(default = "default_project_type")]
     pub project_type: String,
+    #[serde(default)]
+    pub background_color_noise: f64,
+    #[serde(default)]
+    pub is_mixed_dimensions: bool,
+    #[serde(default)]
+    pub dimension_summary: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
 
 /// Represents a photo record from SQLite.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct PhotoRow {
     pub id: String,
@@ -63,7 +69,7 @@ pub struct PhotoRow {
 }
 
 /// Represents a photo folder / collection record.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct PhotoFolderRow {
     pub id: String,
@@ -235,7 +241,7 @@ pub struct LayoutTemplateFolderRow {
 }
 
 /// Represents an element / photo frame on a spread.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct ElementPayload {
     pub id: String,
@@ -302,6 +308,109 @@ pub struct ElementPayload {
     pub shape_type: Option<String>,
     #[serde(default)]
     pub custom_svg_path: Option<String>,
+    #[serde(default)]
+    pub graphic_id: Option<String>,
+    #[serde(default)]
+    pub file_url: Option<String>,
+    #[serde(default)]
+    pub flip_horizontal: bool,
+    #[serde(default)]
+    pub flip_vertical: bool,
+    #[serde(default)]
+    pub blur_radius: f64,
+    #[serde(default)]
+    pub grayscale_amount: f64,
+    #[serde(default)]
+    pub noise_amount: f64,
+    #[serde(default)]
+    pub exclude_from_adaptive_layout: bool,
+    #[serde(default)]
+    pub shadow_enabled: bool,
+    #[serde(default = "default_shadow_blur")]
+    pub shadow_blur: f64,
+    #[serde(default)]
+    pub shadow_offset_x: f64,
+    #[serde(default = "default_shadow_offset_y")]
+    pub shadow_offset_y: f64,
+    #[serde(default = "default_shadow_opacity")]
+    pub shadow_opacity: f64,
+    #[serde(default = "default_shadow_color")]
+    pub shadow_color: String,
+    #[serde(default)]
+    pub frame_asset_id: Option<String>,
+    #[serde(default)]
+    pub frame_asset_url: Option<String>,
+    #[serde(default)]
+    pub frame_asset_local_path: Option<String>,
+    #[serde(default)]
+    pub frame_asset_title: Option<String>,
+    #[serde(default)]
+    pub frame_asset_slot: Option<FrameSlotPayload>,
+    #[serde(default)]
+    pub frame_asset_is_pro: Option<bool>,
+}
+
+impl Default for ElementPayload {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            r#type: default_element_type(),
+            photo_id: None,
+            file_path: String::new(),
+            file_name: String::new(),
+            preview_path: None,
+            thumbnail_path: None,
+            name: None,
+            hidden: None,
+            x: 0.0,
+            y: 0.0,
+            width: 100.0,
+            height: 100.0,
+            rotation: 0.0,
+            z_index: 1,
+            photo_aspect: 1.5,
+            group_id: None,
+            original_width: None,
+            original_height: None,
+            crop_x: 0.0,
+            crop_y: 0.0,
+            crop_scale: 1.0,
+            crop_rotation: None,
+            border_enabled: false,
+            border_width: 0.0,
+            border_color: default_border_color(),
+            opacity: 1.0,
+            locked: None,
+            text_payload: None,
+            corner_radius_tl: 0.0,
+            corner_radius_tr: 0.0,
+            corner_radius_br: 0.0,
+            corner_radius_bl: 0.0,
+            corner_radius: None,
+            shape_type: None,
+            custom_svg_path: None,
+            graphic_id: None,
+            file_url: None,
+            flip_horizontal: false,
+            flip_vertical: false,
+            blur_radius: 0.0,
+            grayscale_amount: 0.0,
+            noise_amount: 0.0,
+            exclude_from_adaptive_layout: false,
+            shadow_enabled: false,
+            shadow_blur: default_shadow_blur(),
+            shadow_offset_x: 0.0,
+            shadow_offset_y: default_shadow_offset_y(),
+            shadow_opacity: default_shadow_opacity(),
+            shadow_color: default_shadow_color(),
+            frame_asset_id: None,
+            frame_asset_url: None,
+            frame_asset_local_path: None,
+            frame_asset_title: None,
+            frame_asset_slot: None,
+            frame_asset_is_pro: None,
+        }
+    }
 }
 
 impl ElementPayload {
@@ -338,7 +447,7 @@ impl ElementPayload {
 }
 
 /// Represents a single page in a spread.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct PagePayload {
     pub id: String,
@@ -360,10 +469,18 @@ pub struct PagePayload {
     pub background_color: String,
     #[serde(default = "default_bg_type")]
     pub background_type: String,
+    #[serde(default)]
+    pub border_enabled: Option<bool>,
+    #[serde(default)]
+    pub border_width: Option<f64>,
+    #[serde(default)]
+    pub border_color: Option<String>,
+    #[serde(default)]
+    pub background_color_noise: Option<f64>,
 }
 
 /// Represents a full spread (cover or interior).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct SpreadPayload {
     pub id: String,
@@ -398,11 +515,43 @@ pub struct SpreadPayload {
     #[serde(default = "default_bg_color")]
     pub background_color: String,
     #[serde(default)]
+    pub page_width: Option<f64>,
+    #[serde(default)]
+    pub page_height: Option<f64>,
+    #[serde(default)]
+    pub page_unit: Option<String>,
+    #[serde(default)]
+    pub background_image: Option<SpreadBackgroundImagePayload>,
+    #[serde(default)]
+    pub background_color_noise: Option<f64>,
+    #[serde(default)]
+    pub left_page_background_color_noise: Option<f64>,
+    #[serde(default)]
+    pub right_page_background_color_noise: Option<f64>,
+    #[serde(default)]
+    pub border_enabled: Option<bool>,
+    #[serde(default)]
+    pub border_width: Option<f64>,
+    #[serde(default)]
+    pub border_color: Option<String>,
+    #[serde(default)]
+    pub left_page_border_enabled: Option<bool>,
+    #[serde(default)]
+    pub left_page_border_width: Option<f64>,
+    #[serde(default)]
+    pub left_page_border_color: Option<String>,
+    #[serde(default)]
+    pub right_page_border_enabled: Option<bool>,
+    #[serde(default)]
+    pub right_page_border_width: Option<f64>,
+    #[serde(default)]
+    pub right_page_border_color: Option<String>,
+    #[serde(default)]
     pub elements: Vec<ElementPayload>,
 }
 
 /// Represents the complete Album structure.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct AlbumPayload {
     pub id: String,
@@ -417,7 +566,7 @@ pub struct AlbumPayload {
 }
 
 /// Represents a portable .afsn project package.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectPackagePayload {
     pub version: i32,
@@ -431,18 +580,21 @@ pub struct ProjectPackagePayload {
     pub carousel: Option<CarouselPayload>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct FolderMemberPayload {
     pub folder_id: String,
     pub photo_id: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CarouselFramePayload {
     pub id: String,
+    #[serde(default = "default_element_type")]
+    pub r#type: String,
     pub photo_id: Option<String>,
+    pub group_id: Option<String>,
     #[serde(default)]
     pub file_path: String,
     #[serde(default)]
@@ -463,6 +615,10 @@ pub struct CarouselFramePayload {
     pub z_index: Option<i32>,
     #[serde(default)]
     pub photo_aspect: Option<f64>,
+    pub original_width: Option<f64>,
+    pub original_height: Option<f64>,
+    pub name: Option<String>,
+    pub hidden: Option<bool>,
     #[serde(default)]
     pub crop_x: Option<f64>,
     #[serde(default)]
@@ -481,15 +637,111 @@ pub struct CarouselFramePayload {
     pub opacity: Option<f64>,
     #[serde(default)]
     pub locked: Option<bool>,
+    pub text_payload: Option<String>,
     pub shape_type: Option<String>,
     pub custom_svg_path: Option<String>,
     pub corner_radius_tl: Option<f64>,
     pub corner_radius_tr: Option<f64>,
     pub corner_radius_br: Option<f64>,
     pub corner_radius_bl: Option<f64>,
+    pub graphic_id: Option<String>,
+    pub file_url: Option<String>,
+    #[serde(default)]
+    pub flip_horizontal: bool,
+    #[serde(default)]
+    pub flip_vertical: bool,
+    #[serde(default)]
+    pub blur_radius: f64,
+    #[serde(default)]
+    pub grayscale_amount: f64,
+    #[serde(default)]
+    pub noise_amount: f64,
+    #[serde(default)]
+    pub exclude_from_adaptive_layout: bool,
+    #[serde(default)]
+    pub shadow_enabled: bool,
+    #[serde(default = "default_shadow_blur")]
+    pub shadow_blur: f64,
+    #[serde(default)]
+    pub shadow_offset_x: f64,
+    #[serde(default = "default_shadow_offset_y")]
+    pub shadow_offset_y: f64,
+    #[serde(default = "default_shadow_opacity")]
+    pub shadow_opacity: f64,
+    #[serde(default = "default_shadow_color")]
+    pub shadow_color: String,
+    pub frame_asset_id: Option<String>,
+    pub frame_asset_url: Option<String>,
+    pub frame_asset_local_path: Option<String>,
+    pub frame_asset_title: Option<String>,
+    pub frame_asset_slot: Option<FrameSlotPayload>,
+    pub frame_asset_is_pro: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+impl Default for CarouselFramePayload {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            r#type: default_element_type(),
+            photo_id: None,
+            file_path: String::new(),
+            file_name: String::new(),
+            preview_path: None,
+            thumbnail_path: None,
+            x: 0.0,
+            y: 0.0,
+            width: 1080.0,
+            height: 1080.0,
+            rotation: 0.0,
+            z_index: Some(1),
+            photo_aspect: Some(1.0),
+            crop_x: Some(0.0),
+            crop_y: Some(0.0),
+            crop_scale: Some(1.0),
+            crop_rotation: Some(0.0),
+            border_enabled: Some(false),
+            border_width: Some(0.0),
+            border_color: Some(default_border_color()),
+            border_style: Some("solid".to_string()),
+            opacity: Some(1.0),
+            locked: Some(false),
+            shape_type: Some("rectangle".to_string()),
+            custom_svg_path: None,
+            corner_radius_tl: Some(0.0),
+            corner_radius_tr: Some(0.0),
+            corner_radius_br: Some(0.0),
+            corner_radius_bl: Some(0.0),
+            group_id: None,
+            text_payload: None,
+            original_width: Some(1080.0),
+            original_height: Some(1080.0),
+            name: None,
+            hidden: None,
+            graphic_id: None,
+            file_url: None,
+            flip_horizontal: false,
+            flip_vertical: false,
+            blur_radius: 0.0,
+            grayscale_amount: 0.0,
+            noise_amount: 0.0,
+            exclude_from_adaptive_layout: false,
+            shadow_enabled: false,
+            shadow_blur: default_shadow_blur(),
+            shadow_offset_x: 0.0,
+            shadow_offset_y: default_shadow_offset_y(),
+            shadow_opacity: default_shadow_opacity(),
+            shadow_color: default_shadow_color(),
+            frame_asset_id: None,
+            frame_asset_url: None,
+            frame_asset_local_path: None,
+            frame_asset_title: None,
+            frame_asset_slot: None,
+            frame_asset_is_pro: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct CarouselSlidePayload {
     pub id: String,
@@ -498,10 +750,26 @@ pub struct CarouselSlidePayload {
     pub height_px: i32,
     pub background_color: String,
     #[serde(default)]
+    pub page_width: Option<f64>,
+    #[serde(default)]
+    pub page_height: Option<f64>,
+    #[serde(default)]
+    pub page_unit: Option<String>,
+    #[serde(default)]
+    pub background_image: Option<SpreadBackgroundImagePayload>,
+    #[serde(default)]
+    pub background_color_noise: Option<f64>,
+    #[serde(default)]
+    pub border_enabled: Option<bool>,
+    #[serde(default)]
+    pub border_width: Option<f64>,
+    #[serde(default)]
+    pub border_color: Option<String>,
+    #[serde(default)]
     pub elements: Vec<CarouselFramePayload>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct CarouselPayload {
     pub id: String,
@@ -522,6 +790,10 @@ pub struct Database {
 impl Database {
     pub fn expected_version() -> i32 {
         30
+    }
+
+    pub fn normalize_project_type(raw: &str, canvas_unit: &str) -> String {
+        normalize_project_type(raw, canvas_unit)
     }
 
     pub fn has_column(conn: &Connection, table: &str, column: &str) -> SqliteResult<bool> {
@@ -1797,6 +2069,68 @@ impl Database {
         Ok(())
     }
 
+    fn compute_mixed_dimensions(
+        conn: &Connection,
+        project_id: &str,
+        canvas_width: f64,
+        canvas_height: f64,
+        canvas_unit: &str,
+        project_type: &str,
+    ) -> (bool, Option<String>) {
+        if project_type != "print" {
+            return (false, None);
+        }
+        let mut stmt = match conn.prepare(
+            "SELECT page_width, page_height, page_unit
+             FROM album_spreads
+             WHERE project_id = ?1 AND is_cover = 0",
+        ) {
+            Ok(s) => s,
+            Err(_) => return (false, None),
+        };
+
+        let mut distinct_dimensions = std::collections::HashSet::new();
+        let mut has_diff = false;
+
+        let rows = stmt.query_map([project_id], |row| {
+            let w: Option<f64> = row.get(0)?;
+            let h: Option<f64> = row.get(1)?;
+            let u: Option<String> = row.get(2)?;
+            Ok((
+                w.unwrap_or(canvas_width),
+                h.unwrap_or(canvas_height),
+                u.unwrap_or_else(|| canvas_unit.to_string()),
+            ))
+        });
+
+        if let Ok(rows) = rows {
+            for item in rows.flatten() {
+                let (w, h, ref u) = item;
+                let key = (
+                    (w * 100.0).round() as i64,
+                    (h * 100.0).round() as i64,
+                    u.to_lowercase(),
+                );
+                distinct_dimensions.insert(key.clone());
+
+                let canvas_key = (
+                    (canvas_width * 100.0).round() as i64,
+                    (canvas_height * 100.0).round() as i64,
+                    canvas_unit.to_lowercase(),
+                );
+                if key != canvas_key {
+                    has_diff = true;
+                }
+            }
+        }
+
+        if distinct_dimensions.len() > 1 || has_diff {
+            (true, Some("Mixed sizes".to_string()))
+        } else {
+            (false, None)
+        }
+    }
+
     pub fn get_project(&self, id: &str) -> SqliteResult<Option<ProjectRow>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
@@ -1810,7 +2144,8 @@ impl Database {
                     border_enabled, border_width, border_unit, border_color,
                     background_type, background_color, file_path,
                     COALESCE(project_type, 'print'),
-                    created_at, updated_at
+                    created_at, updated_at,
+                    COALESCE(background_color_noise, 0.0)
              FROM projects WHERE id = ?1",
         )?;
 
@@ -1818,12 +2153,25 @@ impl Database {
         if let Some(row) = rows.next()? {
             let margin_enabled_int: i32 = row.get(8)?;
             let border_enabled_int: i32 = row.get(15)?;
+            let raw_project_type: String = row.get(22)?;
+            let canvas_width: f64 = row.get(2)?;
+            let canvas_height: f64 = row.get(3)?;
+            let canvas_unit: String = row.get(4)?;
+            let project_type = Self::normalize_project_type(&raw_project_type, &canvas_unit);
+            let (is_mixed_dimensions, dimension_summary) = Self::compute_mixed_dimensions(
+                &conn,
+                id,
+                canvas_width,
+                canvas_height,
+                &canvas_unit,
+                &project_type,
+            );
             Ok(Some(ProjectRow {
                 id: row.get(0)?,
                 name: row.get(1)?,
-                canvas_width: row.get(2)?,
-                canvas_height: row.get(3)?,
-                canvas_unit: row.get(4)?,
+                canvas_width,
+                canvas_height,
+                canvas_unit,
                 canvas_dpi: row.get(5)?,
                 spacing_value: row.get(6)?,
                 spacing_unit: row.get(7)?,
@@ -1841,7 +2189,10 @@ impl Database {
                 background_type: row.get(19)?,
                 background_color: row.get(20)?,
                 file_path: row.get(21)?,
-                project_type: row.get(22)?,
+                project_type,
+                background_color_noise: row.get(25)?,
+                is_mixed_dimensions,
+                dimension_summary,
                 created_at: row.get(23)?,
                 updated_at: row.get(24)?,
             }))
@@ -1859,6 +2210,34 @@ impl Database {
         Ok(())
     }
 
+    pub fn update_project_border(
+        &self,
+        id: &str,
+        border_enabled: bool,
+        border_width: f64,
+        border_unit: &str,
+        border_color: &str,
+    ) -> SqliteResult<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "UPDATE projects SET
+                border_enabled = ?1,
+                border_width = ?2,
+                border_unit = ?3,
+                border_color = ?4,
+                updated_at = datetime('now')
+             WHERE id = ?5",
+            rusqlite::params![
+                border_enabled as i32,
+                border_width,
+                border_unit,
+                border_color,
+                id,
+            ],
+        )?;
+        Ok(())
+    }
+
     pub fn update_project_margins(
         &self,
         id: &str,
@@ -1868,6 +2247,7 @@ impl Database {
         margin_bottom: f64,
         margin_outside: f64,
         margin_spine: f64,
+        margin_enabled: Option<bool>,
     ) -> SqliteResult<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute(
@@ -1875,6 +2255,7 @@ impl Database {
                 margin_value = ?1, margin_unit = ?2,
                 margin_top = ?3, margin_bottom = ?4,
                 margin_outside = ?5, margin_spine = ?6,
+                margin_enabled = COALESCE(?8, margin_enabled),
                 updated_at = datetime('now')
              WHERE id = ?7",
             rusqlite::params![
@@ -1885,6 +2266,7 @@ impl Database {
                 margin_outside,
                 margin_spine,
                 id,
+                margin_enabled.map(|b| b as i32),
             ],
         )?;
         Ok(())
@@ -1922,7 +2304,8 @@ impl Database {
                     border_enabled, border_width, border_unit, border_color,
                     background_type, background_color, file_path,
                     COALESCE(project_type, 'print'),
-                    created_at, updated_at
+                    created_at, updated_at,
+                    COALESCE(background_color_noise, 0.0)
              FROM projects
              ORDER BY updated_at DESC
              LIMIT ?1",
@@ -1931,12 +2314,26 @@ impl Database {
         let rows = stmt.query_map([limit], |row| {
             let margin_enabled_int: i32 = row.get(8)?;
             let border_enabled_int: i32 = row.get(15)?;
+            let raw_project_type: String = row.get(22)?;
+            let canvas_width: f64 = row.get(2)?;
+            let canvas_height: f64 = row.get(3)?;
+            let canvas_unit: String = row.get(4)?;
+            let project_type = Self::normalize_project_type(&raw_project_type, &canvas_unit);
+            let id: String = row.get(0)?;
+            let (is_mixed_dimensions, dimension_summary) = Self::compute_mixed_dimensions(
+                &conn,
+                &id,
+                canvas_width,
+                canvas_height,
+                &canvas_unit,
+                &project_type,
+            );
             Ok(ProjectRow {
-                id: row.get(0)?,
+                id,
                 name: row.get(1)?,
-                canvas_width: row.get(2)?,
-                canvas_height: row.get(3)?,
-                canvas_unit: row.get(4)?,
+                canvas_width,
+                canvas_height,
+                canvas_unit,
                 canvas_dpi: row.get(5)?,
                 spacing_value: row.get(6)?,
                 spacing_unit: row.get(7)?,
@@ -1954,7 +2351,10 @@ impl Database {
                 background_type: row.get(19)?,
                 background_color: row.get(20)?,
                 file_path: row.get(21)?,
-                project_type: row.get(22)?,
+                project_type,
+                background_color_noise: row.get(25)?,
+                is_mixed_dimensions,
+                dimension_summary,
                 created_at: row.get(23)?,
                 updated_at: row.get(24)?,
             })
@@ -2499,6 +2899,19 @@ impl Database {
             let left_bg = spread.left_page.as_ref().map(|p| p.background_color.clone()).unwrap_or_else(|| spread.background_color.clone());
             let right_bg = spread.right_page.as_ref().map(|p| p.background_color.clone()).unwrap_or_else(|| spread.background_color.clone());
 
+            let bg_image_json = spread.background_image.as_ref().map(|b| serde_json::to_string(b).unwrap_or_default());
+            let page_w = spread.page_width.or_else(|| spread.left_page.as_ref().map(|p| p.width));
+            let page_h = spread.page_height.or_else(|| spread.left_page.as_ref().map(|p| p.height));
+            let page_u = spread.page_unit.clone().or_else(|| spread.left_page.as_ref().map(|p| p.unit.clone()));
+            let left_bg_noise = spread.left_page_background_color_noise.or_else(|| spread.left_page.as_ref().and_then(|p| p.background_color_noise));
+            let right_bg_noise = spread.right_page_background_color_noise.or_else(|| spread.right_page.as_ref().and_then(|p| p.background_color_noise));
+            let left_b_enabled = spread.left_page_border_enabled.or_else(|| spread.left_page.as_ref().and_then(|p| p.border_enabled)).map(|b| b as i32);
+            let left_b_width = spread.left_page_border_width.or_else(|| spread.left_page.as_ref().and_then(|p| p.border_width));
+            let left_b_color = spread.left_page_border_color.as_deref().or_else(|| spread.left_page.as_ref().and_then(|p| p.border_color.as_deref()));
+            let right_b_enabled = spread.right_page_border_enabled.or_else(|| spread.right_page.as_ref().and_then(|p| p.border_enabled)).map(|b| b as i32);
+            let right_b_width = spread.right_page_border_width.or_else(|| spread.right_page.as_ref().and_then(|p| p.border_width));
+            let right_b_color = spread.right_page_border_color.as_deref().or_else(|| spread.right_page.as_ref().and_then(|p| p.border_color.as_deref()));
+
             tx.execute(
                 "INSERT INTO album_spreads (
                     id, project_id, spread_index, spread_type, name,
@@ -2507,8 +2920,20 @@ impl Database {
                     safe_area_outside, safe_area_spine, background_color, is_cover,
                     left_page_background_color, right_page_background_color,
                     spacing_value, spacing_unit,
+                    page_width, page_height, page_unit,
+                    background_image, background_color_noise,
+                    left_page_background_color_noise, right_page_background_color_noise,
+                    border_enabled, border_width, border_color,
+                    left_page_border_enabled, left_page_border_width, left_page_border_color,
+                    right_page_border_enabled, right_page_border_width, right_page_border_color,
                     created_at, updated_at
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, datetime('now'), datetime('now'))",
+                ) VALUES (
+                    ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10,
+                    ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20,
+                    ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30,
+                    ?31, ?32, ?33, ?34, ?35, ?36, ?37,
+                    datetime('now'), datetime('now')
+                )",
                 rusqlite::params![
                     spread.id,
                     project_id,
@@ -2531,6 +2956,22 @@ impl Database {
                     right_bg,
                     spread.spacing_value,
                     spread.spacing_unit,
+                    page_w,
+                    page_h,
+                    page_u,
+                    bg_image_json,
+                    spread.background_color_noise,
+                    left_bg_noise,
+                    right_bg_noise,
+                    spread.border_enabled.map(|b| b as i32),
+                    spread.border_width,
+                    spread.border_color.as_deref(),
+                    left_b_enabled,
+                    left_b_width,
+                    left_b_color,
+                    right_b_enabled,
+                    right_b_width,
+                    right_b_color,
                 ],
             )?;
 
@@ -2558,6 +2999,48 @@ impl Database {
                     }
                 }
                 let radii = elem.corner_radii();
+
+                let is_graphic = elem.r#type == "graphic";
+                let frame_asset_id = if is_graphic {
+                    elem.graphic_id.clone().or_else(|| elem.frame_asset_id.clone())
+                } else {
+                    elem.frame_asset_id.clone()
+                };
+                let frame_asset_url = if is_graphic {
+                    elem.file_url.clone().or_else(|| elem.frame_asset_url.clone())
+                } else {
+                    elem.frame_asset_url.clone()
+                };
+                let frame_asset_local_path = if is_graphic {
+                    if !elem.file_path.is_empty() {
+                        Some(elem.file_path.clone())
+                    } else {
+                        elem.frame_asset_local_path.clone()
+                    }
+                } else {
+                    elem.frame_asset_local_path.clone()
+                };
+                let frame_asset_title = if is_graphic {
+                    if !elem.file_name.is_empty() {
+                        Some(elem.file_name.clone())
+                    } else {
+                        elem.frame_asset_title.clone()
+                    }
+                } else {
+                    elem.frame_asset_title.clone()
+                };
+                let frame_asset_slot_json = if is_graphic {
+                    None
+                } else {
+                    elem.frame_asset_slot.as_ref().map(|s| serde_json::to_string(s).unwrap_or_default())
+                };
+                let exclude_adaptive = if is_graphic {
+                    1
+                } else {
+                    elem.exclude_from_adaptive_layout as i32
+                };
+                let frame_asset_is_pro = 0; // always 0 for compatibility per D-04
+
                 tx.execute(
                     "INSERT INTO spread_elements (
                         id, spread_id, element_type, photo_id, group_id, file_path, file_name,
@@ -2566,6 +3049,11 @@ impl Database {
                         crop_x, crop_y, crop_scale, crop_rotation,
                         border_enabled, border_width, border_color, opacity, locked, text_payload,
                         corner_radius_tl, corner_radius_tr, corner_radius_br, corner_radius_bl,
+                        flip_horizontal, flip_vertical, blur_radius, grayscale_amount, noise_amount,
+                        exclude_from_adaptive_layout, shadow_enabled, shadow_blur, shadow_offset_x,
+                        shadow_offset_y, shadow_opacity, shadow_color,
+                        frame_asset_id, frame_asset_url, frame_asset_local_path, frame_asset_title,
+                        frame_asset_slot, frame_asset_is_pro,
                         created_at, updated_at
                     ) VALUES (
                         ?1, ?2, ?3, ?4, ?5, ?6, ?7,
@@ -2574,6 +3062,11 @@ impl Database {
                         ?19, ?20, ?21, ?22,
                         ?23, ?24, ?25, ?26, ?27, ?28,
                         ?29, ?30, ?31, ?32,
+                        ?33, ?34, ?35, ?36, ?37,
+                        ?38, ?39, ?40, ?41,
+                        ?42, ?43, ?44,
+                        ?45, ?46, ?47, ?48,
+                        ?49, ?50,
                         datetime('now'), datetime('now')
                     )",
                     rusqlite::params![
@@ -2609,6 +3102,24 @@ impl Database {
                         radii.1,
                         radii.2,
                         radii.3,
+                        elem.flip_horizontal as i32,
+                        elem.flip_vertical as i32,
+                        elem.blur_radius,
+                        elem.grayscale_amount,
+                        elem.noise_amount,
+                        exclude_adaptive,
+                        elem.shadow_enabled as i32,
+                        elem.shadow_blur,
+                        elem.shadow_offset_x,
+                        elem.shadow_offset_y,
+                        elem.shadow_opacity,
+                        elem.shadow_color,
+                        frame_asset_id,
+                        frame_asset_url,
+                        frame_asset_local_path,
+                        frame_asset_title,
+                        frame_asset_slot_json,
+                        frame_asset_is_pro,
                     ],
                 )?;
             }
@@ -2644,19 +3155,33 @@ impl Database {
                     border_enabled, border_width, border_unit, border_color,
                     background_type, background_color, file_path,
                     COALESCE(project_type, 'print'),
-                    created_at, updated_at
+                    created_at, updated_at,
+                    COALESCE(background_color_noise, 0.0)
              FROM projects WHERE id = ?1",
         )?;
         let mut proj_rows = proj_stmt.query([project_id])?;
         let project = if let Some(row) = proj_rows.next()? {
             let margin_enabled_int: i32 = row.get(8)?;
             let border_enabled_int: i32 = row.get(15)?;
+            let raw_project_type: String = row.get(22)?;
+            let canvas_width: f64 = row.get(2)?;
+            let canvas_height: f64 = row.get(3)?;
+            let canvas_unit: String = row.get(4)?;
+            let project_type = Self::normalize_project_type(&raw_project_type, &canvas_unit);
+            let (is_mixed_dimensions, dimension_summary) = Self::compute_mixed_dimensions(
+                &conn,
+                project_id,
+                canvas_width,
+                canvas_height,
+                &canvas_unit,
+                &project_type,
+            );
             ProjectRow {
                 id: row.get(0)?,
                 name: row.get(1)?,
-                canvas_width: row.get(2)?,
-                canvas_height: row.get(3)?,
-                canvas_unit: row.get(4)?,
+                canvas_width,
+                canvas_height,
+                canvas_unit,
                 canvas_dpi: row.get(5)?,
                 spacing_value: row.get(6)?,
                 spacing_unit: row.get(7)?,
@@ -2674,7 +3199,10 @@ impl Database {
                 background_type: row.get(19)?,
                 background_color: row.get(20)?,
                 file_path: row.get(21)?,
-                project_type: row.get(22)?,
+                project_type,
+                background_color_noise: row.get(25)?,
+                is_mixed_dimensions,
+                dimension_summary,
                 created_at: row.get(23)?,
                 updated_at: row.get(24)?,
             }
@@ -2694,7 +3222,12 @@ impl Database {
                     background_color, is_cover,
                     left_page_background_color, right_page_background_color,
                     spacing_value, spacing_unit,
-                    created_at, updated_at
+                    page_width, page_height, page_unit,
+                    background_image, background_color_noise,
+                    left_page_background_color_noise, right_page_background_color_noise,
+                    border_enabled, border_width, border_color,
+                    left_page_border_enabled, left_page_border_width, left_page_border_color,
+                    right_page_border_enabled, right_page_border_width, right_page_border_color
              FROM album_spreads
              WHERE project_id = ?1
              ORDER BY spread_index ASC",
@@ -2708,7 +3241,11 @@ impl Database {
                     border_enabled, border_width, border_color, opacity,
                     group_id, locked, text_payload,
                     corner_radius_tl, corner_radius_tr, corner_radius_br, corner_radius_bl,
-                    created_at, updated_at
+                    flip_horizontal, flip_vertical, blur_radius, grayscale_amount, noise_amount,
+                    exclude_from_adaptive_layout, shadow_enabled, shadow_blur, shadow_offset_x,
+                    shadow_offset_y, shadow_opacity, shadow_color,
+                    frame_asset_id, frame_asset_url, frame_asset_local_path, frame_asset_title,
+                    frame_asset_slot, frame_asset_is_pro
              FROM spread_elements
              WHERE spread_id = ?1
              ORDER BY z_index ASC",
@@ -2721,6 +3258,24 @@ impl Database {
             let right_bg: String = row.get::<_, Option<String>>(18).ok().flatten().unwrap_or_else(|| bg.clone());
             let spacing_val: Option<f64> = row.get(19).ok();
             let spacing_u: Option<String> = row.get(20).ok();
+            let page_w: Option<f64> = row.get(21).ok();
+            let page_h: Option<f64> = row.get(22).ok();
+            let page_u: Option<String> = row.get(23).ok().flatten();
+            let bg_img_raw: Option<String> = row.get(24).ok().flatten();
+            let bg_img: Option<SpreadBackgroundImagePayload> = bg_img_raw.and_then(|s| serde_json::from_str(&s).ok());
+            let bg_noise: Option<f64> = row.get(25).ok();
+            let left_bg_noise: Option<f64> = row.get(26).ok();
+            let right_bg_noise: Option<f64> = row.get(27).ok();
+            let b_enabled: Option<bool> = row.get::<_, Option<i32>>(28).ok().flatten().map(|v| v != 0);
+            let b_width: Option<f64> = row.get(29).ok();
+            let b_color: Option<String> = row.get(30).ok().flatten();
+            let left_b_enabled: Option<bool> = row.get::<_, Option<i32>>(31).ok().flatten().map(|v| v != 0);
+            let left_b_width: Option<f64> = row.get(32).ok();
+            let left_b_color: Option<String> = row.get(33).ok().flatten();
+            let right_b_enabled: Option<bool> = row.get::<_, Option<i32>>(34).ok().flatten().map(|v| v != 0);
+            let right_b_width: Option<f64> = row.get(35).ok();
+            let right_b_color: Option<String> = row.get(36).ok().flatten();
+
             Ok((
                 row.get::<_, String>(0)?, // id
                 row.get::<_, String>(1).unwrap_or_default(), // project_id
@@ -2743,6 +3298,22 @@ impl Database {
                 right_bg,                               // right_page_background_color
                 spacing_val,                            // spacing_value
                 spacing_u,                              // spacing_unit
+                page_w,
+                page_h,
+                page_u,
+                bg_img,
+                bg_noise,
+                left_bg_noise,
+                right_bg_noise,
+                b_enabled,
+                b_width,
+                b_color,
+                left_b_enabled,
+                left_b_width,
+                left_b_color,
+                right_b_enabled,
+                right_b_width,
+                right_b_color,
             ))
         })?;
 
@@ -2750,7 +3321,18 @@ impl Database {
         let mut interior_spreads: Vec<SpreadPayload> = Vec::new();
 
         for s_res in spread_rows {
-            let (id, _pid, spread_index, spread_type, name, left_page_id, right_page_id, gutter_width, gutter_unit, bleed, safe_area, safe_area_top, safe_area_bottom, safe_area_outside, safe_area_spine, background_color, is_cover, left_bg, right_bg, spacing_value, spacing_unit) = s_res?;
+            let (
+                id, _pid, spread_index, spread_type, name, left_page_id, right_page_id,
+                gutter_width, gutter_unit, bleed, safe_area, safe_area_top, safe_area_bottom,
+                safe_area_outside, safe_area_spine, background_color, is_cover, left_bg, right_bg,
+                spacing_value, spacing_unit,
+                page_width, page_height, page_unit,
+                background_image, background_color_noise,
+                left_page_background_color_noise, right_page_background_color_noise,
+                border_enabled, border_width, border_color,
+                left_page_border_enabled, left_page_border_width, left_page_border_color,
+                right_page_border_enabled, right_page_border_width, right_page_border_color,
+            ) = s_res?;
 
             // Load elements for this spread
             let elem_rows = elem_stmt.query_map([&id], |er| {
@@ -2758,12 +3340,57 @@ impl Database {
                 let locked_int: i32 = er.get(26).unwrap_or(0);
                 let w: f64 = er.get(10).unwrap_or(100.0);
                 let h: f64 = er.get(11).unwrap_or(80.0);
+                let elem_type: String = er.get(2).unwrap_or_else(|_| "photo".to_string());
+                let flip_h_int: i32 = er.get(32).unwrap_or(0);
+                let flip_v_int: i32 = er.get(33).unwrap_or(0);
+                let blur_radius: f64 = er.get(34).unwrap_or(0.0);
+                let grayscale_amount: f64 = er.get(35).unwrap_or(0.0);
+                let noise_amount: f64 = er.get(36).unwrap_or(0.0);
+                let exclude_adaptive_int: i32 = er.get(37).unwrap_or(0);
+                let shadow_enabled_int: i32 = er.get(38).unwrap_or(0);
+                let shadow_blur: f64 = er.get(39).unwrap_or(10.0);
+                let shadow_offset_x: f64 = er.get(40).unwrap_or(0.0);
+                let shadow_offset_y: f64 = er.get(41).unwrap_or(5.0);
+                let shadow_opacity: f64 = er.get(42).unwrap_or(35.0);
+                let shadow_color: String = er.get::<_, Option<String>>(43).ok().flatten().unwrap_or_else(|| "#000000".to_string());
+                let frame_asset_id: Option<String> = er.get(44).ok().flatten();
+                let frame_asset_url: Option<String> = er.get(45).ok().flatten();
+                let frame_asset_local_path: Option<String> = er.get(46).ok().flatten();
+                let frame_asset_title: Option<String> = er.get(47).ok().flatten();
+                let frame_asset_slot_raw: Option<String> = er.get(48).ok().flatten();
+                let frame_asset_slot: Option<FrameSlotPayload> = frame_asset_slot_raw.and_then(|s| serde_json::from_str(&s).ok());
+                let frame_asset_is_pro_int: Option<i32> = er.get(49).ok().flatten();
+                let mut frame_asset_is_pro = frame_asset_is_pro_int.map(|v| v != 0);
+
+                let mut file_path: String = er.get(4).unwrap_or_default();
+                let mut file_name: String = er.get(5).unwrap_or_default();
+                let mut graphic_id = None;
+                let mut file_url = None;
+                let mut exclude_adaptive = exclude_adaptive_int != 0;
+
+                if elem_type == "graphic" {
+                    graphic_id = frame_asset_id.clone();
+                    file_url = frame_asset_url.clone();
+                    if file_path.is_empty() {
+                        if let Some(ref p) = frame_asset_local_path {
+                            file_path = p.clone();
+                        }
+                    }
+                    if file_name.is_empty() {
+                        if let Some(ref t) = frame_asset_title {
+                            file_name = t.clone();
+                        }
+                    }
+                    exclude_adaptive = true;
+                    frame_asset_is_pro = Some(false);
+                }
+
                 Ok(ElementPayload {
                     id: er.get(0)?,
-                    r#type: er.get(2).unwrap_or_else(|_| "photo".to_string()),
+                    r#type: elem_type,
                     photo_id: er.get(3).ok(),
-                    file_path: er.get(4).unwrap_or_default(),
-                    file_name: er.get(5).unwrap_or_default(),
+                    file_path,
+                    file_name,
                     preview_path: er.get(6).ok(),
                     thumbnail_path: er.get(7).ok(),
                     name: None,
@@ -2795,6 +3422,26 @@ impl Database {
                     corner_radius: None,
                     shape_type: None,
                     custom_svg_path: None,
+                    graphic_id,
+                    file_url,
+                    flip_horizontal: flip_h_int != 0,
+                    flip_vertical: flip_v_int != 0,
+                    blur_radius,
+                    grayscale_amount,
+                    noise_amount,
+                    exclude_from_adaptive_layout: exclude_adaptive,
+                    shadow_enabled: shadow_enabled_int != 0,
+                    shadow_blur,
+                    shadow_offset_x,
+                    shadow_offset_y,
+                    shadow_opacity,
+                    shadow_color,
+                    frame_asset_id,
+                    frame_asset_url,
+                    frame_asset_local_path,
+                    frame_asset_title,
+                    frame_asset_slot,
+                    frame_asset_is_pro,
                 })
             })?;
 
@@ -2803,31 +3450,43 @@ impl Database {
                 elements.push(e?);
             }
 
-            // Construct Left & Right Page payloads
+            // Construct Left & Right Page payloads using effective dimensions
+            let effective_width = page_width.unwrap_or(project.canvas_width);
+            let effective_height = page_height.unwrap_or(project.canvas_height);
+            let effective_unit = page_unit.clone().unwrap_or_else(|| project.canvas_unit.clone());
+
             let (left_page, right_page) = if is_cover {
                 let left = PagePayload {
                     id: left_page_id.unwrap_or_else(|| format!("{}-page-cover-back", id)),
                     page_number: 0,
                     r#type: "cover_back".to_string(),
-                    width: project.canvas_width,
-                    height: project.canvas_height,
-                    unit: project.canvas_unit.clone(),
+                    width: effective_width,
+                    height: effective_height,
+                    unit: effective_unit.clone(),
                     bleed,
                     safe_area,
                     background_color: left_bg,
                     background_type: "solid".to_string(),
+                    border_enabled: left_page_border_enabled.or(border_enabled),
+                    border_width: left_page_border_width.or(border_width),
+                    border_color: left_page_border_color.clone().or_else(|| border_color.clone()),
+                    background_color_noise: left_page_background_color_noise.or(background_color_noise),
                 };
                 let right = PagePayload {
                     id: right_page_id.unwrap_or_else(|| format!("{}-page-cover-front", id)),
                     page_number: 1,
                     r#type: "cover_front".to_string(),
-                    width: project.canvas_width,
-                    height: project.canvas_height,
-                    unit: project.canvas_unit.clone(),
+                    width: effective_width,
+                    height: effective_height,
+                    unit: effective_unit.clone(),
                     bleed,
                     safe_area,
                     background_color: right_bg,
                     background_type: "solid".to_string(),
+                    border_enabled: right_page_border_enabled.or(border_enabled),
+                    border_width: right_page_border_width.or(border_width),
+                    border_color: right_page_border_color.clone().or_else(|| border_color.clone()),
+                    background_color_noise: right_page_background_color_noise.or(background_color_noise),
                 };
                 (Some(left), Some(right))
             } else {
@@ -2837,25 +3496,33 @@ impl Database {
                     id: left_page_id.unwrap_or_else(|| format!("{}-page-{}", id, left_num)),
                     page_number: left_num,
                     r#type: "left".to_string(),
-                    width: project.canvas_width,
-                    height: project.canvas_height,
-                    unit: project.canvas_unit.clone(),
+                    width: effective_width,
+                    height: effective_height,
+                    unit: effective_unit.clone(),
                     bleed,
                     safe_area,
                     background_color: left_bg,
                     background_type: "solid".to_string(),
+                    border_enabled: left_page_border_enabled.or(border_enabled),
+                    border_width: left_page_border_width.or(border_width),
+                    border_color: left_page_border_color.clone().or_else(|| border_color.clone()),
+                    background_color_noise: left_page_background_color_noise.or(background_color_noise),
                 };
                 let right = PagePayload {
                     id: right_page_id.unwrap_or_else(|| format!("{}-page-{}", id, right_num)),
                     page_number: right_num,
                     r#type: "right".to_string(),
-                    width: project.canvas_width,
-                    height: project.canvas_height,
-                    unit: project.canvas_unit.clone(),
+                    width: effective_width,
+                    height: effective_height,
+                    unit: effective_unit.clone(),
                     bleed,
                     safe_area,
                     background_color: right_bg,
                     background_type: "solid".to_string(),
+                    border_enabled: right_page_border_enabled.or(border_enabled),
+                    border_width: right_page_border_width.or(border_width),
+                    border_color: right_page_border_color.clone().or_else(|| border_color.clone()),
+                    background_color_noise: right_page_background_color_noise.or(background_color_noise),
                 };
                 (Some(left), Some(right))
             };
@@ -2878,6 +3545,22 @@ impl Database {
                 spacing_value,
                 spacing_unit,
                 background_color,
+                page_width,
+                page_height,
+                page_unit,
+                background_image,
+                background_color_noise,
+                left_page_background_color_noise,
+                right_page_background_color_noise,
+                border_enabled,
+                border_width,
+                border_color,
+                left_page_border_enabled,
+                left_page_border_width,
+                left_page_border_color,
+                right_page_border_enabled,
+                right_page_border_width,
+                right_page_border_color,
                 elements,
             };
 
@@ -2914,6 +3597,7 @@ impl Database {
             spacing_unit: Some(project.spacing_unit.clone()),
             background_color: "#1e293b".to_string(),
             elements: Vec::new(),
+            ..Default::default()
         });
 
         Ok(Some(AlbumPayload {
@@ -2982,9 +3666,23 @@ impl Database {
 
         // Insert slides and frames
         for slide in &carousel.slides {
+            let bg_image_json = slide.background_image.as_ref().map(|b| serde_json::to_string(b).unwrap_or_default());
+            let page_w = slide.page_width.or(Some(slide.width_px as f64));
+            let page_h = slide.page_height.or(Some(slide.height_px as f64));
+            let page_u = slide.page_unit.clone().or_else(|| Some("px".to_string()));
+
             tx.execute(
-                "INSERT INTO carousel_slides (id, project_id, slide_index, width_px, height_px, background_color, created_at, updated_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, datetime('now'), datetime('now'))",
+                "INSERT INTO carousel_slides (
+                    id, project_id, slide_index, width_px, height_px, background_color,
+                    page_width, page_height, page_unit, background_image, background_color_noise,
+                    border_enabled, border_width, border_color,
+                    created_at, updated_at
+                ) VALUES (
+                    ?1, ?2, ?3, ?4, ?5, ?6,
+                    ?7, ?8, ?9, ?10, ?11,
+                    ?12, ?13, ?14,
+                    datetime('now'), datetime('now')
+                )",
                 rusqlite::params![
                     slide.id,
                     carousel.project_id,
@@ -2992,6 +3690,14 @@ impl Database {
                     slide.width_px,
                     slide.height_px,
                     slide.background_color,
+                    page_w,
+                    page_h,
+                    page_u,
+                    bg_image_json,
+                    slide.background_color_noise,
+                    slide.border_enabled.map(|b| b as i32),
+                    slide.border_width,
+                    slide.border_color.as_deref(),
                 ],
             )?;
 
@@ -3014,28 +3720,84 @@ impl Database {
 
                 let z = verified.z_index.unwrap_or(idx as i32 + 1);
 
+                let is_graphic = verified.r#type == "graphic";
+                let frame_asset_id = if is_graphic {
+                    verified.graphic_id.clone().or_else(|| verified.frame_asset_id.clone())
+                } else {
+                    verified.frame_asset_id.clone()
+                };
+                let frame_asset_url = if is_graphic {
+                    verified.file_url.clone().or_else(|| verified.frame_asset_url.clone())
+                } else {
+                    verified.frame_asset_url.clone()
+                };
+                let frame_asset_local_path = if is_graphic {
+                    if !verified.file_path.is_empty() {
+                        Some(verified.file_path.clone())
+                    } else {
+                        verified.frame_asset_local_path.clone()
+                    }
+                } else {
+                    verified.frame_asset_local_path.clone()
+                };
+                let frame_asset_title = if is_graphic {
+                    if !verified.file_name.is_empty() {
+                        Some(verified.file_name.clone())
+                    } else {
+                        verified.frame_asset_title.clone()
+                    }
+                } else {
+                    verified.frame_asset_title.clone()
+                };
+                let frame_asset_slot_json = if is_graphic {
+                    None
+                } else {
+                    verified.frame_asset_slot.as_ref().map(|s| serde_json::to_string(s).unwrap_or_default())
+                };
+                let exclude_adaptive = if is_graphic {
+                    1
+                } else {
+                    verified.exclude_from_adaptive_layout as i32
+                };
+                let frame_asset_is_pro = 0; // always 0 for compatibility per D-04
+                let elem_type = if verified.r#type.is_empty() { "photo".to_string() } else { verified.r#type.clone() };
+
                 tx.execute(
                     "INSERT INTO carousel_frames (
-                        id, slide_id, photo_id, file_path, file_name, preview_path, thumbnail_path,
+                        id, slide_id, photo_id, element_type, group_id, file_path, file_name, preview_path, thumbnail_path,
                         x, y, width, height, rotation, z_index, photo_aspect,
+                        original_width, original_height,
                         crop_x, crop_y, crop_scale, crop_rotation,
                         border_enabled, border_width, border_color, border_style,
-                        opacity, locked, shape_type, custom_svg_path,
+                        opacity, locked, text_payload, shape_type, custom_svg_path,
                         corner_radius_tl, corner_radius_tr, corner_radius_br, corner_radius_bl,
+                        flip_horizontal, flip_vertical, blur_radius, grayscale_amount, noise_amount,
+                        exclude_from_adaptive_layout, shadow_enabled, shadow_blur, shadow_offset_x,
+                        shadow_offset_y, shadow_opacity, shadow_color,
+                        frame_asset_id, frame_asset_url, frame_asset_local_path, frame_asset_title,
+                        frame_asset_slot, frame_asset_is_pro,
                         created_at, updated_at
                     ) VALUES (
-                        ?1, ?2, ?3, ?4, ?5, ?6, ?7,
-                        ?8, ?9, ?10, ?11, ?12, ?13, ?14,
-                        ?15, ?16, ?17, ?18,
+                        ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9,
+                        ?10, ?11, ?12, ?13, ?14, ?15, ?16,
+                        ?17, ?18,
                         ?19, ?20, ?21, ?22,
                         ?23, ?24, ?25, ?26,
-                        ?27, ?28, ?29, ?30,
+                        ?27, ?28, ?29, ?30, ?31,
+                        ?32, ?33, ?34, ?35,
+                        ?36, ?37, ?38, ?39, ?40,
+                        ?41, ?42, ?43, ?44,
+                        ?45, ?46, ?47,
+                        ?48, ?49, ?50, ?51,
+                        ?52, ?53,
                         datetime('now'), datetime('now')
                     )",
                     rusqlite::params![
                         verified.id,
                         slide.id,
                         verified.photo_id,
+                        elem_type,
+                        verified.group_id,
                         verified.file_path,
                         verified.file_name,
                         verified.preview_path,
@@ -3047,6 +3809,8 @@ impl Database {
                         verified.rotation,
                         z,
                         verified.photo_aspect.unwrap_or(1.0),
+                        verified.original_width.unwrap_or(verified.width),
+                        verified.original_height.unwrap_or(verified.height),
                         verified.crop_x.unwrap_or(0.0),
                         verified.crop_y.unwrap_or(0.0),
                         verified.crop_scale.unwrap_or(1.0),
@@ -3057,12 +3821,31 @@ impl Database {
                         verified.border_style.as_deref().unwrap_or("solid"),
                         verified.opacity.unwrap_or(1.0),
                         verified.locked.unwrap_or(false) as i32,
+                        verified.text_payload.as_deref(),
                         verified.shape_type.as_deref().unwrap_or("rectangle"),
                         verified.custom_svg_path,
                         verified.corner_radius_tl.unwrap_or(0.0),
                         verified.corner_radius_tr.unwrap_or(0.0),
                         verified.corner_radius_br.unwrap_or(0.0),
                         verified.corner_radius_bl.unwrap_or(0.0),
+                        verified.flip_horizontal as i32,
+                        verified.flip_vertical as i32,
+                        verified.blur_radius,
+                        verified.grayscale_amount,
+                        verified.noise_amount,
+                        exclude_adaptive,
+                        verified.shadow_enabled as i32,
+                        verified.shadow_blur,
+                        verified.shadow_offset_x,
+                        verified.shadow_offset_y,
+                        verified.shadow_opacity,
+                        verified.shadow_color,
+                        frame_asset_id,
+                        frame_asset_url,
+                        frame_asset_local_path,
+                        frame_asset_title,
+                        frame_asset_slot_json,
+                        frame_asset_is_pro,
                     ],
                 )?;
             }
@@ -3096,25 +3879,44 @@ impl Database {
         };
 
         let mut slide_stmt = conn.prepare(
-            "SELECT id, slide_index, width_px, height_px, background_color
+            "SELECT id, slide_index, width_px, height_px, background_color,
+                    page_width, page_height, page_unit,
+                    background_image, background_color_noise,
+                    border_enabled, border_width, border_color
              FROM carousel_slides
              WHERE project_id = ?1
              ORDER BY slide_index ASC",
         )?;
 
         let slide_rows = slide_stmt.query_map([project_id], |row| {
+            let bg_img_raw: Option<String> = row.get(8).ok().flatten();
+            let bg_img: Option<SpreadBackgroundImagePayload> = bg_img_raw.and_then(|s| serde_json::from_str(&s).ok());
+            let border_enabled: Option<bool> = row.get::<_, Option<i32>>(10).ok().flatten().map(|v| v != 0);
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, i32>(1)?,
                 row.get::<_, i32>(2)?,
                 row.get::<_, i32>(3)?,
                 row.get::<_, String>(4)?,
+                row.get::<_, Option<f64>>(5).ok().flatten(),
+                row.get::<_, Option<f64>>(6).ok().flatten(),
+                row.get::<_, Option<String>>(7).ok().flatten(),
+                bg_img,
+                row.get::<_, Option<f64>>(9).ok().flatten(),
+                border_enabled,
+                row.get::<_, Option<f64>>(11).ok().flatten(),
+                row.get::<_, Option<String>>(12).ok().flatten(),
             ))
         })?;
 
         let mut slides = Vec::new();
         for slide_res in slide_rows {
-            let (slide_id, slide_index, width_px, height_px, background_color) = slide_res?;
+            let (
+                slide_id, slide_index, width_px, height_px, background_color,
+                page_width, page_height, page_unit,
+                background_image, background_color_noise,
+                border_enabled, border_width, border_color,
+            ) = slide_res?;
 
             let mut frame_stmt = conn.prepare(
                 "SELECT id, photo_id, file_path, file_name, preview_path, thumbnail_path,
@@ -3122,7 +3924,13 @@ impl Database {
                         crop_x, crop_y, crop_scale, crop_rotation,
                         border_enabled, border_width, border_color, border_style,
                         opacity, locked, shape_type, custom_svg_path,
-                        corner_radius_tl, corner_radius_tr, corner_radius_br, corner_radius_bl
+                        corner_radius_tl, corner_radius_tr, corner_radius_br, corner_radius_bl,
+                        element_type, group_id, text_payload, original_width, original_height,
+                        flip_horizontal, flip_vertical, blur_radius, grayscale_amount, noise_amount,
+                        exclude_from_adaptive_layout, shadow_enabled, shadow_blur, shadow_offset_x,
+                        shadow_offset_y, shadow_opacity, shadow_color,
+                        frame_asset_id, frame_asset_url, frame_asset_local_path, frame_asset_title,
+                        frame_asset_slot, frame_asset_is_pro
                  FROM carousel_frames
                  WHERE slide_id = ?1
                  ORDER BY z_index ASC, rowid ASC",
@@ -3131,11 +3939,58 @@ impl Database {
             let frame_rows = frame_stmt.query_map([&slide_id], |row| {
                 let border_enabled_int: i32 = row.get(17)?;
                 let locked_int: i32 = row.get(22)?;
+                let elem_type: String = row.get::<_, Option<String>>(29).ok().flatten().unwrap_or_else(|| "photo".to_string());
+                let flip_h_int: i32 = row.get::<_, Option<i32>>(34).ok().flatten().unwrap_or(0);
+                let flip_v_int: i32 = row.get::<_, Option<i32>>(35).ok().flatten().unwrap_or(0);
+                let blur_radius: f64 = row.get::<_, Option<f64>>(36).ok().flatten().unwrap_or(0.0);
+                let grayscale_amount: f64 = row.get::<_, Option<f64>>(37).ok().flatten().unwrap_or(0.0);
+                let noise_amount: f64 = row.get::<_, Option<f64>>(38).ok().flatten().unwrap_or(0.0);
+                let exclude_adaptive_int: i32 = row.get::<_, Option<i32>>(39).ok().flatten().unwrap_or(0);
+                let shadow_enabled_int: i32 = row.get::<_, Option<i32>>(40).ok().flatten().unwrap_or(0);
+                let shadow_blur: f64 = row.get::<_, Option<f64>>(41).ok().flatten().unwrap_or(10.0);
+                let shadow_offset_x: f64 = row.get::<_, Option<f64>>(42).ok().flatten().unwrap_or(0.0);
+                let shadow_offset_y: f64 = row.get::<_, Option<f64>>(43).ok().flatten().unwrap_or(5.0);
+                let shadow_opacity: f64 = row.get::<_, Option<f64>>(44).ok().flatten().unwrap_or(35.0);
+                let shadow_color: String = row.get::<_, Option<String>>(45).ok().flatten().unwrap_or_else(|| "#000000".to_string());
+                let frame_asset_id: Option<String> = row.get(46).ok().flatten();
+                let frame_asset_url: Option<String> = row.get(47).ok().flatten();
+                let frame_asset_local_path: Option<String> = row.get(48).ok().flatten();
+                let frame_asset_title: Option<String> = row.get(49).ok().flatten();
+                let frame_asset_slot_raw: Option<String> = row.get(50).ok().flatten();
+                let frame_asset_slot: Option<FrameSlotPayload> = frame_asset_slot_raw.and_then(|s| serde_json::from_str(&s).ok());
+                let frame_asset_is_pro_int: Option<i32> = row.get(51).ok().flatten();
+                let mut frame_asset_is_pro = frame_asset_is_pro_int.map(|v| v != 0);
+
+                let mut file_path: String = row.get(2)?;
+                let mut file_name: String = row.get(3)?;
+                let mut graphic_id = None;
+                let mut file_url = None;
+                let mut exclude_adaptive = exclude_adaptive_int != 0;
+
+                if elem_type == "graphic" {
+                    graphic_id = frame_asset_id.clone();
+                    file_url = frame_asset_url.clone();
+                    if file_path.is_empty() {
+                        if let Some(ref p) = frame_asset_local_path {
+                            file_path = p.clone();
+                        }
+                    }
+                    if file_name.is_empty() {
+                        if let Some(ref t) = frame_asset_title {
+                            file_name = t.clone();
+                        }
+                    }
+                    exclude_adaptive = true;
+                    frame_asset_is_pro = Some(false);
+                }
+
                 Ok(CarouselFramePayload {
                     id: row.get(0)?,
+                    r#type: elem_type,
                     photo_id: row.get(1)?,
-                    file_path: row.get(2)?,
-                    file_name: row.get(3)?,
+                    group_id: row.get(30).ok().flatten(),
+                    file_path,
+                    file_name,
                     preview_path: row.get(4)?,
                     thumbnail_path: row.get(5)?,
                     x: row.get(6)?,
@@ -3145,6 +4000,10 @@ impl Database {
                     rotation: row.get(10)?,
                     z_index: Some(row.get(11)?),
                     photo_aspect: Some(row.get(12)?),
+                    original_width: row.get::<_, Option<f64>>(32).ok().flatten(),
+                    original_height: row.get::<_, Option<f64>>(33).ok().flatten(),
+                    name: None,
+                    hidden: None,
                     crop_x: Some(row.get(13)?),
                     crop_y: Some(row.get(14)?),
                     crop_scale: Some(row.get(15)?),
@@ -3155,12 +4014,33 @@ impl Database {
                     border_style: row.get(20)?,
                     opacity: Some(row.get(21)?),
                     locked: Some(locked_int != 0),
+                    text_payload: row.get(31).ok().flatten(),
                     shape_type: row.get(23)?,
                     custom_svg_path: row.get(24)?,
                     corner_radius_tl: Some(row.get(25)?),
                     corner_radius_tr: Some(row.get(26)?),
                     corner_radius_br: Some(row.get(27)?),
                     corner_radius_bl: Some(row.get(28)?),
+                    graphic_id,
+                    file_url,
+                    flip_horizontal: flip_h_int != 0,
+                    flip_vertical: flip_v_int != 0,
+                    blur_radius,
+                    grayscale_amount,
+                    noise_amount,
+                    exclude_from_adaptive_layout: exclude_adaptive,
+                    shadow_enabled: shadow_enabled_int != 0,
+                    shadow_blur,
+                    shadow_offset_x,
+                    shadow_offset_y,
+                    shadow_opacity,
+                    shadow_color,
+                    frame_asset_id,
+                    frame_asset_url,
+                    frame_asset_local_path,
+                    frame_asset_title,
+                    frame_asset_slot,
+                    frame_asset_is_pro,
                 })
             })?;
 
@@ -3175,6 +4055,14 @@ impl Database {
                 width_px,
                 height_px,
                 background_color,
+                page_width,
+                page_height,
+                page_unit,
+                background_image,
+                background_color_noise,
+                border_enabled,
+                border_width,
+                border_color,
                 elements,
             });
         }
@@ -3367,6 +4255,7 @@ mod tests {
                 safe_area: 10.0,
                 background_color: "#1e293b".to_string(),
                 background_type: "solid".to_string(),
+                ..Default::default()
             }),
             right_page: Some(PagePayload {
                 id: "page-cover-front".to_string(),
@@ -3379,6 +4268,7 @@ mod tests {
                 safe_area: 10.0,
                 background_color: "#1e293b".to_string(),
                 background_type: "solid".to_string(),
+                ..Default::default()
             }),
             gutter_width: 0.25,
             gutter_unit: "inch".to_string(),
@@ -3392,6 +4282,7 @@ mod tests {
             spacing_unit: Some("mm".to_string()),
             background_color: "#1e293b".to_string(),
             elements: vec![],
+            ..Default::default()
         };
 
         let interior_spread_1 = SpreadPayload {
@@ -3410,6 +4301,7 @@ mod tests {
                 safe_area: 10.0,
                 background_color: "#FFFFFF".to_string(),
                 background_type: "solid".to_string(),
+                ..Default::default()
             }),
             right_page: Some(PagePayload {
                 id: "page-2".to_string(),
@@ -3422,6 +4314,7 @@ mod tests {
                 safe_area: 10.0,
                 background_color: "#FFFFFF".to_string(),
                 background_type: "solid".to_string(),
+                ..Default::default()
             }),
             gutter_width: 0.0,
             gutter_unit: "inch".to_string(),
@@ -3472,8 +4365,10 @@ mod tests {
                     corner_radius: None,
                     shape_type: None,
                     custom_svg_path: None,
+                    ..Default::default()
                 }
             ],
+            ..Default::default()
         };
 
         let album = AlbumPayload {
@@ -3730,6 +4625,7 @@ mod tests {
                 spacing_unit: Some("mm".to_string()),
                 background_color: "#FFFFFF".to_string(),
                 elements: vec![elem_fields],
+                ..Default::default()
             },
             spreads: vec![],
         };
@@ -3855,6 +4751,7 @@ mod tests {
             corner_radius_tr: Some(0.0),
             corner_radius_br: Some(12.0),
             corner_radius_bl: Some(0.0),
+            ..Default::default()
         };
 
         let frame_2 = CarouselFramePayload {
@@ -3887,6 +4784,7 @@ mod tests {
             corner_radius_tr: None,
             corner_radius_br: None,
             corner_radius_bl: None,
+            ..Default::default()
         };
 
         let slide_0 = CarouselSlidePayload {
@@ -3896,6 +4794,7 @@ mod tests {
             height_px: 1350,
             background_color: "#FFFFFF".to_string(),
             elements: vec![frame_1, frame_2],
+            ..Default::default()
         };
 
         let slide_1 = CarouselSlidePayload {
@@ -3905,6 +4804,7 @@ mod tests {
             height_px: 1350,
             background_color: "#112233".to_string(),
             elements: vec![],
+            ..Default::default()
         };
 
         let slide_2 = CarouselSlidePayload {
@@ -3914,6 +4814,7 @@ mod tests {
             height_px: 1350,
             background_color: "#445566".to_string(),
             elements: vec![],
+            ..Default::default()
         };
 
         let carousel = CarouselPayload {
@@ -4007,7 +4908,9 @@ mod tests {
                     corner_radius_tr: None,
                     corner_radius_br: None,
                     corner_radius_bl: None,
+                    ..Default::default()
                 }],
+                ..Default::default()
             }],
         };
 
@@ -4028,6 +4931,378 @@ mod tests {
         assert_eq!(frame_count, 0);
 
         drop(conn);
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_migration_idempotency_and_35_plus_column_roundtrip() {
+        let temp_dir = std::env::temp_dir().join(format!("afsn_test_v30_idempotent_{}", uuid::Uuid::new_v4()));
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        let db_path = temp_dir.join("test.db");
+
+        // 1. Initial creation (runs v1..v30)
+        let db = Database::init(db_path.clone()).expect("First Database::init failed");
+        assert_eq!(db.get_schema_version().unwrap(), 30);
+        assert_eq!(Database::expected_version(), 30);
+
+        // 2. Re-run init on same DB file (must be strictly idempotent)
+        drop(db);
+        let db = Database::init(db_path.clone()).expect("Second Database::init (idempotency check) failed");
+        assert_eq!(db.get_schema_version().unwrap(), 30);
+
+        // 3. Test project creation and update_project_border / update_project_margins IPC calls
+        let project_id = "proj-roundtrip-v30";
+        db.create_project(
+            project_id,
+            "Album V30 Roundtrip",
+            200.0,
+            200.0,
+            "mm",
+            300,
+            4.0,
+            "mm",
+            true,
+            10.0,
+            "mm",
+            10.0,
+            10.0,
+            10.0,
+            10.0,
+            false,
+            0.0,
+            "mm",
+            "#FFFFFF",
+            "solid",
+            "#1e293b",
+        ).expect("Failed to create project");
+
+        // Update border and margins
+        db.update_project_border(project_id, true, 3.5, "mm", "#FF5500").expect("update_project_border failed");
+        db.update_project_margins(project_id, 15.0, "mm", 12.0, 14.0, 16.0, 8.0, Some(false)).expect("update_project_margins failed");
+
+        let project = db.get_project(project_id).expect("get_project failed").expect("Project not found");
+        assert_eq!(project.border_enabled, true);
+        assert_eq!(project.border_width, 3.5);
+        assert_eq!(project.border_unit, "mm");
+        assert_eq!(project.border_color, "#FF5500");
+        assert_eq!(project.margin_enabled, false);
+        assert_eq!(project.margin_value, 15.0);
+        assert_eq!(project.margin_top, Some(12.0));
+        assert_eq!(project.margin_bottom, Some(14.0));
+        assert_eq!(project.margin_outside, Some(16.0));
+        assert_eq!(project.margin_spine, Some(8.0));
+
+        // 4. Save and load full AlbumPayload with 35+ columns
+        let bg_image = SpreadBackgroundImagePayload {
+            photo_id: "photo-bg-1".to_string(),
+            file_path: "/tmp/bg_landscape.jpg".to_string(),
+            file_name: "bg_landscape.jpg".to_string(),
+            preview_path: Some("/tmp/bg_prev.jpg".to_string()),
+            thumbnail_path: Some("/tmp/bg_thumb.jpg".to_string()),
+            width: 1920.0,
+            height: 1080.0,
+            fit: "cover".to_string(),
+            opacity: 85.0,
+            crop_x: 0.15,
+            crop_y: 0.25,
+            crop_scale: 1.25,
+            crop_rotation: 45.0,
+            flip_horizontal: Some(true),
+            flip_vertical: Some(false),
+            blur_radius: Some(5.0),
+            grayscale_amount: Some(40.0),
+            noise_amount: Some(10.0),
+            is_missing: Some(false),
+            target: Some("spread".to_string()),
+        };
+
+        let photo_elem = ElementPayload {
+            id: "elem-photo-1".to_string(),
+            r#type: "photo".to_string(),
+            photo_id: Some("photo-p1".to_string()),
+            file_path: "/tmp/photo1.jpg".to_string(),
+            file_name: "photo1.jpg".to_string(),
+            x: 20.0,
+            y: 30.0,
+            width: 150.0,
+            height: 120.0,
+            rotation: 12.0,
+            z_index: 2,
+            photo_aspect: 1.25,
+            border_enabled: true,
+            border_width: 2.0,
+            border_color: "#112233".to_string(),
+            opacity: 0.95,
+            corner_radius_tl: 8.0,
+            corner_radius_tr: 4.0,
+            corner_radius_br: 8.0,
+            corner_radius_bl: 4.0,
+            blur_radius: 6.0,
+            grayscale_amount: 55.0,
+            noise_amount: 18.0,
+            exclude_from_adaptive_layout: false,
+            shadow_enabled: true,
+            shadow_blur: 14.0,
+            shadow_offset_x: 3.0,
+            shadow_offset_y: 6.0,
+            shadow_opacity: 0.7,
+            shadow_color: "#050505".to_string(),
+            ..Default::default()
+        };
+
+        let graphic_elem = ElementPayload {
+            id: "elem-graphic-1".to_string(),
+            r#type: "graphic".to_string(),
+            x: 180.0,
+            y: 50.0,
+            width: 40.0,
+            height: 40.0,
+            rotation: -10.0,
+            z_index: 3,
+            exclude_from_adaptive_layout: true,
+            frame_asset_id: Some("sticker-gold-star".to_string()),
+            frame_asset_url: Some("https://example.com/star.svg".to_string()),
+            frame_asset_local_path: Some("/stickers/star.svg".to_string()),
+            frame_asset_title: Some("Gold Star".to_string()),
+            frame_asset_slot: Some(FrameSlotPayload {
+                slot_x: 0.0,
+                slot_y: 0.0,
+                slot_width: 40.0,
+                slot_height: 40.0,
+                shape: Some("star".to_string()),
+            }),
+            frame_asset_is_pro: Some(false),
+            ..Default::default()
+        };
+
+        let text_elem = ElementPayload {
+            id: "elem-text-1".to_string(),
+            r#type: "text".to_string(),
+            x: 50.0,
+            y: 180.0,
+            width: 200.0,
+            height: 50.0,
+            rotation: 0.0,
+            z_index: 4,
+            text_payload: Some("{\"text\":\"Our Story\",\"style\":{\"fontFamily\":\"Inter\"}}".to_string()),
+            ..Default::default()
+        };
+
+        let interior_spread = SpreadPayload {
+            id: "spread-v30-1".to_string(),
+            spread_index: 1,
+            r#type: "interior".to_string(),
+            name: "Spread 01".to_string(),
+            page_width: Some(420.0),
+            page_height: Some(297.0),
+            page_unit: Some("mm".to_string()),
+            background_image: Some(bg_image.clone()),
+            background_color_noise: Some(15.0),
+            border_enabled: Some(true),
+            border_width: Some(3.0),
+            border_color: Some("#99AABB".to_string()),
+            background_color: "#F8FAFC".to_string(),
+            elements: vec![photo_elem.clone(), graphic_elem.clone(), text_elem.clone()],
+            ..Default::default()
+        };
+
+        let cover_spread = SpreadPayload {
+            id: "spread-v30-cover".to_string(),
+            spread_index: 0,
+            r#type: "cover".to_string(),
+            name: "Cover Spread".to_string(),
+            background_color: "#1E293B".to_string(),
+            elements: vec![],
+            ..Default::default()
+        };
+
+        let album = AlbumPayload {
+            id: format!("album-{}", project_id),
+            project_id: project_id.to_string(),
+            cover_spread,
+            spreads: vec![interior_spread],
+            total_spreads: 1,
+            total_pages: 2,
+        };
+
+        db.save_album_structure(&album).expect("save_album_structure failed");
+
+        let loaded_album = db.load_album_structure(project_id).expect("load_album_structure failed").expect("Album not found");
+        assert_eq!(loaded_album.spreads.len(), 1);
+        let loaded_spread = &loaded_album.spreads[0];
+
+        // Verify spread level roundtrip
+        assert_eq!(loaded_spread.page_width, Some(420.0));
+        assert_eq!(loaded_spread.page_height, Some(297.0));
+        assert_eq!(loaded_spread.page_unit, Some("mm".to_string()));
+        assert_eq!(loaded_spread.background_color_noise, Some(15.0));
+        assert_eq!(loaded_spread.border_enabled, Some(true));
+        assert_eq!(loaded_spread.border_width, Some(3.0));
+        assert_eq!(loaded_spread.border_color, Some("#99AABB".to_string()));
+
+        let loaded_bg = loaded_spread.background_image.as_ref().expect("Background image missing");
+        assert_eq!(loaded_bg.photo_id, bg_image.photo_id);
+        assert_eq!(loaded_bg.crop_rotation, bg_image.crop_rotation);
+        assert_eq!(loaded_bg.blur_radius, bg_image.blur_radius);
+        assert_eq!(loaded_bg.grayscale_amount, bg_image.grayscale_amount);
+        assert_eq!(loaded_bg.noise_amount, bg_image.noise_amount);
+        assert_eq!(loaded_bg.flip_horizontal, bg_image.flip_horizontal);
+
+        // Verify element level roundtrip
+        assert_eq!(loaded_spread.elements.len(), 3);
+        let loaded_photo = loaded_spread.elements.iter().find(|e| e.id == "elem-photo-1").unwrap();
+        assert_eq!(loaded_photo.blur_radius, 6.0);
+        assert_eq!(loaded_photo.grayscale_amount, 55.0);
+        assert_eq!(loaded_photo.noise_amount, 18.0);
+        assert_eq!(loaded_photo.shadow_enabled, true);
+        assert_eq!(loaded_photo.shadow_blur, 14.0);
+        assert_eq!(loaded_photo.shadow_offset_x, 3.0);
+        assert_eq!(loaded_photo.shadow_offset_y, 6.0);
+        assert_eq!(loaded_photo.shadow_opacity, 0.7);
+        assert_eq!(loaded_photo.shadow_color, "#050505");
+        assert_eq!(loaded_photo.exclude_from_adaptive_layout, false);
+
+        let loaded_graphic = loaded_spread.elements.iter().find(|e| e.id == "elem-graphic-1").unwrap();
+        assert_eq!(loaded_graphic.r#type, "graphic");
+        assert_eq!(loaded_graphic.frame_asset_id, Some("sticker-gold-star".to_string()));
+        assert_eq!(loaded_graphic.frame_asset_url, Some("https://example.com/star.svg".to_string()));
+        assert_eq!(loaded_graphic.frame_asset_title, Some("Gold Star".to_string()));
+        assert_eq!(loaded_graphic.frame_asset_is_pro, Some(false));
+        assert_eq!(loaded_graphic.exclude_from_adaptive_layout, true);
+
+        let loaded_text = loaded_spread.elements.iter().find(|e| e.id == "elem-text-1").unwrap();
+        assert_eq!(loaded_text.r#type, "text");
+        assert_eq!(loaded_text.text_payload, text_elem.text_payload);
+
+        // Verify mixed dimensions calculation on project
+        let proj_after_album = db.get_project(project_id).unwrap().unwrap();
+        assert_eq!(proj_after_album.is_mixed_dimensions, true);
+        assert_eq!(proj_after_album.dimension_summary, Some("Mixed sizes".to_string()));
+
+        // 5. Test Carousel Structure Roundtrip with symmetric columns
+        let carousel_proj_id = "carousel-roundtrip-v30";
+        db.create_project(
+            carousel_proj_id,
+            "Carousel V30",
+            1080.0,
+            1350.0,
+            "px",
+            72,
+            0.0,
+            "px",
+            false,
+            0.0,
+            "px",
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            false,
+            0.0,
+            "px",
+            "#FFFFFF",
+            "solid",
+            "#111827",
+        ).expect("Create carousel project failed");
+
+        let c_frame_graphic = CarouselFramePayload {
+            id: "cframe-graphic-1".to_string(),
+            r#type: "graphic".to_string(),
+            x: 50.0,
+            y: 50.0,
+            width: 100.0,
+            height: 100.0,
+            rotation: 0.0,
+            exclude_from_adaptive_layout: true,
+            frame_asset_id: Some("sticker-heart".to_string()),
+            frame_asset_url: Some("https://example.com/heart.png".to_string()),
+            frame_asset_local_path: Some("/stickers/heart.png".to_string()),
+            frame_asset_title: Some("Heart".to_string()),
+            frame_asset_is_pro: Some(false),
+            ..Default::default()
+        };
+
+        let c_frame_photo = CarouselFramePayload {
+            id: "cframe-photo-1".to_string(),
+            r#type: "photo".to_string(),
+            photo_id: Some("cphoto-1".to_string()),
+            file_path: "/tmp/cphoto.jpg".to_string(),
+            file_name: "cphoto.jpg".to_string(),
+            x: 100.0,
+            y: 200.0,
+            width: 880.0,
+            height: 880.0,
+            rotation: 5.0,
+            blur_radius: 4.5,
+            grayscale_amount: 60.0,
+            noise_amount: 20.0,
+            shadow_enabled: true,
+            shadow_blur: 20.0,
+            shadow_offset_x: 5.0,
+            shadow_offset_y: 10.0,
+            shadow_opacity: 0.8,
+            shadow_color: "#000000".to_string(),
+            ..Default::default()
+        };
+
+        let c_slide = CarouselSlidePayload {
+            id: "cslide-1".to_string(),
+            slide_index: 0,
+            width_px: 1080,
+            height_px: 1350,
+            page_width: Some(1080.0),
+            page_height: Some(1350.0),
+            page_unit: Some("px".to_string()),
+            background_image: Some(bg_image.clone()),
+            background_color_noise: Some(10.0),
+            border_enabled: Some(true),
+            border_width: Some(5.0),
+            border_color: Some("#223344".to_string()),
+            background_color: "#FFFFFF".to_string(),
+            elements: vec![c_frame_graphic, c_frame_photo],
+        };
+
+        let carousel = CarouselPayload {
+            id: "carousel-v30".to_string(),
+            project_id: carousel_proj_id.to_string(),
+            ratio: "4:5".to_string(),
+            slide_width_px: 1080,
+            slide_height_px: 1350,
+            total_slides: 1,
+            slides: vec![c_slide],
+        };
+
+        db.save_carousel_structure(&carousel).expect("save_carousel_structure failed");
+
+        let loaded_carousel = db.load_carousel_structure(carousel_proj_id).expect("load_carousel_structure failed").expect("Carousel not found");
+        assert_eq!(loaded_carousel.slides.len(), 1);
+        let loaded_slide = &loaded_carousel.slides[0];
+        assert_eq!(loaded_slide.page_width, Some(1080.0));
+        assert_eq!(loaded_slide.page_height, Some(1350.0));
+        assert_eq!(loaded_slide.page_unit, Some("px".to_string()));
+        assert_eq!(loaded_slide.background_color_noise, Some(10.0));
+        assert_eq!(loaded_slide.border_enabled, Some(true));
+        assert_eq!(loaded_slide.border_width, Some(5.0));
+        assert_eq!(loaded_slide.border_color, Some("#223344".to_string()));
+
+        let loaded_c_bg = loaded_slide.background_image.as_ref().unwrap();
+        assert_eq!(loaded_c_bg.photo_id, bg_image.photo_id);
+        assert_eq!(loaded_c_bg.crop_rotation, bg_image.crop_rotation);
+
+        assert_eq!(loaded_slide.elements.len(), 2);
+        let loaded_c_graphic = loaded_slide.elements.iter().find(|e| e.id == "cframe-graphic-1").unwrap();
+        assert_eq!(loaded_c_graphic.r#type, "graphic");
+        assert_eq!(loaded_c_graphic.frame_asset_id, Some("sticker-heart".to_string()));
+        assert_eq!(loaded_c_graphic.frame_asset_title, Some("Heart".to_string()));
+        assert_eq!(loaded_c_graphic.exclude_from_adaptive_layout, true);
+
+        let loaded_c_photo = loaded_slide.elements.iter().find(|e| e.id == "cframe-photo-1").unwrap();
+        assert_eq!(loaded_c_photo.blur_radius, 4.5);
+        assert_eq!(loaded_c_photo.grayscale_amount, 60.0);
+        assert_eq!(loaded_c_photo.noise_amount, 20.0);
+        assert_eq!(loaded_c_photo.shadow_enabled, true);
+        assert_eq!(loaded_c_photo.shadow_blur, 20.0);
+
         let _ = std::fs::remove_dir_all(&temp_dir);
     }
 }

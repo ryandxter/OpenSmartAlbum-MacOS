@@ -198,6 +198,7 @@ pub fn update_project_margins(
     margin_bottom: f64,
     margin_outside: f64,
     margin_spine: f64,
+    margin_enabled: Option<bool>,
 ) -> Result<(), String> {
     if [margin_value, margin_top, margin_bottom, margin_outside, margin_spine]
         .iter()
@@ -213,6 +214,29 @@ pub fn update_project_margins(
         margin_bottom,
         margin_outside,
         margin_spine,
+        margin_enabled,
+    )
+    .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn update_project_border(
+    db: State<'_, Database>,
+    id: String,
+    border_enabled: bool,
+    border_width: f64,
+    border_unit: String,
+    border_color: String,
+) -> Result<(), String> {
+    if !border_width.is_finite() || border_width < 0.0 {
+        return Err("Border width must be a finite, non-negative number".to_string());
+    }
+    db.update_project_border(
+        &id,
+        border_enabled,
+        border_width,
+        &border_unit,
+        &border_color,
     )
     .map_err(|error| error.to_string())
 }

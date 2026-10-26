@@ -2026,6 +2026,7 @@ mod tests {
             project_type: "print".to_string(),
             created_at: "2026-08-29T12:00:00Z".to_string(),
             updated_at: "2026-08-29T12:00:00Z".to_string(),
+            ..Default::default()
         };
 
         // Left photo: full left page (x: 0, width: 200)
@@ -2057,6 +2058,7 @@ mod tests {
             spacing_unit: Some("mm".to_string()),
             background_color: "#FFFFFF".to_string(),
             elements: vec![left_elem, right_elem],
+            ..Default::default()
         };
 
         for dpi in [72, 150, 300] {
@@ -2187,6 +2189,7 @@ mod tests {
                     project_type: "print".to_string(),
                     created_at: String::new(),
                     updated_at: String::new(),
+                    ..Default::default()
                 };
 
                 let photo = |id: &str, x: f64, y: f64, width: f64, height: f64| {
@@ -2256,6 +2259,7 @@ mod tests {
                             page_height,
                         ),
                     ],
+                    ..Default::default()
                 };
 
                 let expected_gap = (spacing_value * scale).round() as i64;
@@ -2386,6 +2390,7 @@ mod tests {
             project_type: "print".to_string(),
             created_at: "2026-08-29T12:00:00Z".to_string(),
             updated_at: "2026-08-29T12:00:00Z".to_string(),
+            ..Default::default()
         };
 
         let spread = SpreadPayload {
@@ -2407,6 +2412,7 @@ mod tests {
             spacing_unit: Some("mm".to_string()),
             background_color: "#FFFFFF".to_string(),
             elements: vec![],
+            ..Default::default()
         };
 
         // Render at 72 DPI for fast unit test
@@ -2639,6 +2645,7 @@ mod tests {
             project_type: "print".to_string(),
             created_at: "2026-08-29T12:00:00Z".to_string(),
             updated_at: "2026-08-29T12:00:00Z".to_string(),
+            ..Default::default()
         };
 
         let text_elem = ElementPayload {
@@ -2700,6 +2707,7 @@ mod tests {
             corner_radius: None,
             shape_type: None,
             custom_svg_path: None,
+            ..Default::default()
         };
 
         let spread = SpreadPayload {
@@ -2721,6 +2729,7 @@ mod tests {
             spacing_unit: None,
             background_color: "#FFFFFF".to_string(),
             elements: vec![text_elem],
+            ..Default::default()
         };
 
         // 1. Pass 1: Render base photo layer (should be completely white because there are no photos, only text)
@@ -2830,6 +2839,7 @@ mod tests {
             corner_radius: None,
             shape_type: None,
             custom_svg_path: None,
+            ..Default::default()
         };
 
         // Render at 300 DPI (scale_factor for mm = 300 / 25.4 ≈ 11.811 px/mm)
