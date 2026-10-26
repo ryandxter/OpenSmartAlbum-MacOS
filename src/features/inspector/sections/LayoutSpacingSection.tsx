@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   AlignLeft,
   AlignCenter,
@@ -24,7 +24,12 @@ import { NumberInput } from '../../../components/ui/NumberInput';
 import { getMaxGapForUnit } from '../../../domain/units';
 import { getAllAlbumSpreads } from '../../../domain/album';
 import type { PhotoFrameElement } from '../../../domain/editor';
-import type { CarouselPhotoFrame } from '../../../domain/carousel';
+import {
+  type CarouselPhotoFrame,
+  CAROUSEL_RATIO_PRESETS,
+  type CarouselRatio,
+  type SocialResizeMode,
+} from '../../../domain/carousel';
 import styles from '../InspectorShared.module.css';
 
 interface LayoutSpacingSectionProps {
@@ -66,6 +71,20 @@ export function LayoutSpacingSection({ onToast, activeMode = 'print' }: LayoutSp
   const updateCarouselPhotoFrame = useCarouselStore((s) => s.updatePhotoFrame);
   const batchUpdateCarouselFrames = useCarouselStore((s) => s.batchUpdateFrames);
   const updateSlideBackground = useCarouselStore((s) => s.updateSlideBackground);
+  const resizeSocialPost = useCarouselStore((s) => s.resizeSocialPost);
+
+  const [selectedRatio, setSelectedRatio] = useState<CarouselRatio>(currentCarousel?.ratio || '1:1');
+  const [customW, setCustomW] = useState<number>(currentCarousel?.slideWidthPx || 1080);
+  const [customH, setCustomH] = useState<number>(currentCarousel?.slideHeightPx || 1080);
+  const [resizeMode, setResizeMode] = useState<SocialResizeMode>('reflow');
+
+  useEffect(() => {
+    if (currentCarousel) {
+      setSelectedRatio(currentCarousel.ratio);
+      setCustomW(currentCarousel.slideWidthPx);
+      setCustomH(currentCarousel.slideHeightPx);
+    }
+  }, [currentCarousel?.ratio, currentCarousel?.slideWidthPx, currentCarousel?.slideHeightPx]);
 
   const [isRatioLocked, setIsRatioLocked] = useState(true);
   const [marginMode, setMarginMode] = useState<'uniform' | '4-sided'>('4-sided');
@@ -280,16 +299,139 @@ export function LayoutSpacingSection({ onToast, activeMode = 'print' }: LayoutSp
     const slideW = currentCarousel.slideWidthPx;
     const slideH = currentCarousel.slideHeightPx;
 
+    const handlePresetChange = (presetKey: CarouselRatio) => {
+      setSelectedRatio(presetKey);
+      if (presetKey !== 'custom' && CAROUSEL_RATIO_PRESETS[presetKey]) {
+        setCustomW(CAROUSEL_RATIO_PRESETS[presetKey].width);
+        setCustomH(CAROUSEL_RATIO_PRESETS[presetKey].height);
+      }
+    };
+
+    const handleApplySize = () => {
+      if (customW < 200 || customW > 6000 || customH < 200 || customH > 6000) {
+        onToast?.('Dimensions must be between 200 px and 6000 px.');
+        return;
+      }
+      resizeSocialPost(customW, customH, selectedRatio, resizeMode);
+      onToast?.(
+        `✓ Resized carousel post to ${customW} × ${customH} px (${resizeMode === 'reflow' ? 'Reflow' : 'Scaled'})`
+      );
+    };
+
     return (
       <div>
-        {/* Slide Dimensions Readout */}
+        {/* Slide Dimensions & Live Preset Resize (D-08) */}
         <div className={styles.propGroup}>
           <div className={styles.groupHeader}>
             <span className={styles.label}>Slide Dimensions</span>
             <span className={styles.subLabel}>{slideW} × {slideH} px</span>
           </div>
-          <div className={styles.emptyHint} style={{ textAlign: 'left', padding: '4px 0' }}>
-            Carousel ratio: <strong>{currentCarousel.ratio}</strong>. Active slide: <strong>Slide {activeSlideIndex + 1} of {totalSlides}</strong>.
+
+          {/* Preset Selector Dropdown */}
+          <div className={styles.propRow}>
+            <span className={styles.subLabel}>Preset / Ratio</span>
+            <select
+              value={selectedRatio}
+              onChange={(e) => handlePresetChange(e.target.value as CarouselRatio)}
+              style={{
+                background: 'var(--color-bg-secondary, #1e1e22)',
+                color: 'var(--color-text-primary, #ffffff)',
+                border: '1px solid var(--color-border, #27272a)',
+                borderRadius: 'var(--radius-sm, 4px)',
+                padding: '4px 8px',
+                fontSize: '11px',
+                width: '100%',
+                outline: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              {(Object.entries(CAROUSEL_RATIO_PRESETS) as [CarouselRatio, typeof CAROUSEL_RATIO_PRESETS[CarouselRatio]][]).map(
+                ([key, preset]) => (
+                  <option key={key} value={key}>
+                    {preset.label}
+                  </option>
+                )
+              )}
+            </select>
+          </div>
+
+          {/* Width & Height Number Inputs */}
+          <div className={styles.propGrid2} style={{ marginTop: 8 }}>
+            <NumberInput
+              label="W"
+              value={customW}
+              min={200}
+              max={6000}
+              step={10}
+              suffix="px"
+              onChange={(val) => {
+                setCustomW(val);
+                setSelectedRatio('custom');
+              }}
+            />
+            <NumberInput
+              label="H"
+              value={customH}
+              min={200}
+              max={6000}
+              step={10}
+              suffix="px"
+              onChange={(val) => {
+                setCustomH(val);
+                setSelectedRatio('custom');
+              }}
+            />
+          </div>
+
+          {/* Resize Behavior Segmented Control (Reflow vs Scale) */}
+          <div style={{ marginTop: 8 }}>
+            <div className={styles.groupHeader} style={{ marginBottom: 4 }}>
+              <span className={styles.subLabel}>Resize Behavior</span>
+            </div>
+            <div className={styles.propGrid2}>
+              <button
+                type="button"
+                className={`${styles.actionBtn} ${resizeMode === 'reflow' ? styles.iconBtnActive : ''}`}
+                onClick={() => setResizeMode('reflow')}
+                title="Reflow frames adaptively for the new aspect ratio (recommended for photos)"
+              >
+                <span>Reflow (Adaptive)</span>
+              </button>
+              <button
+                type="button"
+                className={`${styles.actionBtn} ${resizeMode === 'scale' ? styles.iconBtnActive : ''}`}
+                onClick={() => setResizeMode('scale')}
+                title="Scale and reposition all frames proportionally"
+              >
+                <span>Scale Proportionally</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Apply Size CTA */}
+          <div style={{ marginTop: 8 }}>
+            <button
+              type="button"
+              className={styles.actionBtn}
+              style={{
+                width: '100%',
+                padding: '6px 12px',
+                background: 'var(--color-accent, #e4e4e7)',
+                color: 'var(--color-text-inverse, #18181b)',
+                fontWeight: 600,
+                fontSize: '11px',
+                borderRadius: 'var(--radius-sm, 4px)',
+                border: 'none',
+                cursor: 'pointer',
+              }}
+              onClick={handleApplySize}
+            >
+              Apply Size
+            </button>
+          </div>
+
+          <div className={styles.emptyHint} style={{ textAlign: 'left', padding: '6px 0 0' }}>
+            Current ratio: <strong>{currentCarousel.ratio}</strong>. Active slide: <strong>Slide {activeSlideIndex + 1} of {totalSlides}</strong>.
           </div>
         </div>
 

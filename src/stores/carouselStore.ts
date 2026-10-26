@@ -12,6 +12,8 @@ import {
   createInitialCarousel,
   createCarouselSlide,
   scaleFramesForRatioSwitch,
+  resizeCarouselPost,
+  SocialResizeMode,
   CAROUSEL_RATIO_PRESETS,
   MAX_CAROUSEL_SLIDES,
   MIN_CAROUSEL_SLIDES,
@@ -160,6 +162,12 @@ export interface CarouselState {
   updateElementVisualEffects: (
     elementIds: string[],
     effects: Partial<CarouselPhotoFrame> & Partial<CarouselTextFrame>
+  ) => void;
+  resizeSocialPost: (
+    width: number,
+    height: number,
+    presetId?: CarouselRatio,
+    mode?: SocialResizeMode
   ) => void;
 }
 
@@ -695,6 +703,39 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         slides: updatedSlides,
       },
     });
+  },
+
+  resizeSocialPost: (width, height, presetId, mode = 'reflow') => {
+    const { currentCarousel, pushHistory, markDirty } = get();
+    if (!currentCarousel) return;
+
+    pushHistory();
+
+    const oldDims = {
+      width: currentCarousel.slideWidthPx,
+      height: currentCarousel.slideHeightPx,
+    };
+    const newDims = { width, height };
+
+    const resolvedRatio: CarouselRatio =
+      presetId ||
+      ((Object.keys(CAROUSEL_RATIO_PRESETS) as CarouselRatio[]).find((key) => {
+        const p = CAROUSEL_RATIO_PRESETS[key];
+        return p.width === width && p.height === height;
+      }) ?? 'custom');
+
+    const updatedSlides = resizeCarouselPost(currentCarousel.slides, oldDims, newDims, mode);
+
+    set({
+      currentCarousel: {
+        ...currentCarousel,
+        ratio: resolvedRatio,
+        slideWidthPx: width,
+        slideHeightPx: height,
+        slides: updatedSlides,
+      },
+    });
+    markDirty();
   },
 
   setActiveSlide: (index) => {

@@ -14,7 +14,16 @@ import type { FrameSlotPayload } from './editor';
 import type { SpreadBackgroundImage } from './album';
 export type { StudioFramingPreset };
 
-export type CarouselRatio = '1:1' | '4:5' | '9:16';
+export type CarouselRatio =
+  | '1:1'
+  | '4:5'
+  | '9:16'
+  | 'fb-post'
+  | 'pinterest-pin'
+  | 'yt-thumb'
+  | 'x-post'
+  | 'linkedin-post'
+  | 'custom';
 
 export interface CarouselRatioPreset {
   id: CarouselRatio;
@@ -45,6 +54,48 @@ export const CAROUSEL_RATIO_PRESETS: Record<CarouselRatio, CarouselRatioPreset> 
     width: 1080,
     height: 1920,
     aspectRatio: 1080 / 1920,
+  },
+  'fb-post': {
+    id: 'fb-post',
+    label: 'Facebook Post (1200 × 630)',
+    width: 1200,
+    height: 630,
+    aspectRatio: 1200 / 630,
+  },
+  'pinterest-pin': {
+    id: 'pinterest-pin',
+    label: 'Pinterest Pin (1000 × 1500)',
+    width: 1000,
+    height: 1500,
+    aspectRatio: 1000 / 1500,
+  },
+  'yt-thumb': {
+    id: 'yt-thumb',
+    label: 'YouTube Thumbnail (1280 × 720)',
+    width: 1280,
+    height: 720,
+    aspectRatio: 1280 / 720,
+  },
+  'x-post': {
+    id: 'x-post',
+    label: 'X / Twitter Post (1600 × 900)',
+    width: 1600,
+    height: 900,
+    aspectRatio: 1600 / 900,
+  },
+  'linkedin-post': {
+    id: 'linkedin-post',
+    label: 'LinkedIn Post (1200 × 627)',
+    width: 1200,
+    height: 627,
+    aspectRatio: 1200 / 627,
+  },
+  'custom': {
+    id: 'custom',
+    label: 'Custom Dimensions',
+    width: 1080,
+    height: 1080,
+    aspectRatio: 1.0,
   },
 };
 
@@ -402,6 +453,132 @@ export function scaleFramesForRatioSwitch(
       elements: updatedElements,
     };
   });
+}
+
+/**
+ * Executes Reflow with Adaptive Layout transformation for all photo frames
+ * across all slides when switching carousel aspect ratios or live resizing.
+ * Refits participating photo frames cleanly to match the new canvas proportions,
+ * while preserving frames marked with excludeFromAdaptiveLayout or locked.
+ */
+export function reflowFramesForRatioSwitch(
+  slides: CarouselSlide[],
+  oldPreset: { width: number; height: number },
+  newPreset: { width: number; height: number }
+): CarouselSlide[] {
+  if (oldPreset.width === newPreset.width && oldPreset.height === newPreset.height) {
+    return slides;
+  }
+
+  const scaleX = newPreset.width / oldPreset.width;
+  const scaleY = newPreset.height / oldPreset.height;
+  const uniformScale = Math.min(scaleX, scaleY);
+
+  return slides.map((slide, slideIdx) => {
+    const updatedElements = slide.elements.map((el) => {
+      if (el.type !== 'photo') {
+        // Text / graphics scale with relative center position
+        return {
+          ...el,
+          x: Math.round(el.x * scaleX),
+          y: Math.round(el.y * scaleY),
+          width: Math.round(el.width * scaleX),
+          height: Math.round(el.height * scaleY),
+        };
+      }
+
+      // If excluded or locked, preserve exact proportional scale
+      if (el.excludeFromAdaptiveLayout || el.locked) {
+        const oldSlideStartX = slideIdx * oldPreset.width;
+        const localX = el.x - oldSlideStartX;
+        const relCenterX = (localX + el.width / 2) / oldPreset.width;
+        const relCenterY = (el.y + el.height / 2) / oldPreset.height;
+
+        const newW = Math.round(el.width * uniformScale);
+        const newH = Math.round(el.height * uniformScale);
+        const newSlideStartX = slideIdx * newPreset.width;
+        const newCenterX = newSlideStartX + relCenterX * newPreset.width;
+        const newCenterY = relCenterY * newPreset.height;
+
+        return {
+          ...el,
+          x: Math.max(0, Math.round(newCenterX - newW / 2)),
+          y: Math.max(0, Math.min(newPreset.height - newH, Math.round(newCenterY - newH / 2))),
+          width: newW,
+          height: newH,
+        };
+      }
+
+      // Adaptive Reflow for participating photo frames:
+      // Map coordinates to new aspect ratio while refitting dimensions cleanly
+      const oldSlideStartX = slideIdx * oldPreset.width;
+      const localX = el.x - oldSlideStartX;
+      const spanSlides = Math.max(1, Math.round(el.width / oldPreset.width));
+
+      const relX = localX / (oldPreset.width * spanSlides);
+      const relY = el.y / oldPreset.height;
+      const relW = el.width / (oldPreset.width * spanSlides);
+      const relH = el.height / oldPreset.height;
+
+      const newSlideStartX = slideIdx * newPreset.width;
+      const totalNewSpanW = newPreset.width * spanSlides;
+
+      // In adaptive reflow, frame scales to fill the new relative region cleanly
+      const reflowedW = Math.round(relW * totalNewSpanW);
+      const reflowedH = Math.round(relH * newPreset.height);
+      const reflowedX = Math.round(newSlideStartX + relX * totalNewSpanW);
+      const reflowedY = Math.round(relY * newPreset.height);
+
+      return {
+        ...el,
+        x: Math.max(0, reflowedX),
+        y: Math.max(0, Math.min(newPreset.height - reflowedH, reflowedY)),
+        width: reflowedW,
+        height: reflowedH,
+      };
+    });
+
+    return {
+      ...slide,
+      widthPx: newPreset.width,
+      heightPx: newPreset.height,
+      elements: updatedElements,
+    };
+  });
+}
+
+export type SocialResizeMode = 'reflow' | 'scale';
+
+/**
+ * Resizes a carousel post's slides to new dimensions using either
+ * 'reflow' (Adaptive Layout) or 'scale' (Proportional Aspect-Fit).
+ */
+export function resizeCarouselPost(
+  slides: CarouselSlide[],
+  oldPreset: { width: number; height: number },
+  newPreset: { width: number; height: number },
+  mode: SocialResizeMode = 'reflow'
+): CarouselSlide[] {
+  if (mode === 'reflow') {
+    return reflowFramesForRatioSwitch(slides, oldPreset, newPreset);
+  }
+  return scaleFramesForRatioSwitch(
+    slides,
+    {
+      id: 'custom',
+      label: 'Custom',
+      width: oldPreset.width,
+      height: oldPreset.height,
+      aspectRatio: oldPreset.width / oldPreset.height,
+    },
+    {
+      id: 'custom',
+      label: 'Custom',
+      width: newPreset.width,
+      height: newPreset.height,
+      aspectRatio: newPreset.width / newPreset.height,
+    }
+  );
 }
 
 /**
