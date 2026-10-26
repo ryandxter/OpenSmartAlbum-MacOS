@@ -3,6 +3,7 @@ use std::sync::Mutex;
 use rusqlite::{Connection, Result as SqliteResult};
 use serde::{Deserialize, Serialize};
 mod package_io;
+pub mod template_io;
 
 /// Represents a project record from SQLite.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
