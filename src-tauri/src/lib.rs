@@ -1,4 +1,5 @@
 mod asset_cache;
+pub mod frame_asset_cache;
 mod commands;
 pub mod db;
 mod photo_engine;
@@ -190,6 +191,11 @@ pub fn run() {
             commands::template_commands::execute_staged_template_export,
             commands::template_commands::pick_template_import_file_dialog,
             commands::template_commands::pick_template_export_save_dialog,
+            commands::frame_asset_commands::list_cached_frame_assets,
+            commands::frame_asset_commands::sync_frame_asset_catalog,
+            commands::frame_asset_commands::download_frame_asset,
+            commands::frame_asset_commands::import_custom_frame_asset,
+            commands::frame_asset_commands::delete_cached_frame_asset,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

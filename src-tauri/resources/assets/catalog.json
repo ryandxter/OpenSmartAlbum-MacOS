@@ -1,0 +1,149 @@
+[
+  {
+    "id": "frame-vintage-gold",
+    "title": "Vintage Gold Ornate",
+    "category": "frame",
+    "shape": "rectangle",
+    "slot": {
+      "slotX": 0.08,
+      "slotY": 0.08,
+      "slotWidth": 0.84,
+      "slotHeight": 0.84,
+      "shape": "rectangle"
+    },
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://assets.opensmartalbum.org/frames/vintage-gold.png",
+    "tags": ["wedding", "vintage", "gold", "classic"],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "frame-elegant-arch",
+    "title": "Elegant Archway",
+    "category": "frame",
+    "shape": "arch",
+    "slot": {
+      "slotX": 0.1,
+      "slotY": 0.12,
+      "slotWidth": 0.8,
+      "slotHeight": 0.8,
+      "shape": "arch"
+    },
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://assets.opensmartalbum.org/frames/elegant-arch.png",
+    "tags": ["wedding", "arch", "minimal"],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "frame-retro-polaroid",
+    "title": "Retro Instant Film",
+    "category": "frame",
+    "shape": "square",
+    "slot": {
+      "slotX": 0.08,
+      "slotY": 0.07,
+      "slotWidth": 0.84,
+      "slotHeight": 0.72,
+      "shape": "square"
+    },
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://assets.opensmartalbum.org/frames/retro-polaroid.png",
+    "tags": ["polaroid", "retro", "square"],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "frame-minimal-oval",
+    "title": "Minimalist Oval",
+    "category": "frame",
+    "shape": "oval",
+    "slot": {
+      "slotX": 0.12,
+      "slotY": 0.1,
+      "slotWidth": 0.76,
+      "slotHeight": 0.8,
+      "shape": "oval"
+    },
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://assets.opensmartalbum.org/frames/minimal-oval.png",
+    "tags": ["portrait", "oval", "clean"],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "frame-botanical-wreath",
+    "title": "Botanical Floral Circle",
+    "category": "frame",
+    "shape": "circle",
+    "slot": {
+      "slotX": 0.15,
+      "slotY": 0.15,
+      "slotWidth": 0.7,
+      "slotHeight": 0.7,
+      "shape": "circle"
+    },
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://assets.opensmartalbum.org/frames/botanical-wreath.png",
+    "tags": ["floral", "circle", "wedding", "nature"],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "elem-gold-star",
+    "title": "Shining Gold Star",
+    "category": "element",
+    "shape": "rectangle",
+    "slot": null,
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://assets.opensmartalbum.org/elements/gold-star.png",
+    "tags": ["star", "sparkle", "gold"],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "elem-olive-branch",
+    "title": "Olive Branch Foliage",
+    "category": "element",
+    "shape": "rectangle",
+    "slot": null,
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://assets.opensmartalbum.org/elements/olive-branch.png",
+    "tags": ["foliage", "leaves", "wedding", "botanical"],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "elem-vintage-ribbon",
+    "title": "Vintage Banner Ribbon",
+    "category": "element",
+    "shape": "rectangle",
+    "slot": null,
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://assets.opensmartalbum.org/elements/vintage-ribbon.png",
+    "tags": ["ribbon", "banner", "vintage"],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "elem-heart-flourish",
+    "title": "Delicate Heart Flourish",
+    "category": "element",
+    "shape": "rectangle",
+    "slot": null,
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://assets.opensmartalbum.org/elements/heart-flourish.png",
+    "tags": ["heart", "romantic", "love"],
+    "created_at": "2026-10-27"
+  }
+]
