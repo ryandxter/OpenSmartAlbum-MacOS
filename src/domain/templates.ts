@@ -62,8 +62,12 @@ export function getProjectDimensionsInCanvasUnit(project: Project, spread?: Spre
   const unit = project.canvasUnit;
   const dpi = project.canvasDpi || 300;
 
-  const pageWidth = project.canvasWidth;
-  const pageHeight = project.canvasHeight;
+  // Check per-spread dimension overrides before falling back to project canvas size
+  const rawPageWidth = spread?.pageWidth !== undefined && spread?.pageWidth !== null ? spread.pageWidth : project.canvasWidth;
+  const rawPageHeight = spread?.pageHeight !== undefined && spread?.pageHeight !== null ? spread.pageHeight : project.canvasHeight;
+  const spreadUnit = spread?.pageUnit || unit;
+  const pageWidth = round4(convertUnit(rawPageWidth, spreadUnit, unit, dpi, 4));
+  const pageHeight = round4(convertUnit(rawPageHeight, spreadUnit, unit, dpi, 4));
 
   // Margin: convert from project.marginUnit (or 'mm') to project.canvasUnit
   // Spread overrides take precedence, including explicit zero. Project margins
@@ -225,4 +229,92 @@ export function getUsableAreas(params: TemplateParams): {
   };
 
   return { spreadArea, leftPageArea, rightPageArea, pageWidth, gutterWidth };
+}
+
+// ---------------------------------------------------------------------------
+// v1.4.14 Custom Layout Template Models (DB-01, DB-04)
+// ---------------------------------------------------------------------------
+
+export type TemplateCanvasKind = 'spread' | 'single' | 'carousel';
+
+export interface TemplateSlot {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation?: number;
+  zIndex?: number;
+  shapeType?: string;
+  cornerRadius?: number | [number, number, number, number];
+  type?: 'photo' | 'text' | 'graphic';
+  text?: string;
+  style?: any;
+  cropX?: number;
+  cropY?: number;
+  cropScale?: number;
+  borderEnabled?: boolean;
+  borderWidth?: number;
+  borderColor?: string;
+  shadowEnabled?: boolean;
+  shadowBlur?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  shadowOpacity?: number;
+  shadowColor?: string;
+}
+
+export interface LayoutTemplateSpec {
+  id: string;
+  name: string;
+  folderId?: string | null;
+  canvasKind?: TemplateCanvasKind;
+  slots: TemplateSlot[];
+  aspectRatio?: number;
+  description?: string;
+  tags?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface LayoutTemplate {
+  id: string;
+  name?: string;
+  folderId?: string | null;
+  payload: string | LayoutTemplateSpec;
+  isFavorite: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface LayoutTemplateFolder {
+  id: string;
+  name: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface TemplateExportOptions {
+  targetPath?: string;
+  includePreviews?: boolean;
+}
+
+export interface TemplatePackagePreviewItem {
+  id: string;
+  name: string;
+  slotCount: number;
+  isFavorite: boolean;
+  folderName?: string;
+}
+
+export interface TemplatePackageSelection {
+  templateIds: string[];
+  folderIds: string[];
+}
+
+export interface TemplateExportResult {
+  success: boolean;
+  exportedCount: number;
+  filePath?: string;
+  error?: string;
 }

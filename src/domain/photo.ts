@@ -1,3 +1,16 @@
+export interface PhotoAiAnalysis {
+  photoId: string;
+  projectId: string;
+  modelVersion: string;
+  sourceSignature?: string;
+  faceCount: number;
+  faceFocusScore: number;
+  largestFaceRatio: number;
+  facesJson?: string;
+  faces?: import('./ai/faceDetection').DetectedFace[];
+  analyzedAt: string;
+}
+
 export interface Photo {
   id: string;
   projectId: string;
@@ -13,6 +26,7 @@ export interface Photo {
   isFavorite: boolean;
   usedCount: number;
   isMissing: boolean;
+  aiAnalysis?: PhotoAiAnalysis | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,10 +1,64 @@
 import type { Project } from './project';
 import type { Unit } from './units';
-import { getCornerRadii, type PhotoFrameElement } from './editor';
+import {
+  getCornerRadii,
+  permuteCornerRadiiOnFlip,
+  type PhotoFrameElement,
+  type GraphicElement,
+  type GraphicNodeElement,
+  type FrameSlotPayload,
+  type FrameSlotShape,
+  type ElementShadowProps,
+  type ElementVisualEffectsProps,
+  type DecorativeFrameOverlayProps,
+} from './editor';
 import type { TextNodeElement } from './text';
 import type { Photo } from './photo';
 
-export type AlbumElement = PhotoFrameElement | TextNodeElement;
+export {
+  permuteCornerRadiiOnFlip,
+  type PhotoFrameElement,
+  type GraphicElement,
+  type GraphicNodeElement,
+  type FrameSlotPayload,
+  type FrameSlotShape,
+  type ElementShadowProps,
+  type ElementVisualEffectsProps,
+  type DecorativeFrameOverlayProps,
+};
+
+export type CanvasUnit = Unit;
+
+export interface SpreadBackgroundImage {
+  photoId: string;
+  filePath: string;
+  fileName: string;
+  previewPath?: string | null;
+  thumbnailPath?: string | null;
+  width?: number;
+  height?: number;
+  fit?: 'fill' | 'fit' | 'stretch';
+  opacity?: number;
+  cropX?: number;
+  cropY?: number;
+  cropScale?: number;
+  cropRotation?: number;
+  flipHorizontal?: boolean;
+  flipVertical?: boolean;
+  blurRadius?: number;
+  grayscaleAmount?: number;
+  noiseAmount?: number;
+  isMissing?: boolean;
+  target?: 'full' | 'left' | 'right';
+}
+
+export interface PageBorderConfig {
+  borderEnabled?: boolean;
+  borderWidth?: number;
+  borderColor?: string;
+}
+
+export type AlbumElement = PhotoFrameElement | TextNodeElement | GraphicElement;
 
 export type PageType = 'cover_front' | 'cover_back' | 'left' | 'right' | 'single';
 export type SpreadType = 'cover' | 'interior';
@@ -30,6 +84,10 @@ export interface Page {
   backgroundColor: string;
   backgroundType: 'solid' | 'gradient' | 'image';
   elements?: AlbumElement[];
+  borderEnabled?: boolean;
+  borderWidth?: number;
+  borderColor?: string;
+  backgroundColorNoise?: number;
 }
 
 export interface Spread {
@@ -56,6 +114,28 @@ export interface Spread {
   spacingUnit?: Unit;
   backgroundColor: string;
   elements: AlbumElement[];
+
+  // Per-spread dimensions & geometry overrides (v1.4.14 / Phase 1)
+  pageWidth?: number | null;
+  pageHeight?: number | null;
+  pageUnit?: CanvasUnit | null;
+
+  // Background image & color noise (v1.4.14 / Phase 1)
+  backgroundImage?: SpreadBackgroundImage | null;
+  backgroundColorNoise?: number;
+  leftPageBackgroundColorNoise?: number | null;
+  rightPageBackgroundColorNoise?: number | null;
+
+  // Spread & Per-page border styling (v1.4.14 / Phase 1)
+  borderEnabled?: boolean;
+  borderWidth?: number;
+  borderColor?: string;
+  leftPageBorderEnabled?: boolean | null;
+  leftPageBorderWidth?: number | null;
+  leftPageBorderColor?: string | null;
+  rightPageBorderEnabled?: boolean | null;
+  rightPageBorderWidth?: number | null;
+  rightPageBorderColor?: string | null;
 }
 
 export interface Album {
@@ -422,19 +502,45 @@ export function duplicateAlbumSpread(
   duplicated.spacingValue = original.spacingValue;
   duplicated.spacingUnit = original.spacingUnit;
 
+  // v1.4.14 spread dimensions, background, noise & border copying
+  duplicated.pageWidth = original.pageWidth;
+  duplicated.pageHeight = original.pageHeight;
+  duplicated.pageUnit = original.pageUnit;
+  duplicated.backgroundImage = original.backgroundImage ? { ...original.backgroundImage } : undefined;
+  duplicated.backgroundColorNoise = original.backgroundColorNoise;
+  duplicated.leftPageBackgroundColorNoise = original.leftPageBackgroundColorNoise;
+  duplicated.rightPageBackgroundColorNoise = original.rightPageBackgroundColorNoise;
+  duplicated.borderEnabled = original.borderEnabled;
+  duplicated.borderWidth = original.borderWidth;
+  duplicated.borderColor = original.borderColor;
+  duplicated.leftPageBorderEnabled = original.leftPageBorderEnabled;
+  duplicated.leftPageBorderWidth = original.leftPageBorderWidth;
+  duplicated.leftPageBorderColor = original.leftPageBorderColor;
+  duplicated.rightPageBorderEnabled = original.rightPageBorderEnabled;
+  duplicated.rightPageBorderWidth = original.rightPageBorderWidth;
+  duplicated.rightPageBorderColor = original.rightPageBorderColor;
+
   // Deep clone all layout elements with fresh unique IDs
   duplicated.elements = (original.elements || []).map((elem, idx) => ({
     ...elem,
-    id: `${elem.type === 'text' ? 'text' : 'frame'}-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 7)}`,
+    id: `${elem.type === 'text' ? 'text' : elem.type === 'graphic' ? 'graphic' : 'frame'}-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 7)}`,
   }));
 
   if (original.leftPage && duplicated.leftPage) {
     duplicated.leftPage.backgroundColor = original.leftPage.backgroundColor;
     duplicated.leftPage.backgroundType = original.leftPage.backgroundType;
+    duplicated.leftPage.borderEnabled = original.leftPage.borderEnabled;
+    duplicated.leftPage.borderWidth = original.leftPage.borderWidth;
+    duplicated.leftPage.borderColor = original.leftPage.borderColor;
+    duplicated.leftPage.backgroundColorNoise = original.leftPage.backgroundColorNoise;
   }
   if (original.rightPage && duplicated.rightPage) {
     duplicated.rightPage.backgroundColor = original.rightPage.backgroundColor;
     duplicated.rightPage.backgroundType = original.rightPage.backgroundType;
+    duplicated.rightPage.borderEnabled = original.rightPage.borderEnabled;
+    duplicated.rightPage.borderWidth = original.rightPage.borderWidth;
+    duplicated.rightPage.borderColor = original.rightPage.borderColor;
+    duplicated.rightPage.backgroundColorNoise = original.rightPage.backgroundColorNoise;
   }
 
   const updatedSpreads = [
@@ -602,6 +708,26 @@ export function isElementDesignEqual(a?: AlbumElement | null, b?: AlbumElement |
     const [tlA, trA, brA, blA] = getCornerRadii(pA);
     const [tlB, trB, brB, blB] = getCornerRadii(pB);
     if (tlA !== tlB || trA !== trB || brA !== brB || blA !== blB) return false;
+
+    // Visual effects & transforms
+    if (Boolean(pA.flipHorizontal) !== Boolean(pB.flipHorizontal)) return false;
+    if (Boolean(pA.flipVertical) !== Boolean(pB.flipVertical)) return false;
+    if ((pA.blurRadius || 0) !== (pB.blurRadius || 0)) return false;
+    if ((pA.grayscaleAmount || 0) !== (pB.grayscaleAmount || 0)) return false;
+    if ((pA.noiseAmount || 0) !== (pB.noiseAmount || 0)) return false;
+
+    // Shadow
+    if (Boolean(pA.shadowEnabled) !== Boolean(pB.shadowEnabled)) return false;
+    if ((pA.shadowBlur || 0) !== (pB.shadowBlur || 0)) return false;
+    if ((pA.shadowOffsetX || 0) !== (pB.shadowOffsetX || 0)) return false;
+    if ((pA.shadowOffsetY || 0) !== (pB.shadowOffsetY || 0)) return false;
+    if ((pA.shadowOpacity || 0) !== (pB.shadowOpacity || 0)) return false;
+    if ((pA.shadowColor || '') !== (pB.shadowColor || '')) return false;
+
+    // Decorative frame & layout
+    if ((pA.frameAssetId || '') !== (pB.frameAssetId || '')) return false;
+    if (Boolean(pA.excludeFromAdaptiveLayout) !== Boolean(pB.excludeFromAdaptiveLayout)) return false;
+
     return true;
   }
 
@@ -610,9 +736,34 @@ export function isElementDesignEqual(a?: AlbumElement | null, b?: AlbumElement |
     const tB = b as TextNodeElement;
     if ((tA.opacity ?? 1) !== (tB.opacity ?? 1)) return false;
     if (tA.text !== tB.text) return false;
+    if (Boolean(tA.flipHorizontal) !== Boolean(tB.flipHorizontal)) return false;
+    if (Boolean(tA.flipVertical) !== Boolean(tB.flipVertical)) return false;
+    if (Boolean(tA.excludeFromAdaptiveLayout) !== Boolean(tB.excludeFromAdaptiveLayout)) return false;
     if (JSON.stringify(tA.style || {}) !== JSON.stringify(tB.style || {})) return false;
     if (JSON.stringify(tA.textRuns || []) !== JSON.stringify(tB.textRuns || [])) return false;
     if (JSON.stringify(tA.styledRanges || []) !== JSON.stringify(tB.styledRanges || [])) return false;
+    return true;
+  }
+
+  if (a.type === 'graphic' && b.type === 'graphic') {
+    const gA = a as GraphicElement;
+    const gB = b as GraphicElement;
+    if ((gA.opacity ?? 1) !== (gB.opacity ?? 1)) return false;
+    if (Boolean(gA.flipHorizontal) !== Boolean(gB.flipHorizontal)) return false;
+    if (Boolean(gA.flipVertical) !== Boolean(gB.flipVertical)) return false;
+    if ((gA.blurRadius || 0) !== (gB.blurRadius || 0)) return false;
+    if ((gA.grayscaleAmount || 0) !== (gB.grayscaleAmount || 0)) return false;
+    if ((gA.noiseAmount || 0) !== (gB.noiseAmount || 0)) return false;
+    if (Boolean(gA.shadowEnabled) !== Boolean(gB.shadowEnabled)) return false;
+    if ((gA.shadowBlur || 0) !== (gB.shadowBlur || 0)) return false;
+    if ((gA.shadowOffsetX || 0) !== (gB.shadowOffsetX || 0)) return false;
+    if ((gA.shadowOffsetY || 0) !== (gB.shadowOffsetY || 0)) return false;
+    if ((gA.shadowOpacity || 0) !== (gB.shadowOpacity || 0)) return false;
+    if ((gA.shadowColor || '') !== (gB.shadowColor || '')) return false;
+    if ((gA.frameAssetId || '') !== (gB.frameAssetId || '')) return false;
+    if ((gA.graphicId || '') !== (gB.graphicId || '')) return false;
+    if ((gA.filePath || '') !== (gB.filePath || '')) return false;
+    if (Boolean(gA.excludeFromAdaptiveLayout) !== Boolean(gB.excludeFromAdaptiveLayout)) return false;
     return true;
   }
 
@@ -634,6 +785,33 @@ export function isSpreadDesignEqual(sA?: Spread | null, sB?: Spread | null): boo
   ) {
     return false;
   }
+
+  // Dimension overrides
+  if ((sA.pageWidth || null) !== (sB.pageWidth || null)) return false;
+  if ((sA.pageHeight || null) !== (sB.pageHeight || null)) return false;
+  if ((sA.pageUnit || null) !== (sB.pageUnit || null)) return false;
+
+  // Noise & borders
+  if ((sA.backgroundColorNoise || 0) !== (sB.backgroundColorNoise || 0)) return false;
+  if (Boolean(sA.borderEnabled) !== Boolean(sB.borderEnabled)) return false;
+  if ((sA.borderWidth || 0) !== (sB.borderWidth || 0)) return false;
+  if ((sA.borderColor || '') !== (sB.borderColor || '')) return false;
+  if (Boolean(sA.leftPageBorderEnabled) !== Boolean(sB.leftPageBorderEnabled)) return false;
+  if ((sA.leftPageBorderWidth || 0) !== (sB.leftPageBorderWidth || 0)) return false;
+  if ((sA.leftPageBorderColor || '') !== (sB.leftPageBorderColor || '')) return false;
+  if (Boolean(sA.rightPageBorderEnabled) !== Boolean(sB.rightPageBorderEnabled)) return false;
+  if ((sA.rightPageBorderWidth || 0) !== (sB.rightPageBorderWidth || 0)) return false;
+  if ((sA.rightPageBorderColor || '') !== (sB.rightPageBorderColor || '')) return false;
+
+  // Background image
+  if (Boolean(sA.backgroundImage) !== Boolean(sB.backgroundImage)) return false;
+  if (sA.backgroundImage && sB.backgroundImage) {
+    if (sA.backgroundImage.photoId !== sB.backgroundImage.photoId) return false;
+    if (sA.backgroundImage.filePath !== sB.backgroundImage.filePath) return false;
+    if ((sA.backgroundImage.opacity ?? 100) !== (sB.backgroundImage.opacity ?? 100)) return false;
+    if ((sA.backgroundImage.fit || 'fill') !== (sB.backgroundImage.fit || 'fill')) return false;
+  }
+
   const elsA = sA.elements || [];
   const elsB = sB.elements || [];
   if (elsA.length !== elsB.length) return false;

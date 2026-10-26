@@ -26,7 +26,7 @@ export interface TextStyle {
   textDecoration: 'none' | 'underline' | 'line-through';
   fill: string; // hex or rgba
   highlight?: string;
-  align: 'left' | 'center' | 'right';
+  align: 'left' | 'center' | 'right' | 'justify';
   verticalAlign: 'top' | 'middle' | 'bottom';
   lineHeight: number; // multiplier, e.g. 1.25
   letterSpacing: number; // tracking in px
@@ -52,6 +52,15 @@ export interface TextNodeElement {
   hidden?: boolean; // When true, element is hidden on canvas and omitted from export
   groupId?: string | null;
   groupRotation?: number;
+  flipHorizontal?: boolean;
+  flipVertical?: boolean;
+  excludeFromAdaptiveLayout?: boolean;
+  shadowEnabled?: boolean;
+  shadowColor?: string;
+  shadowBlur?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  shadowOpacity?: number;
   style: TextStyle;
   styledRanges?: import('./styledRanges').StyledRange[];
   textRuns?: TextRun[];

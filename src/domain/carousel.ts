@@ -9,6 +9,9 @@ import type { ShapeType } from './shapes';
 import type { StyledRange } from './styledRanges';
 import type { TextStyle } from './text';
 import type { StudioFramingPreset } from './ai/faceDetection';
+import type { Unit } from './units';
+import type { FrameSlotPayload } from './editor';
+import type { SpreadBackgroundImage } from './album';
 export type { StudioFramingPreset };
 
 export type CarouselRatio = '1:1' | '4:5' | '9:16';
@@ -72,6 +75,8 @@ export interface CarouselPhotoFrame {
   zIndex?: number;
   opacity?: number;
   locked?: boolean;
+  groupId?: string | null;
+  groupRotation?: number;
   cropRotation?: number;
   cornerRadius?: number;
   shapeType?: ShapeType;
@@ -85,6 +90,29 @@ export interface CarouselPhotoFrame {
   cornerRadiusBr?: number;
   cornerRadiusBl?: number;
   excludeFromAdaptiveLayout?: boolean;
+
+  // Visual Effects (v1.4.14 / Phase 1)
+  flipHorizontal?: boolean;
+  flipVertical?: boolean;
+  blurRadius?: number;
+  grayscaleAmount?: number;
+  noiseAmount?: number;
+
+  // Drop Shadow (v1.4.14 / Phase 1)
+  shadowEnabled?: boolean;
+  shadowColor?: string;
+  shadowBlur?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  shadowOpacity?: number;
+
+  // Decorative Frame Overlays (v1.4.14 / Phase 1)
+  frameAssetId?: string | null;
+  frameAssetUrl?: string | null;
+  frameAssetLocalPath?: string | null;
+  frameAssetTitle?: string | null;
+  frameAssetSlot?: FrameSlotPayload | null;
+  frameAssetIsPro?: boolean;
 
   // AI Face & Studio Framing (Phase 23)
   faceFramingPreset?: StudioFramingPreset;
@@ -109,11 +137,25 @@ export interface CarouselTextFrame {
   fontFamily: string;
   fontWeight: string;
   color: string;
-  align: 'left' | 'center' | 'right';
+  align: 'left' | 'center' | 'right' | 'justify';
   locked: boolean;
   zIndex?: number;
   opacity?: number;
   rotation?: number;
+  groupId?: string | null;
+  groupRotation?: number;
+  excludeFromAdaptiveLayout?: boolean;
+  flipHorizontal?: boolean;
+  flipVertical?: boolean;
+
+  // Drop Shadow
+  shadowEnabled?: boolean;
+  shadowColor?: string;
+  shadowBlur?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  shadowOpacity?: number;
+
   // Dual-Engine Rich Text Parity Fields
   styledRanges?: StyledRange[];
   style?: Partial<TextStyle>;
@@ -122,7 +164,77 @@ export interface CarouselTextFrame {
   letterSpacing?: number;
 }
 
-export type CarouselElement = CarouselPhotoFrame | CarouselTextFrame;
+export interface CarouselGraphicFrame {
+  type: 'graphic';
+  id: string;
+  name?: string;
+  hidden?: boolean;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation?: number;
+  zIndex?: number;
+  opacity?: number;
+  locked?: boolean;
+  groupId?: string | null;
+  groupRotation?: number;
+  excludeFromAdaptiveLayout?: boolean;
+
+  // Visual Effects
+  flipHorizontal?: boolean;
+  flipVertical?: boolean;
+  blurRadius?: number;
+  grayscaleAmount?: number;
+  noiseAmount?: number;
+
+  // Drop Shadow
+  shadowEnabled?: boolean;
+  shadowColor?: string;
+  shadowBlur?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  shadowOpacity?: number;
+
+  // Graphic / Frame Asset
+  frameAssetId?: string | null;
+  frameAssetUrl?: string | null;
+  frameAssetLocalPath?: string | null;
+  frameAssetTitle?: string | null;
+  frameAssetSlot?: FrameSlotPayload | null;
+  frameAssetIsPro?: boolean;
+
+  graphicId?: string | null;
+  photoId?: string;
+  filePath?: string;
+  fileName?: string;
+  fileUrl?: string | null;
+  previewPath?: string;
+  thumbnailPath?: string;
+  photoAspect?: number;
+  originalWidth?: number;
+  originalHeight?: number;
+  cropX?: number;
+  cropY?: number;
+  cropScale?: number;
+  cropRotation?: number;
+  isMissing?: boolean;
+
+  // Interoperability styling properties
+  shapeType?: ShapeType;
+  customSvgPath?: string;
+  borderEnabled?: boolean;
+  borderWidth?: number;
+  borderColor?: string;
+  borderStyle?: 'solid' | 'dashed' | 'double';
+  cornerRadius?: number;
+  cornerRadiusTl?: number;
+  cornerRadiusTr?: number;
+  cornerRadiusBr?: number;
+  cornerRadiusBl?: number;
+}
+
+export type CarouselElement = CarouselPhotoFrame | CarouselTextFrame | CarouselGraphicFrame;
 
 export interface CarouselSlide {
   id: string;
@@ -131,6 +243,20 @@ export interface CarouselSlide {
   heightPx: number;
   backgroundColor: string;
   elements: CarouselElement[];
+
+  // Per-slide dimensions & unit overrides (v1.4.14 / Phase 1)
+  pageWidth?: number | null;
+  pageHeight?: number | null;
+  pageUnit?: Unit | null;
+
+  // Background image & noise
+  backgroundImage?: SpreadBackgroundImage | null;
+  backgroundColorNoise?: number;
+
+  // Slide border styling
+  borderEnabled?: boolean;
+  borderWidth?: number;
+  borderColor?: string;
 }
 
 export interface Carousel {
@@ -341,6 +467,27 @@ export type FrameStyleSnapshot = {
   cornerRadiusTr?: number;
   cornerRadiusBr?: number;
   cornerRadiusBl?: number;
+
+  // Visual Effects & Shadow (v1.4.14 / Phase 1)
+  flipHorizontal?: boolean;
+  flipVertical?: boolean;
+  blurRadius?: number;
+  grayscaleAmount?: number;
+  noiseAmount?: number;
+  shadowEnabled?: boolean;
+  shadowColor?: string;
+  shadowBlur?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  shadowOpacity?: number;
+
+  // Frame Overlay Assets
+  frameAssetId?: string | null;
+  frameAssetUrl?: string | null;
+  frameAssetLocalPath?: string | null;
+  frameAssetTitle?: string | null;
+  frameAssetSlot?: FrameSlotPayload | null;
+  frameAssetIsPro?: boolean;
 };
 
 /**
@@ -366,6 +513,28 @@ export function extractFrameStyle(frame: CarouselPhotoFrame): FrameStyleSnapshot
   if (frame.cornerRadiusTr !== undefined) snap.cornerRadiusTr = frame.cornerRadiusTr;
   if (frame.cornerRadiusBr !== undefined) snap.cornerRadiusBr = frame.cornerRadiusBr;
   if (frame.cornerRadiusBl !== undefined) snap.cornerRadiusBl = frame.cornerRadiusBl;
+
+  // Visual Effects & Shadow
+  if (frame.flipHorizontal !== undefined) snap.flipHorizontal = frame.flipHorizontal;
+  if (frame.flipVertical !== undefined) snap.flipVertical = frame.flipVertical;
+  if (frame.blurRadius !== undefined) snap.blurRadius = frame.blurRadius;
+  if (frame.grayscaleAmount !== undefined) snap.grayscaleAmount = frame.grayscaleAmount;
+  if (frame.noiseAmount !== undefined) snap.noiseAmount = frame.noiseAmount;
+  if (frame.shadowEnabled !== undefined) snap.shadowEnabled = frame.shadowEnabled;
+  if (frame.shadowColor !== undefined) snap.shadowColor = frame.shadowColor;
+  if (frame.shadowBlur !== undefined) snap.shadowBlur = frame.shadowBlur;
+  if (frame.shadowOffsetX !== undefined) snap.shadowOffsetX = frame.shadowOffsetX;
+  if (frame.shadowOffsetY !== undefined) snap.shadowOffsetY = frame.shadowOffsetY;
+  if (frame.shadowOpacity !== undefined) snap.shadowOpacity = frame.shadowOpacity;
+
+  // Frame Overlay Assets
+  if (frame.frameAssetId !== undefined) snap.frameAssetId = frame.frameAssetId;
+  if (frame.frameAssetUrl !== undefined) snap.frameAssetUrl = frame.frameAssetUrl;
+  if (frame.frameAssetLocalPath !== undefined) snap.frameAssetLocalPath = frame.frameAssetLocalPath;
+  if (frame.frameAssetTitle !== undefined) snap.frameAssetTitle = frame.frameAssetTitle;
+  if (frame.frameAssetSlot !== undefined) snap.frameAssetSlot = frame.frameAssetSlot;
+  if (frame.frameAssetIsPro !== undefined) snap.frameAssetIsPro = frame.frameAssetIsPro;
+
   return snap;
 }
 

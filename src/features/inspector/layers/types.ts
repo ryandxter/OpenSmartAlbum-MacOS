@@ -1,7 +1,7 @@
 import type { AlbumElement } from '../../../domain/album';
 import type { CarouselElement } from '../../../domain/carousel';
 
-export type LayerKind = 'photo' | 'text' | 'shape';
+export type LayerKind = 'photo' | 'text' | 'shape' | 'graphic';
 
 export interface StudioLayer {
   id: string;
@@ -46,6 +46,23 @@ export function normalizeAlbumElementToLayer(
       locked: isLocked,
       hidden: isHidden,
       textSnippet: snippet,
+      rawElement: element,
+    };
+  }
+
+  if (element.type === 'graphic') {
+    const defaultTitle = element.name || (element as any).frameAssetTitle || element.fileName || 'Graphic Asset';
+    return {
+      id: element.id,
+      kind: 'graphic',
+      name: element.name,
+      defaultTitle,
+      subtitle: `${Math.round(element.width)} × ${Math.round(element.height)} mm · #${zIndex}`,
+      zIndex,
+      locked: isLocked,
+      hidden: isHidden,
+      excludeFromAdaptiveLayout: Boolean(element.excludeFromAdaptiveLayout),
+      thumbnailSrc: element.thumbnailPath || element.previewPath || element.filePath,
       rawElement: element,
     };
   }
@@ -101,6 +118,23 @@ export function normalizeCarouselElementToLayer(
       locked: isLocked,
       hidden: isHidden,
       textSnippet: snippet,
+      rawElement: element,
+    };
+  }
+
+  if (element.type === 'graphic') {
+    const defaultTitle = element.name || (element as any).frameAssetTitle || element.fileName || 'Graphic Asset';
+    return {
+      id: element.id,
+      kind: 'graphic',
+      name: element.name,
+      defaultTitle,
+      subtitle: `${Math.round(element.width)} × ${Math.round(element.height)} px · #${zIndex}`,
+      zIndex,
+      locked: isLocked,
+      hidden: isHidden,
+      excludeFromAdaptiveLayout: Boolean(element.excludeFromAdaptiveLayout),
+      thumbnailSrc: element.thumbnailPath || element.previewPath || element.filePath,
       rawElement: element,
     };
   }

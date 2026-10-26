@@ -2,6 +2,42 @@ import type { ShapeType } from './shapes';
 import type { StudioFramingPreset } from './ai/faceDetection';
 export type { ShapeType, StudioFramingPreset };
 
+export type FrameSlotShape = 'rect' | 'arch' | 'circle' | 'oval' | 'rounded' | 'ellipse';
+
+export interface FrameSlotPayload {
+  slotX: number;
+  slotY: number;
+  slotWidth: number;
+  slotHeight: number;
+  shape?: FrameSlotShape | string;
+}
+
+export interface ElementShadowProps {
+  shadowEnabled?: boolean;
+  shadowBlur?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  shadowOpacity?: number;
+  shadowColor?: string;
+}
+
+export interface ElementVisualEffectsProps {
+  flipHorizontal?: boolean;
+  flipVertical?: boolean;
+  blurRadius?: number;
+  grayscaleAmount?: number;
+  noiseAmount?: number;
+}
+
+export interface DecorativeFrameOverlayProps {
+  frameAssetId?: string | null;
+  frameAssetUrl?: string | null;
+  frameAssetLocalPath?: string | null;
+  frameAssetTitle?: string | null;
+  frameAssetSlot?: FrameSlotPayload | null;
+  frameAssetIsPro?: boolean;
+}
+
 export interface PhotoFrameElement {
   id: string;
   type: 'photo';
@@ -53,16 +89,34 @@ export interface PhotoFrameElement {
   cornerRadiusTr?: number;
   cornerRadiusBr?: number;
   cornerRadiusBl?: number;
+
+  // Visual Effects & Transformations (v1.4.14 / Phase 1)
+  flipHorizontal?: boolean;
+  flipVertical?: boolean;
+  blurRadius?: number;
+  grayscaleAmount?: number;
+  noiseAmount?: number;
+
+  // Drop Shadows (v1.4.14 / Phase 1)
   shadowEnabled?: boolean;
   shadowColor?: string;
   shadowBlur?: number;
   shadowOffsetX?: number;
   shadowOffsetY?: number;
   shadowOpacity?: number;
+
   opacity: number;
   locked?: boolean;
   isMissing?: boolean;
   excludeFromAdaptiveLayout?: boolean;
+
+  // Decorative Frame Overlays & Graphic Assets (v1.4.14 / Phase 1)
+  frameAssetId?: string | null;
+  frameAssetUrl?: string | null;
+  frameAssetLocalPath?: string | null;
+  frameAssetTitle?: string | null;
+  frameAssetSlot?: FrameSlotPayload | null;
+  frameAssetIsPro?: boolean;
 
   // AI Face & Studio Framing (Phase 23)
   faceFramingPreset?: import('./ai/faceDetection').StudioFramingPreset;
@@ -71,6 +125,114 @@ export interface PhotoFrameElement {
   faceShoulderRatio?: number;
   activeFaceIndex?: number;
   showFaceReticles?: boolean;
+}
+
+export interface GraphicElement {
+  id: string;
+  type: 'graphic';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  opacity: number;
+  zIndex: number;
+  locked?: boolean;
+  groupId?: string | null;
+  groupRotation?: number;
+  name?: string;
+  hidden?: boolean;
+  excludeFromAdaptiveLayout?: boolean;
+
+  // Visual Effects
+  flipHorizontal?: boolean;
+  flipVertical?: boolean;
+  blurRadius?: number;
+  grayscaleAmount?: number;
+  noiseAmount?: number;
+
+  // Drop Shadow
+  shadowEnabled?: boolean;
+  shadowBlur?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  shadowOpacity?: number;
+  shadowColor?: string;
+
+  // Frame / Graphic Asset Metadata
+  frameAssetId?: string | null;
+  frameAssetUrl?: string | null;
+  frameAssetLocalPath?: string | null;
+  frameAssetTitle?: string | null;
+  frameAssetSlot?: FrameSlotPayload | null;
+  frameAssetIsPro?: boolean;
+
+  // File metadata / aliases
+  graphicId?: string | null;
+  photoId?: string | null;
+  filePath?: string;
+  fileName?: string;
+  fileUrl?: string | null;
+  previewPath?: string | null;
+  thumbnailPath?: string | null;
+  photoAspect?: number;
+  originalWidth?: number;
+  originalHeight?: number;
+  cropX?: number;
+  cropY?: number;
+  cropScale?: number;
+  cropRotation?: number;
+  isMissing?: boolean;
+
+  // Interoperability styling properties
+  shapeType?: ShapeType;
+  customSvgPath?: string;
+  borderEnabled?: boolean;
+  borderWidth?: number;
+  borderColor?: string;
+  borderStyle?: 'solid' | 'dashed' | 'double';
+  cornerRadius?: number | [number, number, number, number];
+  cornerRadiusTl?: number;
+  cornerRadiusTr?: number;
+  cornerRadiusBr?: number;
+  cornerRadiusBl?: number;
+}
+
+export type GraphicNodeElement = GraphicElement;
+
+/**
+ * Permutes corner radius tuple [top-left, top-right, bottom-right, bottom-left]
+ * when flipping an element horizontally and/or vertically.
+ */
+export function permuteCornerRadiiOnFlip(
+  radii: [number, number, number, number],
+  flipHOrAxis: boolean | 'horizontal' | 'vertical',
+  flipV: boolean = false
+): [number, number, number, number] {
+  let flipH = false;
+  let vFlip = false;
+  if (typeof flipHOrAxis === 'string') {
+    if (flipHOrAxis === 'horizontal') {
+      flipH = true;
+    } else if (flipHOrAxis === 'vertical') {
+      vFlip = true;
+    }
+  } else {
+    flipH = Boolean(flipHOrAxis);
+    vFlip = Boolean(flipV);
+  }
+
+  const [tl, tr, br, bl] = radii;
+  if (flipH && vFlip) {
+    return [br, bl, tl, tr];
+  }
+  if (flipH) {
+    return [tr, tl, bl, br];
+  }
+  if (vFlip) {
+    return [bl, br, tr, tl];
+  }
+  return [tl, tr, br, bl];
 }
 
 /**
