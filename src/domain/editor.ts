@@ -1,6 +1,8 @@
 import type { ShapeType } from './shapes';
 import type { StudioFramingPreset } from './ai/faceDetection';
-export type { ShapeType, StudioFramingPreset };
+import type { CanvasUnit } from './album';
+import { convertUnit } from './units';
+export type { ShapeType, StudioFramingPreset, CanvasUnit };
 
 export type FrameSlotShape = 'rect' | 'arch' | 'circle' | 'oval' | 'rounded' | 'ellipse';
 
@@ -202,13 +204,30 @@ export type GraphicNodeElement = GraphicElement;
 
 /**
  * Permutes corner radius tuple [top-left, top-right, bottom-right, bottom-left]
- * when flipping an element horizontally and/or vertically.
+ * when flipping an element horizontally and/or vertically (D-03, FX-02).
  */
 export function permuteCornerRadiiOnFlip(
-  radii: [number, number, number, number],
+  radii: [number, number, number, number] | {
+    cornerRadiusTl?: number;
+    cornerRadiusTr?: number;
+    cornerRadiusBr?: number;
+    cornerRadiusBl?: number;
+  },
   flipHOrAxis: boolean | 'horizontal' | 'vertical',
   flipV: boolean = false
 ): [number, number, number, number] {
+  let tuple: [number, number, number, number];
+  if (Array.isArray(radii)) {
+    tuple = [radii[0] || 0, radii[1] || 0, radii[2] || 0, radii[3] || 0];
+  } else {
+    tuple = [
+      radii.cornerRadiusTl || 0,
+      radii.cornerRadiusTr || 0,
+      radii.cornerRadiusBr || 0,
+      radii.cornerRadiusBl || 0,
+    ];
+  }
+
   let flipH = false;
   let vFlip = false;
   if (typeof flipHOrAxis === 'string') {
@@ -222,7 +241,7 @@ export function permuteCornerRadiiOnFlip(
     vFlip = Boolean(flipV);
   }
 
-  const [tl, tr, br, bl] = radii;
+  const [tl, tr, br, bl] = tuple;
   if (flipH && vFlip) {
     return [br, bl, tl, tr];
   }
@@ -233,6 +252,96 @@ export function permuteCornerRadiiOnFlip(
     return [bl, br, tr, tl];
   }
   return [tl, tr, br, bl];
+}
+
+/**
+ * Permutes corner radii returning an object with cornerRadiusTl/Tr/Br/Bl.
+ */
+export function permuteCornerRadiiForFlip(
+  radii: [number, number, number, number],
+  axis: 'horizontal' | 'vertical'
+): {
+  cornerRadiusTl: number;
+  cornerRadiusTr: number;
+  cornerRadiusBr: number;
+  cornerRadiusBl: number;
+} {
+  const [tl, tr, br, bl] = permuteCornerRadiiOnFlip(radii, axis);
+  return {
+    cornerRadiusTl: tl,
+    cornerRadiusTr: tr,
+    cornerRadiusBr: br,
+    cornerRadiusBl: bl,
+  };
+}
+
+export const EFFECT_MAX_MM = {
+  blurRadius: 10,     // 100% slider = 10mm (~118px at 300 DPI)
+  shadowBlur: 20,     // 100% slider = 20mm (~236px at 300 DPI)
+  shadowOffset: 15,   // ±100% slider = ±15mm
+} as const;
+
+export const EFFECT_MAX_CAROUSEL_PX = {
+  blurRadius: 40,
+  shadowBlur: 80,
+  shadowOffset: 60,
+} as const;
+
+export type EffectSliderKind = 'blurRadius' | 'shadowBlur' | 'shadowOffset';
+
+/**
+ * Maps 0..100 (or -100..100) Inspector slider value to physical project units (D-02).
+ * Supports:
+ * - Direct maxPhysical parameter: effectSliderToPhysical(sliderVal, unit, maxPhysical)
+ * - Named effect kind: effectSliderToPhysical(sliderVal, kind, unit, isCarousel, ppi)
+ */
+export function effectSliderToPhysical(
+  sliderVal: number,
+  kindOrUnit: CanvasUnit | EffectSliderKind,
+  unitOrMax?: CanvasUnit | number,
+  isCarousel: boolean = false,
+  ppi: number = 300
+): number {
+  if (typeof unitOrMax === 'number') {
+    return Number(((sliderVal / 100) * unitOrMax).toFixed(3));
+  }
+  const kind = kindOrUnit as EffectSliderKind;
+  const unit = (unitOrMax as CanvasUnit) || 'mm';
+  if (isCarousel || unit === 'px') {
+    const maxPx = EFFECT_MAX_CAROUSEL_PX[kind] ?? 40;
+    return Number(((sliderVal / 100) * maxPx).toFixed(2));
+  }
+  const maxMm = EFFECT_MAX_MM[kind] ?? 10;
+  const valMm = (sliderVal / 100) * maxMm;
+  return Number(convertUnit(valMm, 'mm', unit, ppi).toFixed(3));
+}
+
+/**
+ * Maps physical project units back to -100..100 or 0..100 Inspector slider scale (D-02).
+ * Supports:
+ * - Direct maxPhysical parameter: physicalToEffectSlider(physicalVal, unit, maxPhysical)
+ * - Named effect kind: physicalToEffectSlider(physicalVal, kind, unit, isCarousel, ppi)
+ */
+export function physicalToEffectSlider(
+  physicalVal: number,
+  kindOrUnit: CanvasUnit | EffectSliderKind,
+  unitOrMax?: CanvasUnit | number,
+  isCarousel: boolean = false,
+  ppi: number = 300
+): number {
+  if (typeof unitOrMax === 'number') {
+    if (unitOrMax === 0) return 0;
+    return Math.round(Math.max(-100, Math.min(100, (physicalVal / unitOrMax) * 100)));
+  }
+  const kind = kindOrUnit as EffectSliderKind;
+  const unit = (unitOrMax as CanvasUnit) || 'mm';
+  if (isCarousel || unit === 'px') {
+    const maxPx = EFFECT_MAX_CAROUSEL_PX[kind] ?? 40;
+    return Math.round(Math.max(-100, Math.min(100, (physicalVal / maxPx) * 100)));
+  }
+  const maxMm = EFFECT_MAX_MM[kind] ?? 10;
+  const valMm = convertUnit(physicalVal, unit, 'mm', ppi);
+  return Math.round(Math.max(-100, Math.min(100, (valMm / maxMm) * 100)));
 }
 
 /**
