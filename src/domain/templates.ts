@@ -2,6 +2,7 @@ import { Unit, convertUnit } from './units';
 import { Project } from './project';
 import { Spread } from './album';
 import type { PhotoFrameElement } from './editor';
+import type { AdaptiveLayoutSettings } from './adaptiveLayout';
 import { matchPhotosToSlots, type PhotoAspectInput } from './layout/aspectMatcher';
 import type { CarouselSlide, CarouselPhotoFrame } from './carousel';
 
@@ -33,6 +34,7 @@ export interface TemplateParams {
     photoAspect?: number;
   }>;
   lockedElements?: PhotoFrameElement[];
+  layoutSettings?: AdaptiveLayoutSettings;
 }
 
 export function round4(n: number): number {

@@ -5,6 +5,10 @@ import {
   saveAppPreferences,
   DEFAULT_APP_PREFERENCES,
 } from '../domain/appPreferences';
+import {
+  AdaptiveLayoutSettings,
+  DEFAULT_ADAPTIVE_LAYOUT_SETTINGS,
+} from '../domain/adaptiveLayout';
 
 interface AppInfo {
   version: string;
@@ -86,6 +90,11 @@ interface AppState {
   carouselPan: { x: number; y: number };
   printFitTrigger: number;
   carouselFitTrigger: number;
+  // Adaptive Layout Mood & Generator Settings (TPL-05)
+  adaptiveLayoutSettings: AdaptiveLayoutSettings;
+  updateAdaptiveLayoutSettings: (settings: Partial<AdaptiveLayoutSettings>) => void;
+  resetAdaptiveLayoutSettings: () => void;
+
   setPrintZoom: (z: number) => void;
   setCarouselZoom: (z: number) => void;
   setPrintPan: (pan: { x: number; y: number }) => void;
@@ -130,6 +139,18 @@ export const useAppStore = create<AppState>((set) => ({
   carouselPan: { x: 0, y: 0 },
   printFitTrigger: 0,
   carouselFitTrigger: 0,
+
+  // Adaptive Layout Mood & Generator Settings (TPL-05)
+  adaptiveLayoutSettings: DEFAULT_ADAPTIVE_LAYOUT_SETTINGS,
+  updateAdaptiveLayoutSettings: (patch) =>
+    set((state) => ({
+      adaptiveLayoutSettings: {
+        ...state.adaptiveLayoutSettings,
+        ...patch,
+      },
+    })),
+  resetAdaptiveLayoutSettings: () =>
+    set({ adaptiveLayoutSettings: DEFAULT_ADAPTIVE_LAYOUT_SETTINGS }),
 
   setAppInfo: (info) => set({ appInfo: info, isAppInfoLoaded: true }),
   openAbout: () => set({ isAboutOpen: true }),

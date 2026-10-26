@@ -20,6 +20,60 @@ export interface AdaptivePhoto {
   faceData?: PhotoFaceData | null;
 }
 
+export type AdaptiveLayoutMood = 'balanced' | 'airy' | 'compact' | 'hero' | 'uniform';
+export type LockedAnchorStrategy = 'avoid' | 'wrap' | 'fill';
+
+export interface AdaptiveLayoutSettings {
+  styleMode: 'clean' | 'dynamic';
+  mood: AdaptiveLayoutMood;
+  canvasDensity: number; // 0.50 .. 0.95
+  spacingMode: 'fixed' | 'breathing';
+  sizeContrast: number; // 0 .. 100
+  lockedAnchorStrategy: LockedAnchorStrategy;
+}
+
+export const DEFAULT_ADAPTIVE_LAYOUT_SETTINGS: AdaptiveLayoutSettings = {
+  styleMode: 'clean',
+  mood: 'balanced',
+  canvasDensity: 0.85,
+  spacingMode: 'fixed',
+  sizeContrast: 20,
+  lockedAnchorStrategy: 'avoid',
+};
+
+export const MOOD_PRESETS: Record<AdaptiveLayoutMood, Partial<AdaptiveLayoutSettings>> = {
+  balanced: {
+    canvasDensity: 0.85,
+    spacingMode: 'fixed',
+    sizeContrast: 20,
+    lockedAnchorStrategy: 'avoid',
+  },
+  airy: {
+    canvasDensity: 0.70,
+    spacingMode: 'breathing',
+    sizeContrast: 15,
+    lockedAnchorStrategy: 'avoid',
+  },
+  compact: {
+    canvasDensity: 0.95,
+    spacingMode: 'fixed',
+    sizeContrast: 10,
+    lockedAnchorStrategy: 'fill',
+  },
+  hero: {
+    canvasDensity: 0.88,
+    spacingMode: 'breathing',
+    sizeContrast: 80,
+    lockedAnchorStrategy: 'avoid',
+  },
+  uniform: {
+    canvasDensity: 0.82,
+    spacingMode: 'fixed',
+    sizeContrast: 0,
+    lockedAnchorStrategy: 'wrap',
+  },
+};
+
 export interface AdaptiveLayoutVariation {
   id: string;
   name: string;
@@ -30,6 +84,8 @@ export interface AdaptiveLayoutVariation {
   cropPenalty?: number; // 0.0 (no crop) to 1.0 (heavy crop)
   fingerprint?: string; // e.g. "1L+2P"
   photoAssignments?: number[]; // Mapping of photo[i] -> rect[j]
+  isHero?: boolean;
+  badge?: string;
 }
 
 /**
@@ -1078,11 +1134,17 @@ export function getAdaptiveLayoutCacheStats(): {
   };
 }
 
-export function getRawPartitionCacheKey(params: TemplateParams, photoCount: number): string {
+export function getRawPartitionCacheKey(
+  params: TemplateParams,
+  photoCount: number,
+  settings?: AdaptiveLayoutSettings
+): string {
   const lockedSig = (params.lockedElements || [])
     .map((l) => `${round4(l.x)},${round4(l.y)},${round4(l.width)},${round4(l.height)},${round4(l.rotation || 0)}`)
     .sort()
     .join(';');
+  const s = settings || params.layoutSettings || DEFAULT_ADAPTIVE_LAYOUT_SETTINGS;
+  const settingsSig = `${s.styleMode}_${s.mood}_${round4(s.canvasDensity)}_${s.spacingMode}_${round4(s.sizeContrast)}_${s.lockedAnchorStrategy}`;
   return [
     round4(params.spreadWidth),
     round4(params.spreadHeight),
@@ -1096,6 +1158,7 @@ export function getRawPartitionCacheKey(params: TemplateParams, photoCount: numb
     round4(params.safeMarginSpine ?? params.safeMargin),
     photoCount,
     lockedSig,
+    settingsSig,
   ].join('|');
 }
 
@@ -1138,14 +1201,38 @@ export function scoreAndSortVariations(
 
 export function computeRawLayoutPartitions(
   params: TemplateParams,
-  count: number
+  count: number,
+  settingsOverride?: AdaptiveLayoutSettings
 ): AdaptiveLayoutVariation[] {
   if (count === 0) return [];
 
-  const { leftPageArea, rightPageArea, spreadArea } = getUsableAreas(params);
-  const spacing = params.spacing;
+  const settings: AdaptiveLayoutSettings = {
+    ...DEFAULT_ADAPTIVE_LAYOUT_SETTINGS,
+    ...(params.layoutSettings || {}),
+    ...(settingsOverride || {}),
+  };
+
+  const { leftPageArea: rawLeft, rightPageArea: rawRight, spreadArea: rawSpread } = getUsableAreas(params);
+  const spacing = settings.spacingMode === 'breathing' ? Math.round(params.spacing * 1.5) : params.spacing;
   const isCover = !params.isSpread;
   const locked = params.lockedElements || [];
+
+  const density = Math.max(0.5, Math.min(1.0, settings.canvasDensity));
+  const scaleBox = (b: RectBounds): RectBounds => {
+    if (density >= 0.94) return b;
+    const insetX = (b.width * (1 - density)) / 2;
+    const insetY = (b.height * (1 - density)) / 2;
+    return {
+      x: round4(b.x + insetX),
+      y: round4(b.y + insetY),
+      width: round4(b.width * density),
+      height: round4(b.height * density),
+    };
+  };
+
+  const leftPageArea = scaleBox(rawLeft);
+  const rightPageArea = scaleBox(rawRight);
+  const spreadArea = scaleBox(rawSpread);
   const marginSpine = params.safeMarginSpine ?? params.safeMargin;
   const allowFullBleed = [
     params.safeMarginTop ?? params.safeMargin,
@@ -1528,32 +1615,169 @@ export function computeRawLayoutPartitions(
   return variations;
 }
 
+export function generateFocusHeroVariation(
+  params: TemplateParams,
+  photos: AdaptivePhoto[],
+  settings: AdaptiveLayoutSettings
+): AdaptiveLayoutVariation | null {
+  const count = photos.length;
+  if (count === 0) return null;
+
+  const { leftPageArea, rightPageArea, spreadArea } = getUsableAreas(params);
+  const density = Math.max(0.5, Math.min(1.0, settings.canvasDensity));
+  const spacing = settings.spacingMode === 'breathing' ? Math.round(params.spacing * 1.5) : params.spacing;
+  const locked = params.lockedElements || [];
+
+  // Identify hero photo
+  let heroIdx = photos.findIndex((p) => p.isHero);
+  if (heroIdx === -1) {
+    let maxRating = -1;
+    photos.forEach((p, idx) => {
+      const r = p.rating || 0;
+      if (r > maxRating) {
+        maxRating = r;
+        heroIdx = idx;
+      }
+    });
+  }
+  if (heroIdx === -1) heroIdx = 0;
+  const heroPhoto = photos[heroIdx];
+  const heroAspect = heroPhoto?.photoAspect || 1.5;
+
+  let rects: RectBounds[] = [];
+  const assignments: number[] = [heroIdx];
+  const restIndices: number[] = [];
+  for (let i = 0; i < count; i++) {
+    if (i !== heroIdx) restIndices.push(i);
+  }
+
+  if (count === 1) {
+    const box = params.isSpread ? spreadArea : leftPageArea;
+    const w = box.width * density;
+    const h = box.height * density;
+    rects = [{
+      x: round4(box.x + (box.width - w) / 2),
+      y: round4(box.y + (box.height - h) / 2),
+      width: round4(w),
+      height: round4(h),
+    }];
+  } else if (params.isSpread) {
+    const heroBox = heroAspect >= 1.0 ? leftPageArea : rightPageArea;
+    const companionBox = heroAspect >= 1.0 ? rightPageArea : leftPageArea;
+
+    const heroW = heroBox.width * density;
+    const heroH = heroBox.height * density;
+    const heroRect: RectBounds = {
+      x: round4(heroBox.x + (heroBox.width - heroW) / 2),
+      y: round4(heroBox.y + (heroBox.height - heroH) / 2),
+      width: round4(heroW),
+      height: round4(heroH),
+    };
+
+    const compRects = partitionPageBoxIntoKRects(companionBox, restIndices.length, spacing, 0);
+    rects = [heroRect, ...compRects];
+    assignments.push(...restIndices);
+  } else {
+    const box = spreadArea;
+    if (heroAspect >= 1.15) {
+      const heroHeight = round4((box.height - spacing) * 0.65);
+      const companionHeight = round4(box.height - spacing - heroHeight);
+      const heroRect: RectBounds = {
+        x: box.x,
+        y: box.y,
+        width: box.width,
+        height: heroHeight,
+      };
+      const compBox: RectBounds = {
+        x: box.x,
+        y: round4(box.y + heroHeight + spacing),
+        width: box.width,
+        height: companionHeight,
+      };
+      const compRects = partitionPageBoxIntoKRects(compBox, restIndices.length, spacing, 0);
+      rects = [heroRect, ...compRects];
+    } else {
+      const heroWidth = round4((box.width - spacing) * 0.60);
+      const companionWidth = round4(box.width - spacing - heroWidth);
+      const heroRect: RectBounds = {
+        x: box.x,
+        y: box.y,
+        width: heroWidth,
+        height: box.height,
+      };
+      const compBox: RectBounds = {
+        x: round4(box.x + heroWidth + spacing),
+        y: box.y,
+        width: companionWidth,
+        height: box.height,
+      };
+      const compRects = partitionPageBoxIntoKRects(compBox, restIndices.length, spacing, 0);
+      rects = [heroRect, ...compRects];
+    }
+    assignments.push(...restIndices);
+  }
+
+  // Ensure no collision with locked elements
+  if (locked.length > 0) {
+    const hasCollision = rects.some((r) => locked.some((l) => rectsIntersect(r, getRotatedAABB(l))));
+    if (hasCollision) return null;
+  }
+
+  return {
+    id: 'focus_hero_dynamic',
+    name: 'Focus (Hero Layout)',
+    description: 'Dynamic storytelling emphasis with a dominant hero photo and balanced companion slots.',
+    rects,
+    tags: ['dynamic', 'focus', 'hero', `${count}p`],
+    score: 99,
+    cropPenalty: 0.05,
+    isHero: true,
+    badge: 'Focus',
+    photoAssignments: assignments,
+  };
+}
+
 export function generateAdaptiveLayoutVariations(
   params: TemplateParams,
-  photos: AdaptivePhoto[] = []
+  photos: AdaptivePhoto[] = [],
+  settingsOverride?: Partial<AdaptiveLayoutSettings>
 ): AdaptiveLayoutVariation[] {
   const count = photos.length;
   if (count === 0) return [];
 
-  const rawKey = getRawPartitionCacheKey(params, count);
+  const settings: AdaptiveLayoutSettings = {
+    ...DEFAULT_ADAPTIVE_LAYOUT_SETTINGS,
+    ...(params.layoutSettings || {}),
+    ...(settingsOverride || {}),
+  };
+
+  const rawKey = getRawPartitionCacheKey(params, count, settings);
   const scoredKey = getScoredVariationsCacheKey(rawKey, photos);
 
+  let scoredVariations: AdaptiveLayoutVariation[];
   const cachedScored = scoredVariationsCache.get(scoredKey);
   if (cachedScored) {
     cacheHits++;
-    return cachedScored;
+    scoredVariations = [...cachedScored];
+  } else {
+    cacheMisses++;
+
+    let rawVariations = rawPartitionsCache.get(rawKey);
+    if (!rawVariations) {
+      rawVariations = computeRawLayoutPartitions(params, count, settings);
+      rawPartitionsCache.set(rawKey, rawVariations);
+    }
+
+    scoredVariations = scoreAndSortVariations(rawVariations, photos, params.lockedElements || []);
+    scoredVariationsCache.set(scoredKey, scoredVariations);
   }
 
-  cacheMisses++;
-
-  let rawVariations = rawPartitionsCache.get(rawKey);
-  if (!rawVariations) {
-    rawVariations = computeRawLayoutPartitions(params, count);
-    rawPartitionsCache.set(rawKey, rawVariations);
+  if (settings.styleMode === 'dynamic' || settings.mood === 'hero') {
+    const focusVar = generateFocusHeroVariation(params, photos, settings);
+    if (focusVar) {
+      scoredVariations = [focusVar, ...scoredVariations.filter((v) => v.id !== focusVar.id)];
+    }
   }
-
-  const scoredVariations = scoreAndSortVariations(rawVariations, photos, params.lockedElements || []);
-  scoredVariationsCache.set(scoredKey, scoredVariations);
 
   return scoredVariations;
 }

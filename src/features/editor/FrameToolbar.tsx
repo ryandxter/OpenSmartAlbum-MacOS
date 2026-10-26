@@ -12,11 +12,15 @@ import {
   Group,
   Lock,
   Unlock,
+  Pin,
+  PinOff,
   Trash2,
   Unlink,
 } from 'lucide-react';
 import { useEditorStore } from '../../stores/editorStore';
 import { useAlbumStore } from '../../stores/albumStore';
+import { useCarouselStore } from '../../stores/carouselStore';
+import { useAppStore } from '../../stores/appStore';
 import { getAllAlbumSpreads } from '../../domain/album';
 import { zoomCropAtPoint, PhotoFrameElement } from '../../domain/editor';
 import { isMac } from '../../utils/platform';
@@ -367,6 +371,36 @@ export function FrameToolbar() {
               <Lock size={15} strokeWidth={1.75} />
             ) : (
               <Unlock size={15} strokeWidth={1.75} />
+            )}
+          </button>
+
+          {/* Exclude from Adaptive Layout Pin Toggle (TPL-06) */}
+          <button
+            type="button"
+            className={`${styles.toolBtn} ${selectedElements.every((f) => f.excludeFromAdaptiveLayout) ? styles.toolBtnActive : ''}`}
+            style={{
+              color: selectedElements.every((f) => f.excludeFromAdaptiveLayout) ? '#38bdf8' : undefined,
+              borderColor: selectedElements.every((f) => f.excludeFromAdaptiveLayout) ? '#38bdf8' : undefined,
+            }}
+            onClick={() => {
+              const activeMode = useAppStore.getState().activeMode;
+              if (activeMode === 'carousel') {
+                const sIdx = useCarouselStore.getState().activeSlideIndex;
+                useCarouselStore.getState().toggleExcludeFromAdaptiveLayout(sIdx, selectedFrameIds);
+              } else if (activeSpread) {
+                useAlbumStore.getState().toggleExcludeFromAdaptiveLayout(activeSpread.id, selectedFrameIds);
+              }
+            }}
+            title={
+              selectedElements.every((f) => f.excludeFromAdaptiveLayout)
+                ? 'Include in Adaptive Layout rotations'
+                : '📌 Exclude from Adaptive Layout (Pin position)'
+            }
+          >
+            {selectedElements.every((f) => f.excludeFromAdaptiveLayout) ? (
+              <PinOff size={15} strokeWidth={1.75} />
+            ) : (
+              <Pin size={15} strokeWidth={1.75} />
             )}
           </button>
 

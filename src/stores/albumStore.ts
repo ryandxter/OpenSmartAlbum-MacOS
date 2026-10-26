@@ -477,6 +477,7 @@ export interface AlbumState {
     elementIds: string[],
     effects: Partial<PhotoFrameElement>
   ) => void;
+  toggleExcludeFromAdaptiveLayout: (spreadId: string, elementIds: string[]) => void;
 }
 
 export function hydrateElement(el: any): AlbumElement {
@@ -3074,5 +3075,47 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
         saveStatus: 'unsaved',
       });
     }
+  },
+
+  toggleExcludeFromAdaptiveLayout: (spreadId, elementIds) => {
+    const { currentAlbum } = get();
+    if (!currentAlbum || elementIds.length === 0) return;
+    useHistoryStore.getState().pushState(currentAlbum);
+    const idsSet = new Set(elementIds);
+    const updateSpreadElements = (elements: AlbumElement[]) => {
+      const selected = elements.filter((el) => idsSet.has(el.id));
+      const allExcluded = selected.length > 0 && selected.every((el) => el.excludeFromAdaptiveLayout);
+      const nextVal = !allExcluded;
+      return elements.map((el) => {
+        if (!idsSet.has(el.id)) return el;
+        return { ...el, excludeFromAdaptiveLayout: nextVal };
+      });
+    };
+
+    let updatedCover = currentAlbum.coverSpread;
+    if (updatedCover && updatedCover.id === spreadId) {
+      updatedCover = {
+        ...updatedCover,
+        elements: updateSpreadElements(updatedCover.elements),
+      };
+    }
+
+    const updatedSpreads = currentAlbum.spreads.map((s) => {
+      if (s.id !== spreadId) return s;
+      return {
+        ...s,
+        elements: updateSpreadElements(s.elements),
+      };
+    });
+
+    set({
+      currentAlbum: {
+        ...currentAlbum,
+        coverSpread: updatedCover,
+        spreads: updatedSpreads,
+      },
+      saveStatus: 'unsaved',
+    });
+    get().saveAlbumToDb();
   },
 }));

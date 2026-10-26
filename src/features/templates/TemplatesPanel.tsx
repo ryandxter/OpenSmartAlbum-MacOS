@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Shuffle, Star } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Shuffle, Star, Sliders } from 'lucide-react';
 import { useAlbumStore } from '../../stores/albumStore';
 import { useProjectStore } from '../../stores/projectStore';
 import { useCarouselStore } from '../../stores/carouselStore';
+import { useAppStore } from '../../stores/appStore';
+import { LayoutSettingsModal } from '../album/LayoutSettingsModal';
 import { getProjectDimensionsInCanvasUnit } from '../../domain/templates';
 import {
   generateAdaptiveLayoutVariations,
@@ -84,6 +86,9 @@ export const AdaptiveVariationCardItem = React.memo(function AdaptiveVariationCa
         <span className={styles.templateDesc}>{variation.description}</span>
         <div className={styles.tagRow}>
           <span className={styles.indexBadge} title={`Layout ${index + 1} of ${totalCount}`}>#{index + 1}</span>
+          {variation.badge && (
+            <span className={styles.focusBadge}>{variation.badge}</span>
+          )}
           {variation.score !== undefined && (
             <span className={`${styles.tagPill} ${scoreClass}`}>
               <Star size={10} strokeWidth={1.75} fill="currentColor" style={{ verticalAlign: 'middle', marginRight: 3 }} />
@@ -104,6 +109,10 @@ interface TemplatesPanelProps {
 export function TemplatesPanel({ onApplyToast, activeMode = 'print' }: TemplatesPanelProps) {
   const [panelTab, setPanelTab] = useState<'adaptive' | 'my_templates'>('adaptive');
   const savedTemplateCount = useTemplateStore((s) => s.templates.length);
+
+  const adaptiveLayoutSettings = useAppStore((s) => s.adaptiveLayoutSettings);
+  const updateAdaptiveLayoutSettings = useAppStore((s) => s.updateAdaptiveLayoutSettings);
+  const [isTuningModalOpen, setIsTuningModalOpen] = useState(false);
 
   // Album / Print Mode Hooks
   const {
@@ -210,9 +219,10 @@ export function TemplatesPanel({ onApplyToast, activeMode = 'print' }: Templates
         spacing: dims.spacing,
         lockedElements,
       },
-      printPhotos
+      printPhotos,
+      adaptiveLayoutSettings
     );
-  }, [currentProject, currentAlbum, activeSpread, printPhotos, lockedElements]);
+  }, [currentProject, currentAlbum, activeSpread, printPhotos, lockedElements, adaptiveLayoutSettings]);
 
   // Dynamic Layout Variations (Carousel Mode)
   const carouselVariations = useMemo(() => {
@@ -513,6 +523,37 @@ export function TemplatesPanel({ onApplyToast, activeMode = 'print' }: Templates
   // Print Mode Rendering (High Contrast Studio Silhouettes & Progressive Windowing)
   return (
     <div className={styles.container}>
+      {mainTabs}
+      <div className={styles.modeToggleRow}>
+        <div style={{ display: 'flex', gap: 6, flex: 1 }}>
+          <button
+            type="button"
+            className={`${styles.modeBtn} ${adaptiveLayoutSettings.styleMode === 'clean' ? styles.modeBtnActive : ''}`}
+            onClick={() => updateAdaptiveLayoutSettings({ styleMode: 'clean' })}
+            title="Balanced Golden Ratio layout generator"
+          >
+            ⚖️ Balanced
+          </button>
+          <button
+            type="button"
+            className={`${styles.modeBtn} ${adaptiveLayoutSettings.styleMode === 'dynamic' ? styles.modeBtnActive : ''}`}
+            onClick={() => updateAdaptiveLayoutSettings({ styleMode: 'dynamic' })}
+            title="Dynamic storytelling with Focus Hero layouts"
+          >
+            ✨ Dynamic
+          </button>
+        </div>
+        <button
+          type="button"
+          className={styles.tuningBtn}
+          onClick={() => setIsTuningModalOpen(true)}
+          title="Generator Mood Presets & Tuning"
+        >
+          <Sliders size={13} />
+          <span>{adaptiveLayoutSettings.mood.toUpperCase()}</span>
+        </button>
+      </div>
+
       {/* Header with Active Spread & Photos Count */}
       <div className={styles.filterHeader}>
         <div className={styles.spreadContextBadge}>
@@ -595,6 +636,11 @@ export function TemplatesPanel({ onApplyToast, activeMode = 'print' }: Templates
           </p>
         </div>
       )}
+
+      <LayoutSettingsModal
+        isOpen={isTuningModalOpen}
+        onClose={() => setIsTuningModalOpen(false)}
+      />
     </div>
   );
 }

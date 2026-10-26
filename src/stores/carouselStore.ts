@@ -169,6 +169,7 @@ export interface CarouselState {
     presetId?: CarouselRatio,
     mode?: SocialResizeMode
   ) => void;
+  toggleExcludeFromAdaptiveLayout: (slideIndex: number, elementIds: string[]) => void;
 }
 
 export const useCarouselStore = create<CarouselState>((set, get) => ({
@@ -2625,5 +2626,31 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
       currentCarousel: { ...currentCarousel, slides: updatedSlides },
     });
     markDirty();
+  },
+
+  toggleExcludeFromAdaptiveLayout: (slideIndex, elementIds) => {
+    const { currentCarousel, markDirty } = get();
+    if (!currentCarousel || elementIds.length === 0) return;
+    get().pushHistory();
+    const idsSet = new Set(elementIds);
+    const updatedSlides = currentCarousel.slides.map((slide, idx) => {
+      if (idx !== slideIndex) return slide;
+      const selected = slide.elements.filter((el) => idsSet.has(el.id));
+      const allExcluded = selected.length > 0 && selected.every((el) => el.excludeFromAdaptiveLayout);
+      const nextVal = !allExcluded;
+      return {
+        ...slide,
+        elements: slide.elements.map((el) => {
+          if (!idsSet.has(el.id)) return el;
+          return { ...el, excludeFromAdaptiveLayout: nextVal };
+        }),
+      };
+    });
+
+    set({
+      currentCarousel: { ...currentCarousel, slides: updatedSlides },
+    });
+    markDirty();
+    get().saveCarouselToDb();
   },
 }));

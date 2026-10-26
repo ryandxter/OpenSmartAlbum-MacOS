@@ -1362,6 +1362,57 @@ function PhotoFrameNode({
         </Group>
       )}
 
+      {/* Modern Compact Exclude from Adaptive Layout Pin Badge (TPL-06) */}
+      {frame.excludeFromAdaptiveLayout && (
+        <Group
+          x={frame.locked ? Math.max(25, pixelW - 30) : Math.max(11, pixelW - 12)}
+          y={12}
+          listening={true}
+          onClick={(e) => {
+            e.cancelBubble = true;
+            const spreadId = useAlbumStore.getState().activeSpreadId;
+            if (spreadId) {
+              useAlbumStore.getState().toggleExcludeFromAdaptiveLayout(spreadId, [frame.id]);
+            }
+          }}
+          onTap={(e) => {
+            e.cancelBubble = true;
+            const spreadId = useAlbumStore.getState().activeSpreadId;
+            if (spreadId) {
+              useAlbumStore.getState().toggleExcludeFromAdaptiveLayout(spreadId, [frame.id]);
+            }
+          }}
+          onMouseEnter={(e) => {
+            const container = e.target.getStage()?.container();
+            if (container) container.style.cursor = 'pointer';
+          }}
+          onMouseLeave={(e) => {
+            const container = e.target.getStage()?.container();
+            if (container) container.style.cursor = 'default';
+          }}
+        >
+          <Circle
+            radius={8}
+            fill="rgba(18, 20, 26, 0.9)"
+            stroke="rgba(56, 189, 248, 0.7)"
+            strokeWidth={1}
+            shadowColor="rgba(0, 0, 0, 0.45)"
+            shadowBlur={3}
+            shadowOffset={{ x: 0, y: 1 }}
+          />
+          <KonvaPath
+            data="M12 2v8M12 18v4M4.93 4.93l4.24 4.24M14.83 14.83l4.24 4.24M2 12h8M18 12h4"
+            stroke="#38bdf8"
+            strokeWidth={1.8}
+            fillEnabled={false}
+            scale={{ x: 0.38, y: 0.38 }}
+            x={-4.5}
+            y={-4.5}
+            listening={false}
+          />
+        </Group>
+      )}
+
     </Group>
   );
 }
