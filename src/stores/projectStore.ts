@@ -71,6 +71,13 @@ interface ProjectState {
   updateProjectName: (name: string) => Promise<void>;
   updateProjectSpacing: (spacingValue: number, spacingUnit?: Unit) => Promise<void>;
   updateProjectMargin: (marginValue: number, marginUnit?: Unit, side?: 'all' | 'top' | 'bottom' | 'outside' | 'spine') => Promise<void>;
+  updateProjectMargins: (margins: {
+    top?: number;
+    bottom?: number;
+    outside?: number;
+    spine?: number;
+    unit?: Unit;
+  }) => Promise<void>;
   updateProjectBleed: (bleed: number) => Promise<void>;
   updateProjectBackgroundColor: (backgroundColor: string) => Promise<void>;
   updateProjectBorder: (border: { enabled: boolean; width: number; unit: Unit; color: string }) => Promise<void>;
@@ -225,6 +232,46 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     } else if (side === 'spine') {
       updatedProject.marginSpine = num;
     }
+
+    set((state) => ({
+      currentProject: updatedProject,
+      recentProjects: state.recentProjects.map((p) => (p.id === current.id ? updatedProject : p)),
+    }));
+
+    try {
+      await persistProjectMargins(updatedProject);
+    } catch (err) {
+      console.warn('[AFSN] update_project_margins via Tauri failed, fallback:', err);
+    }
+
+    try {
+      const existing = JSON.parse(localStorage.getItem('afsn_recent_projects') || '[]');
+      const updatedRecents = existing.map((p: Project) => (p.id === current.id ? updatedProject : p));
+      localStorage.setItem('afsn_recent_projects', JSON.stringify(updatedRecents));
+    } catch (err) {
+      console.warn('[AFSN] localStorage write error:', err);
+    }
+  },
+
+  updateProjectMargins: async (margins) => {
+    const current = get().currentProject;
+    if (!current) return;
+    const unit = margins.unit || current.marginUnit || 'mm';
+    const top = margins.top !== undefined ? Math.max(0, Number(margins.top)) : (current.marginTop ?? current.marginValue ?? 0);
+    const bottom = margins.bottom !== undefined ? Math.max(0, Number(margins.bottom)) : (current.marginBottom ?? current.marginValue ?? 0);
+    const outside = margins.outside !== undefined ? Math.max(0, Number(margins.outside)) : (current.marginOutside ?? current.marginValue ?? 0);
+    const spine = margins.spine !== undefined ? Math.max(0, Number(margins.spine)) : (current.marginSpine ?? current.marginValue ?? 0);
+
+    const updatedProject: Project = {
+      ...current,
+      marginUnit: unit,
+      marginTop: top,
+      marginBottom: bottom,
+      marginOutside: outside,
+      marginSpine: spine,
+      marginValue: (top === bottom && bottom === outside && outside === spine) ? top : current.marginValue,
+      updatedAt: new Date().toISOString(),
+    };
 
     set((state) => ({
       currentProject: updatedProject,

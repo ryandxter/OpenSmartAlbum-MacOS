@@ -34,6 +34,8 @@ interface LayoutSpacingSectionProps {
 
 export function LayoutSpacingSection({ onToast, activeMode = 'print' }: LayoutSpacingSectionProps) {
   const currentProject = useProjectStore((s) => s.currentProject);
+  const updateProjectMargin = useProjectStore((s) => s.updateProjectMargin);
+  const updateProjectMargins = useProjectStore((s) => s.updateProjectMargins);
   const currentAlbum = useAlbumStore((s) => s.currentAlbum);
   const activeSpreadId = useAlbumStore((s) => s.activeSpreadId);
   const updateSpreadSpacing = useAlbumStore((s) => s.updateSpreadSpacing);
@@ -66,6 +68,7 @@ export function LayoutSpacingSection({ onToast, activeMode = 'print' }: LayoutSp
   const updateSlideBackground = useCarouselStore((s) => s.updateSlideBackground);
 
   const [isRatioLocked, setIsRatioLocked] = useState(true);
+  const [marginMode, setMarginMode] = useState<'uniform' | '4-sided'>('4-sided');
 
   if (activeMode === 'carousel') {
     if (!currentCarousel) {
@@ -803,62 +806,140 @@ export function LayoutSpacingSection({ onToast, activeMode = 'print' }: LayoutSp
         </button>
       </div>
 
-      {/* Margins & Guides */}
+      {/* Margins & Guides (FX-05) */}
       <div className={styles.propGroup}>
         <div className={styles.groupHeader}>
           <span className={styles.label}>Safe Margins</span>
         </div>
-        <div className={styles.propGrid2}>
-          <NumberInput
-            label="Top"
-            value={activeSpread?.safeAreaTop ?? activeSpread?.safeArea ?? 12}
-            suffix={unit}
-            min={0}
-            max={100}
-            onChange={(val) => {
-              updateSafeArea(val, 'top', currentProject ?? undefined);
-            }}
-          />
-          <NumberInput
-            label="Bottom"
-            value={activeSpread?.safeAreaBottom ?? activeSpread?.safeArea ?? 12}
-            suffix={unit}
-            min={0}
-            max={100}
-            onChange={(val) => {
-              updateSafeArea(val, 'bottom', currentProject ?? undefined);
-            }}
-          />
+
+        {/* Mode Switcher: Uniform vs 4-Sided */}
+        <div className={styles.propGrid2} style={{ marginBottom: '10px' }}>
+          <button
+            type="button"
+            className={`${styles.actionBtn} ${marginMode === 'uniform' ? styles.iconBtnActive : ''}`}
+            onClick={() => setMarginMode('uniform')}
+          >
+            <span>Uniform</span>
+          </button>
+          <button
+            type="button"
+            className={`${styles.actionBtn} ${marginMode === '4-sided' ? styles.iconBtnActive : ''}`}
+            onClick={() => setMarginMode('4-sided')}
+          >
+            <span>4-Sided</span>
+          </button>
         </div>
-        <div className={styles.propGrid2}>
-          <NumberInput
-            label="Spine/Inside"
-            value={activeSpread?.safeAreaSpine ?? 0}
-            suffix={unit}
-            min={0}
-            max={100}
-            onChange={(val) => {
-              updateSafeArea(val, 'spine', currentProject ?? undefined);
+
+        {marginMode === 'uniform' ? (
+          <div style={{ marginBottom: '8px' }}>
+            <NumberInput
+              label="Margin"
+              value={activeSpread?.safeArea ?? currentProject?.marginValue ?? 12}
+              suffix={unit}
+              min={0}
+              max={100}
+              onChange={(val) => {
+                updateSafeArea(val, 'all', currentProject ?? undefined);
+                updateProjectMargin(val, unit, 'all');
+              }}
+            />
+          </div>
+        ) : (
+          <>
+            <div className={styles.propGrid2}>
+              <NumberInput
+                label="Top"
+                value={activeSpread?.safeAreaTop ?? currentProject?.marginTop ?? activeSpread?.safeArea ?? 12}
+                suffix={unit}
+                min={0}
+                max={100}
+                onChange={(val) => {
+                  updateSafeArea(val, 'top', currentProject ?? undefined);
+                  updateProjectMargin(val, unit, 'top');
+                }}
+              />
+              <NumberInput
+                label="Bottom"
+                value={activeSpread?.safeAreaBottom ?? currentProject?.marginBottom ?? activeSpread?.safeArea ?? 12}
+                suffix={unit}
+                min={0}
+                max={100}
+                onChange={(val) => {
+                  updateSafeArea(val, 'bottom', currentProject ?? undefined);
+                  updateProjectMargin(val, unit, 'bottom');
+                }}
+              />
+            </div>
+            <div className={styles.propGrid2} style={{ marginTop: '6px' }}>
+              <NumberInput
+                label="Outside"
+                value={activeSpread?.safeAreaOutside ?? currentProject?.marginOutside ?? activeSpread?.safeArea ?? 12}
+                suffix={unit}
+                min={0}
+                max={100}
+                onChange={(val) => {
+                  updateSafeArea(val, 'outside', currentProject ?? undefined);
+                  updateProjectMargin(val, unit, 'outside');
+                }}
+              />
+              <NumberInput
+                label="Spine/Inside"
+                value={activeSpread?.safeAreaSpine ?? currentProject?.marginSpine ?? 0}
+                suffix={unit}
+                min={0}
+                max={100}
+                onChange={(val) => {
+                  updateSafeArea(val, 'spine', currentProject ?? undefined);
+                  updateProjectMargin(val, unit, 'spine');
+                }}
+              />
+            </div>
+          </>
+        )}
+
+        {/* Continuous Seamless Spread Badge (FX-05) */}
+        {(marginMode === '4-sided'
+          ? (activeSpread?.safeAreaSpine ?? currentProject?.marginSpine ?? 0) === 0
+          : (activeSpread?.safeArea ?? currentProject?.marginValue ?? 12) === 0) && (
+          <div
+            style={{
+              marginTop: '8px',
+              padding: '6px 10px',
+              borderRadius: '6px',
+              background: 'rgba(56, 189, 248, 0.12)',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              color: '#38bdf8',
+              fontSize: '11px',
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
             }}
-          />
-          <NumberInput
-            label="Outside"
-            value={activeSpread?.safeAreaOutside ?? activeSpread?.safeArea ?? 12}
-            suffix={unit}
-            min={0}
-            max={100}
-            onChange={(val) => {
-              updateSafeArea(val, 'outside', currentProject ?? undefined);
-            }}
-          />
-        </div>
+          >
+            <span>✨ Continuous Seamless Spread: 0 Spine Margin</span>
+          </div>
+        )}
+
         <button
           type="button"
           className={styles.actionBtn}
-          style={{ marginTop: '6px' }}
+          style={{ marginTop: '8px' }}
           onClick={() => {
-            const currentMargin = activeSpread?.safeArea ?? 12;
-            applySafeAreaToAllSpreads(currentMargin, 'all', currentProject ?? undefined);
+            if (marginMode === 'uniform') {
+              const currentMargin = activeSpread?.safeArea ?? currentProject?.marginValue ?? 12;
+              applySafeAreaToAllSpreads(currentMargin, 'all', currentProject ?? undefined);
+              updateProjectMargin(currentMargin, unit, 'all');
+            } else {
+              const top = activeSpread?.safeAreaTop ?? currentProject?.marginTop ?? activeSpread?.safeArea ?? 12;
+              const bottom = activeSpread?.safeAreaBottom ?? currentProject?.marginBottom ?? activeSpread?.safeArea ?? 12;
+              const outside = activeSpread?.safeAreaOutside ?? currentProject?.marginOutside ?? activeSpread?.safeArea ?? 12;
+              const spine = activeSpread?.safeAreaSpine ?? currentProject?.marginSpine ?? 0;
+              applySafeAreaToAllSpreads(top, 'top', currentProject ?? undefined);
+              applySafeAreaToAllSpreads(bottom, 'bottom', currentProject ?? undefined);
+              applySafeAreaToAllSpreads(outside, 'outside', currentProject ?? undefined);
+              applySafeAreaToAllSpreads(spine, 'spine', currentProject ?? undefined);
+              updateProjectMargins({ top, bottom, outside, spine, unit });
+            }
             onToast?.('✓ Applied safe margins to all spreads');
           }}
         >
