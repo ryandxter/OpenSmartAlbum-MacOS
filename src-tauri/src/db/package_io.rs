@@ -75,6 +75,189 @@ fn same_path(a: &str, b: &str) -> bool {
     } else { a == b }
 }
 
+/// Safely extract all entries from a ZIP archive into `target_dir`.
+/// Canonicalizes the target directory once to properly accommodate macOS `/var -> /private/var`
+/// and `/tmp -> /private/tmp` symlinks, while strictly rejecting any entry containing `..`,
+/// absolute paths, symlink entry headers, or malicious traversal.
+#[allow(dead_code)]
+pub fn safe_extract_zip<R: std::io::Read + std::io::Seek>(
+    archive: &mut zip::ZipArchive<R>,
+    target_dir: &Path,
+) -> SqliteResult<()> {
+    fs::create_dir_all(target_dir).map_err(package_error)?;
+    let canonical_target =
+        fs::canonicalize(target_dir).unwrap_or_else(|_| target_dir.to_path_buf());
+
+    for i in 0..archive.len() {
+        let mut entry = archive.by_index(i).map_err(package_error)?;
+        let raw_name = entry.name().to_string();
+        if raw_name.starts_with('/') || raw_name.starts_with('\\') || raw_name.contains("..") {
+            return Err(package_error("Path traversal detected in archive."));
+        }
+        let enclosed = match entry.enclosed_name() {
+            Some(path) => path.to_owned(),
+            None => return Err(package_error("Path traversal detected in archive.")),
+        };
+
+        if let Some(mode) = entry.unix_mode() {
+            if (mode & 0o170000) == 0o120000 {
+                return Err(package_error("Symbolic links are not permitted in archives."));
+            }
+        }
+
+        let dest_path = canonical_target.join(&enclosed);
+        if !dest_path.starts_with(&canonical_target) {
+            return Err(package_error("Path traversal detected in archive."));
+        }
+
+        if entry.is_dir() {
+            fs::create_dir_all(&dest_path).map_err(package_error)?;
+        } else {
+            if let Some(parent) = dest_path.parent() {
+                fs::create_dir_all(parent).map_err(package_error)?;
+            }
+            if let Ok(meta) = fs::symlink_metadata(&dest_path) {
+                if meta.file_type().is_symlink() {
+                    return Err(package_error("Cannot overwrite a symbolic link."));
+                }
+            }
+            let mut outfile = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(&dest_path)
+                .map_err(package_error)?;
+            std::io::copy(&mut entry, &mut outfile).map_err(package_error)?;
+        }
+    }
+    Ok(())
+}
+
+pub fn convert_element_to_carousel_frame(elem: &ElementPayload) -> CarouselFramePayload {
+    CarouselFramePayload {
+        id: elem.id.clone(),
+        r#type: elem.r#type.clone(),
+        photo_id: elem.photo_id.clone(),
+        group_id: elem.group_id.clone(),
+        file_path: elem.file_path.clone(),
+        file_name: elem.file_name.clone(),
+        preview_path: elem.preview_path.clone(),
+        thumbnail_path: elem.thumbnail_path.clone(),
+        x: elem.x,
+        y: elem.y,
+        width: elem.width,
+        height: elem.height,
+        rotation: elem.rotation,
+        z_index: Some(elem.z_index),
+        photo_aspect: Some(elem.photo_aspect),
+        original_width: elem.original_width,
+        original_height: elem.original_height,
+        name: elem.name.clone(),
+        hidden: elem.hidden,
+        crop_x: Some(elem.crop_x),
+        crop_y: Some(elem.crop_y),
+        crop_scale: Some(elem.crop_scale),
+        crop_rotation: elem.crop_rotation,
+        border_enabled: Some(elem.border_enabled),
+        border_width: Some(elem.border_width),
+        border_color: Some(elem.border_color.clone()),
+        border_style: Some("solid".to_string()),
+        opacity: Some(elem.opacity),
+        locked: elem.locked,
+        text_payload: elem.text_payload.clone(),
+        shape_type: elem.shape_type.clone(),
+        custom_svg_path: elem.custom_svg_path.clone(),
+        corner_radius_tl: Some(elem.corner_radius_tl),
+        corner_radius_tr: Some(elem.corner_radius_tr),
+        corner_radius_br: Some(elem.corner_radius_br),
+        corner_radius_bl: Some(elem.corner_radius_bl),
+        graphic_id: elem.graphic_id.clone(),
+        file_url: elem.file_url.clone(),
+        flip_horizontal: elem.flip_horizontal,
+        flip_vertical: elem.flip_vertical,
+        blur_radius: elem.blur_radius,
+        grayscale_amount: elem.grayscale_amount,
+        noise_amount: elem.noise_amount,
+        exclude_from_adaptive_layout: elem.exclude_from_adaptive_layout,
+        shadow_enabled: elem.shadow_enabled,
+        shadow_blur: elem.shadow_blur,
+        shadow_offset_x: elem.shadow_offset_x,
+        shadow_offset_y: elem.shadow_offset_y,
+        shadow_opacity: elem.shadow_opacity,
+        shadow_color: elem.shadow_color.clone(),
+        frame_asset_id: elem.frame_asset_id.clone(),
+        frame_asset_url: elem.frame_asset_url.clone(),
+        frame_asset_local_path: elem.frame_asset_local_path.clone(),
+        frame_asset_title: elem.frame_asset_title.clone(),
+        frame_asset_slot: elem.frame_asset_slot.clone(),
+        frame_asset_is_pro: elem.frame_asset_is_pro,
+    }
+}
+
+pub fn convert_carousel_frame_to_element(frame: &CarouselFramePayload) -> ElementPayload {
+    ElementPayload {
+        id: frame.id.clone(),
+        r#type: frame.r#type.clone(),
+        photo_id: frame.photo_id.clone(),
+        file_path: frame.file_path.clone(),
+        file_name: frame.file_name.clone(),
+        preview_path: frame.preview_path.clone(),
+        thumbnail_path: frame.thumbnail_path.clone(),
+        name: frame.name.clone(),
+        hidden: frame.hidden,
+        x: frame.x,
+        y: frame.y,
+        width: frame.width,
+        height: frame.height,
+        rotation: frame.rotation,
+        z_index: frame.z_index.unwrap_or(1),
+        photo_aspect: frame.photo_aspect.unwrap_or(1.5),
+        group_id: frame.group_id.clone(),
+        original_width: frame.original_width,
+        original_height: frame.original_height,
+        crop_x: frame.crop_x.unwrap_or(0.0),
+        crop_y: frame.crop_y.unwrap_or(0.0),
+        crop_scale: frame.crop_scale.unwrap_or(1.0),
+        crop_rotation: frame.crop_rotation,
+        border_enabled: frame.border_enabled.unwrap_or(false),
+        border_width: frame.border_width.unwrap_or(0.0),
+        border_color: frame
+            .border_color
+            .clone()
+            .unwrap_or_else(|| "#000000".to_string()),
+        opacity: frame.opacity.unwrap_or(1.0),
+        locked: frame.locked,
+        text_payload: frame.text_payload.clone(),
+        corner_radius_tl: frame.corner_radius_tl.unwrap_or(0.0),
+        corner_radius_tr: frame.corner_radius_tr.unwrap_or(0.0),
+        corner_radius_br: frame.corner_radius_br.unwrap_or(0.0),
+        corner_radius_bl: frame.corner_radius_bl.unwrap_or(0.0),
+        corner_radius: None,
+        shape_type: frame.shape_type.clone(),
+        custom_svg_path: frame.custom_svg_path.clone(),
+        graphic_id: frame.graphic_id.clone(),
+        file_url: frame.file_url.clone(),
+        flip_horizontal: frame.flip_horizontal,
+        flip_vertical: frame.flip_vertical,
+        blur_radius: frame.blur_radius,
+        grayscale_amount: frame.grayscale_amount,
+        noise_amount: frame.noise_amount,
+        exclude_from_adaptive_layout: frame.exclude_from_adaptive_layout,
+        shadow_enabled: frame.shadow_enabled,
+        shadow_blur: frame.shadow_blur,
+        shadow_offset_x: frame.shadow_offset_x,
+        shadow_offset_y: frame.shadow_offset_y,
+        shadow_opacity: frame.shadow_opacity,
+        shadow_color: frame.shadow_color.clone(),
+        frame_asset_id: frame.frame_asset_id.clone(),
+        frame_asset_url: frame.frame_asset_url.clone(),
+        frame_asset_local_path: frame.frame_asset_local_path.clone(),
+        frame_asset_title: frame.frame_asset_title.clone(),
+        frame_asset_slot: frame.frame_asset_slot.clone(),
+        frame_asset_is_pro: frame.frame_asset_is_pro,
+    }
+}
+
 fn document_id(path: &Path) -> SqliteResult<String> {
     #[derive(Deserialize)]
     struct Identity { id: String }
@@ -187,6 +370,145 @@ fn remap_identity(package: &mut ProjectPackagePayload, id: &str) {
 }
 
 impl Database {
+    pub fn convert_album_to_carousel(project: &ProjectRow, album: &AlbumPayload) -> CarouselPayload {
+        let spreads_to_convert: Vec<&SpreadPayload> = if !album.spreads.is_empty() {
+            album.spreads.iter().collect()
+        } else if !album.cover_spread.elements.is_empty() {
+            vec![&album.cover_spread]
+        } else {
+            Vec::new()
+        };
+
+        let first_w = spreads_to_convert
+            .first()
+            .and_then(|s| s.page_width)
+            .unwrap_or(project.canvas_width)
+            .round() as i32;
+        let first_h = spreads_to_convert
+            .first()
+            .and_then(|s| s.page_height)
+            .unwrap_or(project.canvas_height)
+            .round() as i32;
+
+        let ratio = match (first_w, first_h) {
+            (1080, 1080) => "1:1",
+            (1080, 1350) => "4:5",
+            (1080, 1920) => "9:16",
+            _ => "1:1",
+        }
+        .to_string();
+
+        let slides: Vec<CarouselSlidePayload> = spreads_to_convert
+            .iter()
+            .enumerate()
+            .map(|(idx, spread)| {
+                let w_px = spread
+                    .page_width
+                    .unwrap_or(project.canvas_width)
+                    .round() as i32;
+                let h_px = spread
+                    .page_height
+                    .unwrap_or(project.canvas_height)
+                    .round() as i32;
+                CarouselSlidePayload {
+                    id: spread.id.clone(),
+                    slide_index: idx as i32,
+                    width_px: w_px,
+                    height_px: h_px,
+                    background_color: spread.background_color.clone(),
+                    page_width: spread.page_width,
+                    page_height: spread.page_height,
+                    page_unit: spread.page_unit.clone(),
+                    background_image: spread.background_image.clone(),
+                    background_color_noise: spread.background_color_noise,
+                    border_enabled: spread.border_enabled,
+                    border_width: spread.border_width,
+                    border_color: spread.border_color.clone(),
+                    elements: spread
+                        .elements
+                        .iter()
+                        .map(convert_element_to_carousel_frame)
+                        .collect(),
+                }
+            })
+            .collect();
+
+        CarouselPayload {
+            id: uuid::Uuid::new_v4().to_string(),
+            project_id: project.id.clone(),
+            ratio,
+            slide_width_px: first_w,
+            slide_height_px: first_h,
+            total_slides: slides.len() as i32,
+            slides,
+        }
+    }
+
+    pub fn convert_carousel_to_album(project: &ProjectRow, carousel: &CarouselPayload) -> AlbumPayload {
+        let spreads: Vec<SpreadPayload> = carousel
+            .slides
+            .iter()
+            .enumerate()
+            .map(|(idx, slide)| SpreadPayload {
+                id: slide.id.clone(),
+                spread_index: idx as i32,
+                r#type: "single_page".to_string(),
+                name: format!("Slide {}", idx + 1),
+                left_page: None,
+                right_page: None,
+                gutter_width: 0.0,
+                gutter_unit: "px".to_string(),
+                bleed: 0.0,
+                safe_area: 0.0,
+                safe_area_top: None,
+                safe_area_bottom: None,
+                safe_area_outside: None,
+                safe_area_spine: None,
+                spacing_value: None,
+                spacing_unit: None,
+                background_color: slide.background_color.clone(),
+                page_width: slide.page_width.or(Some(slide.width_px as f64)),
+                page_height: slide.page_height.or(Some(slide.height_px as f64)),
+                page_unit: slide.page_unit.clone().or_else(|| Some("px".to_string())),
+                background_image: slide.background_image.clone(),
+                background_color_noise: slide.background_color_noise,
+                left_page_background_color_noise: None,
+                right_page_background_color_noise: None,
+                border_enabled: slide.border_enabled,
+                border_width: slide.border_width,
+                border_color: slide.border_color.clone(),
+                left_page_border_enabled: None,
+                left_page_border_width: None,
+                left_page_border_color: None,
+                right_page_border_enabled: None,
+                right_page_border_width: None,
+                right_page_border_color: None,
+                elements: slide
+                    .elements
+                    .iter()
+                    .map(convert_carousel_frame_to_element)
+                    .collect(),
+            })
+            .collect();
+
+        let cover_spread = SpreadPayload {
+            id: format!("cover-{}", project.id),
+            spread_index: 0,
+            r#type: "cover".to_string(),
+            name: "Cover".to_string(),
+            ..Default::default()
+        };
+
+        AlbumPayload {
+            id: format!("album-{}", project.id),
+            project_id: project.id.clone(),
+            cover_spread,
+            total_spreads: spreads.len() as i32,
+            total_pages: spreads.len() as i32,
+            spreads,
+        }
+    }
+
     pub fn validate_project_file(&self, project_id: &str, path: &str) -> SqliteResult<()> {
         validate_file_owner(&self.conn.lock().unwrap(), project_id, path)
     }
@@ -220,8 +542,17 @@ impl Database {
             .ok_or(rusqlite::Error::QueryReturnedNoRows)?;
         let photos = self.get_photos_for_project(project_id)?;
         let folders = self.get_folders_for_project(project_id)?;
-        let album = self.load_album_structure(project_id)?;
+        let mut album = self.load_album_structure(project_id)?;
         let carousel = self.load_carousel_structure(project_id)?;
+
+        let is_carousel =
+            Database::normalize_project_type(&project.project_type, &project.canvas_unit) == "carousel";
+        if is_carousel && album.is_none() {
+            if let Some(c) = &carousel {
+                album = Some(Self::convert_carousel_to_album(&project, c));
+            }
+        }
+
         let mut folder_members = Vec::new();
         for folder in &folders {
             for photo in self.get_photos_for_folder(&folder.id)? {
@@ -297,6 +628,14 @@ impl Database {
         // An archive is a transport copy; it must never become the working save path.
         package.project.file_path = None;
 
+        let is_carousel =
+            Database::normalize_project_type(&package.project.project_type, &package.project.canvas_unit) == "carousel";
+        if is_carousel && package.album.is_none() {
+            if let Some(c) = &package.carousel {
+                package.album = Some(Self::convert_carousel_to_album(&package.project, c));
+            }
+        }
+
         // Determine all placed frames not in package.photos
         let mut unreferenced_frame_paths = Vec::new();
         let mut known_photos: std::collections::HashSet<String> =
@@ -306,7 +645,10 @@ impl Database {
                 std::iter::once(&album.cover_spread).chain(album.spreads.iter())
             {
                 for element in &spread.elements {
-                    if element.r#type != "text" && !known_photos.contains(&element.file_path) {
+                    if element.r#type != "text"
+                        && !element.file_path.is_empty()
+                        && !known_photos.contains(&element.file_path)
+                    {
                         known_photos.insert(element.file_path.clone());
                         unreferenced_frame_paths.push(element.file_path.clone());
                     }
@@ -361,7 +703,7 @@ impl Database {
                     std::iter::once(&mut album.cover_spread).chain(album.spreads.iter_mut())
                 {
                     for element in &mut spread.elements {
-                        if element.r#type == "text" {
+                        if element.r#type == "text" || element.file_path.is_empty() {
                             continue;
                         }
                         // A placed frame can outlive its photo library entry.
@@ -467,6 +809,11 @@ impl Database {
                 package.version
             )));
         }
+
+        let raw_type = package.project.project_type.clone();
+        package.project.project_type =
+            Database::normalize_project_type(&raw_type, &package.project.canvas_unit);
+
         let project_id = &package.project.id;
         if project_id.is_empty()
             || package.photos.iter().any(|p| &p.project_id != project_id)
@@ -482,6 +829,25 @@ impl Database {
         {
             return Err(package_error("Invalid project ownership in package."));
         }
+
+        // Bridge v1.4.14 social_media -> carousel
+        let needs_carousel_bridge = (raw_type.eq_ignore_ascii_case("social_media")
+            || package.project.project_type == "carousel")
+            && package
+                .carousel
+                .as_ref()
+                .map_or(true, |c| c.slides.is_empty())
+            && package
+                .album
+                .as_ref()
+                .map_or(false, |a| !a.spreads.is_empty() || !a.cover_spread.elements.is_empty());
+
+        if needs_carousel_bridge {
+            if let Some(album) = &package.album {
+                package.carousel = Some(Self::convert_album_to_carousel(&package.project, album));
+            }
+        }
+
         // Resolve extracted photos relative to project.afsn, independent of process cwd.
         let resolve = |value: &str| -> String {
             if value.is_empty() || Path::new(value).is_absolute() {
@@ -501,8 +867,13 @@ impl Database {
         }
         if let Some(album) = &mut package.album {
             for spread in std::iter::once(&mut album.cover_spread).chain(album.spreads.iter_mut()) {
+                if let Some(bg) = &mut spread.background_image {
+                    bg.file_path = resolve(&bg.file_path);
+                    bg.preview_path = bg.preview_path.take().filter(|p| Path::new(p).is_file());
+                    bg.thumbnail_path = bg.thumbnail_path.take().filter(|p| Path::new(p).is_file());
+                }
                 for element in &mut spread.elements {
-                    if element.r#type != "text" {
+                    if element.r#type != "text" && !element.file_path.is_empty() {
                         element.file_path = resolve(&element.file_path);
                         element.preview_path = element
                             .preview_path
@@ -513,21 +884,38 @@ impl Database {
                             .take()
                             .filter(|p| Path::new(p).is_file());
                     }
+                    if let Some(frame_path) = &mut element.frame_asset_local_path {
+                        if !frame_path.is_empty() {
+                            *frame_path = resolve(frame_path);
+                        }
+                    }
                 }
             }
         }
         if let Some(carousel) = &mut package.carousel {
             for slide in &mut carousel.slides {
+                if let Some(bg) = &mut slide.background_image {
+                    bg.file_path = resolve(&bg.file_path);
+                    bg.preview_path = bg.preview_path.take().filter(|p| Path::new(p).is_file());
+                    bg.thumbnail_path = bg.thumbnail_path.take().filter(|p| Path::new(p).is_file());
+                }
                 for element in &mut slide.elements {
-                    element.file_path = resolve(&element.file_path);
-                    element.preview_path = element
-                        .preview_path
-                        .take()
-                        .filter(|p| Path::new(p).is_file());
-                    element.thumbnail_path = element
-                        .thumbnail_path
-                        .take()
-                        .filter(|p| Path::new(p).is_file());
+                    if !element.file_path.is_empty() {
+                        element.file_path = resolve(&element.file_path);
+                        element.preview_path = element
+                            .preview_path
+                            .take()
+                            .filter(|p| Path::new(p).is_file());
+                        element.thumbnail_path = element
+                            .thumbnail_path
+                            .take()
+                            .filter(|p| Path::new(p).is_file());
+                    }
+                    if let Some(frame_path) = &mut element.frame_asset_local_path {
+                        if !frame_path.is_empty() {
+                            *frame_path = resolve(frame_path);
+                        }
+                    }
                 }
             }
         }
@@ -570,6 +958,8 @@ impl Database {
         let mut conn = self.conn.lock().unwrap();
         let tx = conn.transaction()?;
         let p = &package.project;
+        let normalized_project_type =
+            Database::normalize_project_type(&p.project_type, &p.canvas_unit);
         tx.execute(
             "INSERT INTO projects (
                     id, name, canvas_width, canvas_height, canvas_unit, canvas_dpi,
@@ -637,7 +1027,7 @@ impl Database {
                 p.background_type,
                 p.background_color,
                 p.file_path,
-                p.project_type,
+                normalized_project_type,
             ],
         )?;
         if let (Some(path), Some(identity)) = (&p.file_path, file_identity) {
