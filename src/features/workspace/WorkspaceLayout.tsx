@@ -38,6 +38,8 @@ import {
   type AdaptivePhoto,
 } from '../../domain/adaptiveLayout';
 import { getSlideXOffset } from '../../domain/carousel';
+import { useTemplateStore } from '../../stores/templateStore';
+import { ImportTemplateModal } from '../templates/ImportTemplateModal';
 import { findPhotoSwapTarget } from '../editor/photoSwapDrag';
 import { StatusBar } from './StatusBar';
 import { isMac, isTauri } from '../../utils/platform';
@@ -89,6 +91,9 @@ export function WorkspaceLayout() {
   const toggleLockSelectedFrames = useEditorStore((s) => s.toggleLockSelectedFrames);
   const addTextToSpread = useEditorStore((s) => s.addTextToSpread);
   const setEditingTextElementId = useEditorStore((s) => s.setEditingTextElementId);
+
+  const isImportModalOpen = useTemplateStore((s) => s.isImportModalOpen);
+  const cancelImport = useTemplateStore((s) => s.cancelImport);
 
   const [isPropertiesOpen, setIsPropertiesOpen] = useState(false);
   const [isFilmstripOpen, setIsFilmstripOpen] = useState(true);
@@ -601,6 +606,17 @@ export function WorkspaceLayout() {
     clientX: number,
     clientY: number
   ) => {
+    // Check for Custom Layout Template packages (.afsnt / .afsnp)
+    const templatePaths = (paths || []).filter(
+      (p) => p.toLowerCase().endsWith('.afsnt') || p.toLowerCase().endsWith('.afsnp')
+    );
+    if (templatePaths.length > 0) {
+      const firstTpl = templatePaths[0]!;
+      showToast('Staging custom template package...');
+      await useTemplateStore.getState().prepareImport(firstTpl);
+      return;
+    }
+
     if (!currentProject) {
       showToast('Open or create a project before dropping photos');
       return;
@@ -1306,6 +1322,13 @@ export function WorkspaceLayout() {
       <PhoneSwipeSimulator
         isOpen={isSimulatorOpen}
         onClose={() => setIsSimulatorOpen(false)}
+      />
+
+      {/* Custom Layout Template Import Modal */}
+      <ImportTemplateModal
+        isOpen={isImportModalOpen}
+        onClose={() => cancelImport()}
+        onSuccess={(msg) => showToast(msg)}
       />
 
       {/* External Finder Drag-and-Drop Ingestion HUD */}

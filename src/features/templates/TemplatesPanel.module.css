@@ -7,6 +7,50 @@
   user-select: none;
 }
 
+.mainTabRow {
+  display: flex;
+  background: var(--color-bg-secondary, #121214);
+  padding: 6px 12px 0 12px;
+  gap: 8px;
+  border-bottom: 1px solid var(--color-border, #27272a);
+  flex-shrink: 0;
+}
+
+.mainTabBtn {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-secondary, #a1a1aa);
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  margin-bottom: -1px;
+}
+
+.mainTabBtn:hover {
+  color: var(--color-text-primary, #ffffff);
+}
+
+.mainTabBtnActive {
+  color: var(--color-accent, #38bdf8);
+  border-bottom-color: var(--color-accent, #38bdf8);
+  font-weight: 600;
+}
+
+.countBadge {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
 .modeToggleRow {
   display: flex;
   background: var(--color-bg-secondary, #121214);

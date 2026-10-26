@@ -16,6 +16,8 @@ import {
   CarouselLayoutPreset,
 } from '../../domain/carouselLayout';
 import { CarouselPhotoFrame } from '../../domain/carousel';
+import { useTemplateStore } from '../../stores/templateStore';
+import { MyTemplatesView } from './MyTemplatesView';
 import styles from './TemplatesPanel.module.css';
 
 interface AdaptiveVariationCardProps {
@@ -100,6 +102,9 @@ interface TemplatesPanelProps {
 }
 
 export function TemplatesPanel({ onApplyToast, activeMode = 'print' }: TemplatesPanelProps) {
+  const [panelTab, setPanelTab] = useState<'adaptive' | 'my_templates'>('adaptive');
+  const savedTemplateCount = useTemplateStore((s) => s.templates.length);
+
   // Album / Print Mode Hooks
   const {
     currentAlbum,
@@ -297,6 +302,35 @@ export function TemplatesPanel({ onApplyToast, activeMode = 'print' }: Templates
     }
   };
 
+  const mainTabs = (
+    <div className={styles.mainTabRow}>
+      <button
+        type="button"
+        className={`${styles.mainTabBtn} ${panelTab === 'adaptive' ? styles.mainTabBtnActive : ''}`}
+        onClick={() => setPanelTab('adaptive')}
+      >
+        Adaptive Layout
+      </button>
+      <button
+        type="button"
+        className={`${styles.mainTabBtn} ${panelTab === 'my_templates' ? styles.mainTabBtnActive : ''}`}
+        onClick={() => setPanelTab('my_templates')}
+      >
+        <span>My Templates</span>
+        <span className={styles.countBadge}>{savedTemplateCount}</span>
+      </button>
+    </div>
+  );
+
+  if (panelTab === 'my_templates') {
+    return (
+      <div className={styles.container}>
+        {mainTabs}
+        <MyTemplatesView onApplyToast={onApplyToast} activeMode={activeMode} />
+      </div>
+    );
+  }
+
   // Carousel Mode Rendering
   if (activeMode === 'carousel') {
     const totalSlides = currentCarousel?.totalSlides || 1;
@@ -306,6 +340,7 @@ export function TemplatesPanel({ onApplyToast, activeMode = 'print' }: Templates
 
     return (
       <div className={styles.container}>
+        {mainTabs}
         {/* Header with Active Slide Context Badge */}
         <div className={styles.filterHeader}>
           <div className={styles.spreadContextBadge}>
