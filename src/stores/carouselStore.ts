@@ -5,6 +5,7 @@ import {
   CarouselRatio,
   CarouselPhotoFrame,
   CarouselTextFrame,
+  CarouselGraphicFrame,
   CarouselElement,
   FrameStyleSnapshot,
   extractFrameStyle,
@@ -178,8 +179,59 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
           highlight: frame.highlight || undefined,
           lineHeight: frame.lineHeight !== undefined ? frame.lineHeight : undefined,
           letterSpacing: frame.letterSpacing !== undefined ? frame.letterSpacing : undefined,
+          flipHorizontal: Boolean(frame.flipHorizontal),
+          flipVertical: Boolean(frame.flipVertical),
+          excludeFromAdaptiveLayout: Boolean(frame.excludeFromAdaptiveLayout),
+          shadowEnabled: Boolean(frame.shadowEnabled),
+          shadowColor: frame.shadowColor || '#000000',
+          shadowBlur: Number.isFinite(frame.shadowBlur) ? frame.shadowBlur : 10,
+          shadowOffsetX: Number.isFinite(frame.shadowOffsetX) ? frame.shadowOffsetX : 0,
+          shadowOffsetY: Number.isFinite(frame.shadowOffsetY) ? frame.shadowOffsetY : 5,
+          shadowOpacity: Number.isFinite(frame.shadowOpacity) ? frame.shadowOpacity : 35,
+          groupId: frame.groupId || null,
         };
       }
+
+      if (frame.type === 'graphic') {
+        return {
+          type: 'graphic',
+          id: frame.id,
+          graphicId: frame.graphicId || frame.frameAssetId || null,
+          filePath: frame.filePath || frame.frameAssetLocalPath || '',
+          fileName: frame.fileName || frame.frameAssetTitle || '',
+          fileUrl: frame.fileUrl || frame.frameAssetUrl || null,
+          previewPath: frame.previewPath || null,
+          thumbnailPath: frame.thumbnailPath || null,
+          x: Number.isFinite(frame.x) ? frame.x : 0,
+          y: Number.isFinite(frame.y) ? frame.y : 0,
+          width: Number.isFinite(frame.width) ? frame.width : 100,
+          height: Number.isFinite(frame.height) ? frame.height : 100,
+          rotation: Number.isFinite(frame.rotation) ? frame.rotation : 0,
+          zIndex: Number.isFinite(frame.zIndex) ? frame.zIndex : 1,
+          opacity: Number.isFinite(frame.opacity) ? Math.max(0, Math.min(1, frame.opacity!)) : 1.0,
+          locked: Boolean(frame.locked),
+          groupId: frame.groupId || null,
+          excludeFromAdaptiveLayout: true,
+          flipHorizontal: Boolean(frame.flipHorizontal),
+          flipVertical: Boolean(frame.flipVertical),
+          blurRadius: Number.isFinite(frame.blurRadius) ? frame.blurRadius : 0,
+          grayscaleAmount: Number.isFinite(frame.grayscaleAmount) ? frame.grayscaleAmount : 0,
+          noiseAmount: Number.isFinite(frame.noiseAmount) ? frame.noiseAmount : 0,
+          shadowEnabled: Boolean(frame.shadowEnabled),
+          shadowColor: frame.shadowColor || '#000000',
+          shadowBlur: Number.isFinite(frame.shadowBlur) ? frame.shadowBlur : 10,
+          shadowOffsetX: Number.isFinite(frame.shadowOffsetX) ? frame.shadowOffsetX : 0,
+          shadowOffsetY: Number.isFinite(frame.shadowOffsetY) ? frame.shadowOffsetY : 5,
+          shadowOpacity: Number.isFinite(frame.shadowOpacity) ? frame.shadowOpacity : 35,
+          frameAssetId: frame.frameAssetId || frame.graphicId || null,
+          frameAssetUrl: frame.frameAssetUrl || frame.fileUrl || null,
+          frameAssetLocalPath: frame.frameAssetLocalPath || frame.filePath || null,
+          frameAssetTitle: frame.frameAssetTitle || frame.fileName || null,
+          frameAssetSlot: null,
+          frameAssetIsPro: false,
+        };
+      }
+
       const cornerRadiusNum = typeof frame.cornerRadius === 'number' ? frame.cornerRadius : null;
       return {
         type: 'photo',
@@ -212,6 +264,25 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         cornerRadiusTr: frame.cornerRadiusTr ?? cornerRadiusNum,
         cornerRadiusBr: frame.cornerRadiusBr ?? cornerRadiusNum,
         cornerRadiusBl: frame.cornerRadiusBl ?? cornerRadiusNum,
+        groupId: frame.groupId || null,
+        excludeFromAdaptiveLayout: Boolean(frame.excludeFromAdaptiveLayout),
+        flipHorizontal: Boolean(frame.flipHorizontal),
+        flipVertical: Boolean(frame.flipVertical),
+        blurRadius: Number.isFinite(frame.blurRadius) ? frame.blurRadius : 0,
+        grayscaleAmount: Number.isFinite(frame.grayscaleAmount) ? frame.grayscaleAmount : 0,
+        noiseAmount: Number.isFinite(frame.noiseAmount) ? frame.noiseAmount : 0,
+        shadowEnabled: Boolean(frame.shadowEnabled),
+        shadowColor: frame.shadowColor || '#000000',
+        shadowBlur: Number.isFinite(frame.shadowBlur) ? frame.shadowBlur : 10,
+        shadowOffsetX: Number.isFinite(frame.shadowOffsetX) ? frame.shadowOffsetX : 0,
+        shadowOffsetY: Number.isFinite(frame.shadowOffsetY) ? frame.shadowOffsetY : 5,
+        shadowOpacity: Number.isFinite(frame.shadowOpacity) ? frame.shadowOpacity : 35,
+        frameAssetId: frame.frameAssetId || null,
+        frameAssetUrl: frame.frameAssetUrl || null,
+        frameAssetLocalPath: frame.frameAssetLocalPath || null,
+        frameAssetTitle: frame.frameAssetTitle || null,
+        frameAssetSlot: frame.frameAssetSlot || null,
+        frameAssetIsPro: false,
       };
     };
 
@@ -228,6 +299,14 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         widthPx: slide.widthPx,
         heightPx: slide.heightPx,
         backgroundColor: slide.backgroundColor || '#FFFFFF',
+        pageWidth: slide.pageWidth ?? null,
+        pageHeight: slide.pageHeight ?? null,
+        pageUnit: slide.pageUnit ?? null,
+        backgroundImage: slide.backgroundImage ?? null,
+        backgroundColorNoise: slide.backgroundColorNoise ?? 0,
+        borderEnabled: slide.borderEnabled ?? false,
+        borderWidth: slide.borderWidth ?? 0,
+        borderColor: slide.borderColor ?? '#FFFFFF',
         elements: (slide.elements || []).map(sanitizeFrame),
       })),
     };
@@ -307,6 +386,14 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         widthPx: slide.widthPx || preset.width,
         heightPx: slide.heightPx || preset.height,
         backgroundColor: slide.backgroundColor || '#FFFFFF',
+        pageWidth: slide.pageWidth ?? null,
+        pageHeight: slide.pageHeight ?? null,
+        pageUnit: slide.pageUnit ?? null,
+        backgroundImage: slide.backgroundImage ?? null,
+        backgroundColorNoise: slide.backgroundColorNoise ?? 0,
+        borderEnabled: slide.borderEnabled ?? false,
+        borderWidth: slide.borderWidth ?? 0,
+        borderColor: slide.borderColor ?? '#FFFFFF',
         elements: (slide.elements || []).map((el: any): CarouselElement => {
           if (el.type === 'text') {
             return {
@@ -330,8 +417,59 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
               highlight: el.highlight || undefined,
               lineHeight: el.lineHeight !== undefined && el.lineHeight !== null ? Number(el.lineHeight) : undefined,
               letterSpacing: el.letterSpacing !== undefined && el.letterSpacing !== null ? Number(el.letterSpacing) : undefined,
+              groupId: el.groupId || null,
+              flipHorizontal: Boolean(el.flipHorizontal),
+              flipVertical: Boolean(el.flipVertical),
+              excludeFromAdaptiveLayout: Boolean(el.excludeFromAdaptiveLayout),
+              shadowEnabled: Boolean(el.shadowEnabled),
+              shadowColor: el.shadowColor || '#000000',
+              shadowBlur: Number(el.shadowBlur ?? 10),
+              shadowOffsetX: Number(el.shadowOffsetX ?? 0),
+              shadowOffsetY: Number(el.shadowOffsetY ?? 5),
+              shadowOpacity: Number(el.shadowOpacity ?? 35),
             };
           }
+
+          if (el.type === 'graphic') {
+            return {
+              type: 'graphic',
+              id: el.id,
+              graphicId: el.graphicId || el.frameAssetId || null,
+              filePath: el.filePath || el.frameAssetLocalPath || '',
+              fileName: el.fileName || el.frameAssetTitle || '',
+              fileUrl: el.fileUrl || el.frameAssetUrl || null,
+              previewPath: el.previewPath || undefined,
+              thumbnailPath: el.thumbnailPath || undefined,
+              x: Number(el.x ?? 0),
+              y: Number(el.y ?? 0),
+              width: Number(el.width ?? 100),
+              height: Number(el.height ?? 100),
+              rotation: Number(el.rotation ?? 0),
+              zIndex: el.zIndex !== undefined && el.zIndex !== null ? Number(el.zIndex) : 1,
+              opacity: Number(el.opacity ?? 1.0),
+              locked: Boolean(el.locked),
+              groupId: el.groupId || null,
+              excludeFromAdaptiveLayout: true,
+              flipHorizontal: Boolean(el.flipHorizontal),
+              flipVertical: Boolean(el.flipVertical),
+              blurRadius: Number(el.blurRadius ?? 0),
+              grayscaleAmount: Number(el.grayscaleAmount ?? 0),
+              noiseAmount: Number(el.noiseAmount ?? 0),
+              shadowEnabled: Boolean(el.shadowEnabled),
+              shadowColor: el.shadowColor || '#000000',
+              shadowBlur: Number(el.shadowBlur ?? 10),
+              shadowOffsetX: Number(el.shadowOffsetX ?? 0),
+              shadowOffsetY: Number(el.shadowOffsetY ?? 5),
+              shadowOpacity: Number(el.shadowOpacity ?? 35),
+              frameAssetId: el.frameAssetId || el.graphicId || null,
+              frameAssetUrl: el.frameAssetUrl || el.fileUrl || null,
+              frameAssetLocalPath: el.frameAssetLocalPath || el.filePath || null,
+              frameAssetTitle: el.frameAssetTitle || el.fileName || null,
+              frameAssetSlot: el.frameAssetSlot || null,
+              frameAssetIsPro: false,
+            };
+          }
+
           return {
             type: 'photo',
             id: el.id,
@@ -364,6 +502,25 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
             cornerRadiusTr: el.cornerRadiusTr !== undefined && el.cornerRadiusTr !== null ? Number(el.cornerRadiusTr) : undefined,
             cornerRadiusBr: el.cornerRadiusBr !== undefined && el.cornerRadiusBr !== null ? Number(el.cornerRadiusBr) : undefined,
             cornerRadiusBl: el.cornerRadiusBl !== undefined && el.cornerRadiusBl !== null ? Number(el.cornerRadiusBl) : undefined,
+            groupId: el.groupId || null,
+            excludeFromAdaptiveLayout: Boolean(el.excludeFromAdaptiveLayout),
+            flipHorizontal: Boolean(el.flipHorizontal),
+            flipVertical: Boolean(el.flipVertical),
+            blurRadius: Number(el.blurRadius ?? 0),
+            grayscaleAmount: Number(el.grayscaleAmount ?? 0),
+            noiseAmount: Number(el.noiseAmount ?? 0),
+            shadowEnabled: Boolean(el.shadowEnabled),
+            shadowColor: el.shadowColor || '#000000',
+            shadowBlur: Number(el.shadowBlur ?? 10),
+            shadowOffsetX: Number(el.shadowOffsetX ?? 0),
+            shadowOffsetY: Number(el.shadowOffsetY ?? 5),
+            shadowOpacity: Number(el.shadowOpacity ?? 35),
+            frameAssetId: el.frameAssetId || null,
+            frameAssetUrl: el.frameAssetUrl || null,
+            frameAssetLocalPath: el.frameAssetLocalPath || null,
+            frameAssetTitle: el.frameAssetTitle || null,
+            frameAssetSlot: el.frameAssetSlot || null,
+            frameAssetIsPro: false,
           };
         }),
       }));
@@ -1805,7 +1962,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     });
   },
 
-  batchUpdateFrames: (updates: Array<{ id: string; updates: Partial<CarouselPhotoFrame> | Partial<CarouselTextFrame> }>) => {
+  batchUpdateFrames: (updates: Array<{ id: string; updates: Partial<CarouselPhotoFrame> | Partial<CarouselTextFrame> | Partial<CarouselGraphicFrame> }>) => {
     const { currentCarousel, pushHistory } = get();
     if (!currentCarousel || updates.length === 0) return;
 
@@ -1818,6 +1975,9 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         if (!patch) return el;
         if (el.type === 'photo') {
           return { ...el, ...(patch as Partial<CarouselPhotoFrame>) };
+        }
+        if (el.type === 'graphic') {
+          return { ...el, ...(patch as Partial<CarouselGraphicFrame>) };
         }
         return { ...el, ...(patch as Partial<CarouselTextFrame>) };
       });

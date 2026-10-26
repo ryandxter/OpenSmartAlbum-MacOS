@@ -14,6 +14,7 @@ import {
   syncAlbumPhotoAssets,
   isAlbumDesignEqual,
   AlbumElement,
+  GraphicElement,
 } from '../domain/album';
 import {
   TextNodeElement,
@@ -447,6 +448,296 @@ export interface AlbumState {
   applyStudioFramingPreset: (frameId: string, preset: StudioFramingPreset, customConfig?: Partial<FramingConfig>) => void;
 }
 
+export function hydrateElement(el: any): AlbumElement {
+  if (el.type === 'text') {
+    const { text, style, textRuns, styledRanges } = deserializeTextPayload(
+      el.textPayload ?? serializeTextPayload(el),
+      el.fileName || el.text
+    );
+    return {
+      id: el.id,
+      type: 'text',
+      text,
+      x: Number.isFinite(el.x) ? el.x : 0,
+      y: Number.isFinite(el.y) ? el.y : 0,
+      width: Number.isFinite(el.width) ? el.width : 120,
+      height: Number.isFinite(el.height) ? el.height : 35,
+      rotation: Number.isFinite(el.rotation) ? el.rotation : 0,
+      opacity: Number.isFinite(el.opacity) ? Math.max(0, Math.min(1, el.opacity)) : 1,
+      zIndex: Number.isFinite(el.zIndex) ? el.zIndex : 10,
+      locked: Boolean(el.locked),
+      name: el.name,
+      hidden: Boolean(el.hidden),
+      groupId: el.groupId || null,
+      groupRotation: el.groupRotation,
+      flipHorizontal: Boolean(el.flipHorizontal),
+      flipVertical: Boolean(el.flipVertical),
+      excludeFromAdaptiveLayout: Boolean(el.excludeFromAdaptiveLayout),
+      shadowEnabled: Boolean(el.shadowEnabled),
+      shadowBlur: el.shadowBlur,
+      shadowOffsetX: el.shadowOffsetX,
+      shadowOffsetY: el.shadowOffsetY,
+      shadowOpacity: el.shadowOpacity,
+      shadowColor: el.shadowColor,
+      style,
+      textRuns,
+      styledRanges,
+    };
+  }
+
+  if (el.type === 'graphic') {
+    return {
+      ...el,
+      type: 'graphic',
+      id: el.id,
+      x: Number.isFinite(el.x) ? el.x : 0,
+      y: Number.isFinite(el.y) ? el.y : 0,
+      width: Number.isFinite(el.width) ? el.width : 100,
+      height: Number.isFinite(el.height) ? el.height : 100,
+      rotation: Number.isFinite(el.rotation) ? el.rotation : 0,
+      opacity: Number.isFinite(el.opacity) ? Math.max(0, Math.min(1, el.opacity)) : 1,
+      zIndex: Number.isFinite(el.zIndex) ? el.zIndex : 1,
+      locked: Boolean(el.locked),
+      name: el.name,
+      hidden: Boolean(el.hidden),
+      groupId: el.groupId || null,
+      groupRotation: el.groupRotation,
+      excludeFromAdaptiveLayout: el.excludeFromAdaptiveLayout !== undefined ? Boolean(el.excludeFromAdaptiveLayout) : true,
+      flipHorizontal: Boolean(el.flipHorizontal),
+      flipVertical: Boolean(el.flipVertical),
+      blurRadius: Number.isFinite(el.blurRadius) ? el.blurRadius : 0,
+      grayscaleAmount: Number.isFinite(el.grayscaleAmount) ? el.grayscaleAmount : 0,
+      noiseAmount: Number.isFinite(el.noiseAmount) ? el.noiseAmount : 0,
+      shadowEnabled: Boolean(el.shadowEnabled),
+      shadowBlur: Number.isFinite(el.shadowBlur) ? el.shadowBlur : 10,
+      shadowOffsetX: Number.isFinite(el.shadowOffsetX) ? el.shadowOffsetX : 0,
+      shadowOffsetY: Number.isFinite(el.shadowOffsetY) ? el.shadowOffsetY : 5,
+      shadowOpacity: Number.isFinite(el.shadowOpacity) ? el.shadowOpacity : 35,
+      shadowColor: el.shadowColor || '#000000',
+      frameAssetId: el.frameAssetId || el.graphicId || null,
+      frameAssetUrl: el.frameAssetUrl || el.fileUrl || null,
+      frameAssetLocalPath: el.frameAssetLocalPath || el.filePath || null,
+      frameAssetTitle: el.frameAssetTitle || el.fileName || null,
+      frameAssetSlot: el.frameAssetSlot || null,
+      frameAssetIsPro: false,
+      graphicId: el.graphicId || el.frameAssetId || null,
+      filePath: el.filePath || el.frameAssetLocalPath || '',
+      fileName: el.fileName || el.frameAssetTitle || '',
+      fileUrl: el.fileUrl || el.frameAssetUrl || null,
+      previewPath: el.previewPath || null,
+      thumbnailPath: el.thumbnailPath || null,
+    };
+  }
+
+  const [tl, tr, br, bl] = getCornerRadii(el);
+  return {
+    ...el,
+    type: 'photo',
+    locked: Boolean(el.locked),
+    name: el.name,
+    hidden: Boolean(el.hidden),
+    flipHorizontal: Boolean(el.flipHorizontal),
+    flipVertical: Boolean(el.flipVertical),
+    blurRadius: Number.isFinite(el.blurRadius) ? el.blurRadius : 0,
+    grayscaleAmount: Number.isFinite(el.grayscaleAmount) ? el.grayscaleAmount : 0,
+    noiseAmount: Number.isFinite(el.noiseAmount) ? el.noiseAmount : 0,
+    shadowEnabled: Boolean(el.shadowEnabled),
+    shadowBlur: Number.isFinite(el.shadowBlur) ? el.shadowBlur : 10,
+    shadowOffsetX: Number.isFinite(el.shadowOffsetX) ? el.shadowOffsetX : 0,
+    shadowOffsetY: Number.isFinite(el.shadowOffsetY) ? el.shadowOffsetY : 5,
+    shadowOpacity: Number.isFinite(el.shadowOpacity) ? el.shadowOpacity : 35,
+    shadowColor: el.shadowColor || '#000000',
+    excludeFromAdaptiveLayout: Boolean(el.excludeFromAdaptiveLayout),
+    frameAssetId: el.frameAssetId || null,
+    frameAssetUrl: el.frameAssetUrl || null,
+    frameAssetLocalPath: el.frameAssetLocalPath || null,
+    frameAssetTitle: el.frameAssetTitle || null,
+    frameAssetSlot: el.frameAssetSlot || null,
+    frameAssetIsPro: false,
+    cornerRadiusTl: tl,
+    cornerRadiusTr: tr,
+    cornerRadiusBr: br,
+    cornerRadiusBl: bl,
+    cornerRadius: (tl === tr && tr === br && br === bl) ? tl : [tl, tr, br, bl],
+  };
+}
+
+export function sanitizeElement(el: AlbumElement, layoutContext?: { unit: Unit; dpi: number }): any {
+  if (el.type === 'text') {
+    const textEl = el as TextNodeElement;
+    const textStr = typeof textEl.text === 'string' ? textEl.text : ((textEl as any).fileName || '');
+    const styleObj = { ...DEFAULT_TEXT_STYLE, ...(textEl.style || {}) };
+    return {
+      ...textEl,
+      id: textEl.id,
+      type: 'text',
+      text: textStr,
+      style: styleObj,
+      textRuns: textEl.textRuns || [],
+      photoId: null,
+      groupId: textEl.groupId || null,
+      groupRotation: textEl.groupRotation || 0,
+      filePath: '',
+      fileName: textStr,
+      previewPath: '',
+      thumbnailPath: '',
+      x: Number.isFinite(textEl.x) ? textEl.x : 0,
+      y: Number.isFinite(textEl.y) ? textEl.y : 0,
+      width: Number.isFinite(textEl.width) ? textEl.width : 120,
+      height: Number.isFinite(textEl.height) ? textEl.height : 35,
+      rotation: Number.isFinite(textEl.rotation) ? textEl.rotation : 0,
+      zIndex: Number.isFinite(textEl.zIndex) ? textEl.zIndex : 10,
+      photoAspect: 1.0,
+      originalWidth: textEl.width,
+      originalHeight: textEl.height,
+      cropX: 0,
+      cropY: 0,
+      cropScale: 1.0,
+      cropRotation: 0,
+      borderEnabled: false,
+      borderWidth: 0,
+      cornerRadius: 0,
+      cornerRadiusTl: 0,
+      cornerRadiusTr: 0,
+      cornerRadiusBr: 0,
+      cornerRadiusBl: 0,
+      borderColor: '#FFFFFF',
+      opacity: Number.isFinite(textEl.opacity) ? Math.max(0, Math.min(1, textEl.opacity!)) : 1.0,
+      locked: Boolean(textEl.locked),
+      flipHorizontal: Boolean(textEl.flipHorizontal),
+      flipVertical: Boolean(textEl.flipVertical),
+      excludeFromAdaptiveLayout: Boolean(textEl.excludeFromAdaptiveLayout),
+      shadowEnabled: Boolean(textEl.shadowEnabled),
+      shadowBlur: Number.isFinite(textEl.shadowBlur) ? textEl.shadowBlur : 10,
+      shadowOffsetX: Number.isFinite(textEl.shadowOffsetX) ? textEl.shadowOffsetX : 0,
+      shadowOffsetY: Number.isFinite(textEl.shadowOffsetY) ? textEl.shadowOffsetY : 5,
+      shadowOpacity: Number.isFinite(textEl.shadowOpacity) ? textEl.shadowOpacity : 35,
+      shadowColor: textEl.shadowColor || '#000000',
+      textPayload: serializeTextPayload({
+        ...textEl,
+        text: textStr,
+        style: styleObj,
+      }, layoutContext),
+    };
+  }
+
+  if (el.type === 'graphic') {
+    const gEl = el as GraphicElement;
+    return {
+      ...gEl,
+      id: gEl.id,
+      type: 'graphic',
+      photoId: null,
+      groupId: gEl.groupId || null,
+      groupRotation: gEl.groupRotation || 0,
+      graphicId: gEl.graphicId || gEl.frameAssetId || null,
+      fileUrl: gEl.fileUrl || gEl.frameAssetUrl || null,
+      filePath: gEl.filePath || gEl.frameAssetLocalPath || '',
+      fileName: gEl.fileName || gEl.frameAssetTitle || '',
+      previewPath: gEl.previewPath || '',
+      thumbnailPath: gEl.thumbnailPath || '',
+      x: Number.isFinite(gEl.x) ? gEl.x : 0,
+      y: Number.isFinite(gEl.y) ? gEl.y : 0,
+      width: Number.isFinite(gEl.width) ? gEl.width : 100,
+      height: Number.isFinite(gEl.height) ? gEl.height : 100,
+      rotation: Number.isFinite(gEl.rotation) ? gEl.rotation : 0,
+      zIndex: Number.isFinite(gEl.zIndex) ? gEl.zIndex : 1,
+      photoAspect: 1.0,
+      originalWidth: gEl.width,
+      originalHeight: gEl.height,
+      cropX: 0,
+      cropY: 0,
+      cropScale: 1.0,
+      cropRotation: 0,
+      borderEnabled: false,
+      borderWidth: 0,
+      borderColor: '#FFFFFF',
+      cornerRadius: 0,
+      cornerRadiusTl: 0,
+      cornerRadiusTr: 0,
+      cornerRadiusBr: 0,
+      cornerRadiusBl: 0,
+      opacity: Number.isFinite(gEl.opacity) ? Math.max(0, Math.min(1, gEl.opacity)) : 1.0,
+      locked: Boolean(gEl.locked),
+      flipHorizontal: Boolean(gEl.flipHorizontal),
+      flipVertical: Boolean(gEl.flipVertical),
+      blurRadius: Number.isFinite(gEl.blurRadius) ? gEl.blurRadius : 0,
+      grayscaleAmount: Number.isFinite(gEl.grayscaleAmount) ? gEl.grayscaleAmount : 0,
+      noiseAmount: Number.isFinite(gEl.noiseAmount) ? gEl.noiseAmount : 0,
+      excludeFromAdaptiveLayout: true,
+      shadowEnabled: Boolean(gEl.shadowEnabled),
+      shadowBlur: Number.isFinite(gEl.shadowBlur) ? gEl.shadowBlur : 10,
+      shadowOffsetX: Number.isFinite(gEl.shadowOffsetX) ? gEl.shadowOffsetX : 0,
+      shadowOffsetY: Number.isFinite(gEl.shadowOffsetY) ? gEl.shadowOffsetY : 5,
+      shadowOpacity: Number.isFinite(gEl.shadowOpacity) ? gEl.shadowOpacity : 35,
+      shadowColor: gEl.shadowColor || '#000000',
+      frameAssetId: gEl.frameAssetId || gEl.graphicId || null,
+      frameAssetUrl: gEl.frameAssetUrl || gEl.fileUrl || null,
+      frameAssetLocalPath: gEl.frameAssetLocalPath || gEl.filePath || null,
+      frameAssetTitle: gEl.frameAssetTitle || gEl.fileName || null,
+      frameAssetSlot: null,
+      frameAssetIsPro: false,
+      textPayload: null,
+    };
+  }
+
+  const pEl = el as PhotoFrameElement;
+  const [rTl, rTr, rBr, rBl] = getCornerRadii(pEl);
+  return {
+    ...pEl,
+    type: 'photo',
+    photoId: pEl.photoId || null,
+    groupId: pEl.groupId || null,
+    groupRotation: pEl.groupRotation || 0,
+    filePath: pEl.filePath || '',
+    fileName: pEl.fileName || '',
+    previewPath: pEl.previewPath || '',
+    thumbnailPath: pEl.thumbnailPath || '',
+    x: Number.isFinite(pEl.x) ? pEl.x : 0,
+    y: Number.isFinite(pEl.y) ? pEl.y : 0,
+    width: Number.isFinite(pEl.width) ? pEl.width : 100,
+    height: Number.isFinite(pEl.height) ? pEl.height : 100,
+    rotation: Number.isFinite(pEl.rotation) ? pEl.rotation : 0,
+    zIndex: Number.isFinite(pEl.zIndex) ? pEl.zIndex : 1,
+    photoAspect: typeof pEl.photoAspect === 'number' && pEl.photoAspect > 0 ? pEl.photoAspect : 1.5,
+    originalWidth: pEl.originalWidth || pEl.width,
+    originalHeight: pEl.originalHeight || pEl.height,
+    cropX: Number.isFinite(pEl.cropX) ? pEl.cropX : 0,
+    cropY: Number.isFinite(pEl.cropY) ? pEl.cropY : 0,
+    cropScale: Number.isFinite(pEl.cropScale) && pEl.cropScale > 0 ? pEl.cropScale : 1.0,
+    cropRotation: Number.isFinite(pEl.cropRotation) ? pEl.cropRotation : 0,
+    borderEnabled: Boolean(pEl.borderEnabled),
+    borderWidth: Number.isFinite(pEl.borderWidth) ? pEl.borderWidth : 0,
+    borderColor: pEl.borderColor || '#FFFFFF',
+    cornerRadiusTl: rTl,
+    cornerRadiusTr: rTr,
+    cornerRadiusBr: rBr,
+    cornerRadiusBl: rBl,
+    cornerRadius: (rTl === rTr && rTr === rBr && rBr === rBl) ? rTl : [rTl, rTr, rBr, rBl],
+    opacity: Number.isFinite(pEl.opacity) ? Math.max(0, Math.min(1, pEl.opacity)) : 1.0,
+    locked: Boolean(pEl.locked),
+    flipHorizontal: Boolean(pEl.flipHorizontal),
+    flipVertical: Boolean(pEl.flipVertical),
+    blurRadius: Number.isFinite(pEl.blurRadius) ? pEl.blurRadius : 0,
+    grayscaleAmount: Number.isFinite(pEl.grayscaleAmount) ? pEl.grayscaleAmount : 0,
+    noiseAmount: Number.isFinite(pEl.noiseAmount) ? pEl.noiseAmount : 0,
+    excludeFromAdaptiveLayout: Boolean(pEl.excludeFromAdaptiveLayout),
+    shadowEnabled: Boolean(pEl.shadowEnabled),
+    shadowBlur: Number.isFinite(pEl.shadowBlur) ? pEl.shadowBlur : 10,
+    shadowOffsetX: Number.isFinite(pEl.shadowOffsetX) ? pEl.shadowOffsetX : 0,
+    shadowOffsetY: Number.isFinite(pEl.shadowOffsetY) ? pEl.shadowOffsetY : 5,
+    shadowOpacity: Number.isFinite(pEl.shadowOpacity) ? pEl.shadowOpacity : 35,
+    shadowColor: pEl.shadowColor || '#000000',
+    frameAssetId: pEl.frameAssetId || null,
+    frameAssetUrl: pEl.frameAssetUrl || null,
+    frameAssetLocalPath: pEl.frameAssetLocalPath || null,
+    frameAssetTitle: pEl.frameAssetTitle || null,
+    frameAssetSlot: pEl.frameAssetSlot || null,
+    frameAssetIsPro: false,
+    textPayload: null,
+  };
+}
+
 export const useAlbumStore = create<AlbumState>((set, get) => ({
   currentAlbum: null,
   activeSpreadId: null,
@@ -503,40 +794,6 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
   },
 
   loadAlbumFromDb: async (projectId: string) => {
-    const hydrateElement = (el: any): AlbumElement => {
-      if (el.type === 'text') {
-        const { text, style, textRuns, styledRanges } = deserializeTextPayload(el.textPayload ?? serializeTextPayload(el), el.fileName || el.text);
-        return {
-          id: el.id,
-          type: 'text',
-          text,
-          x: Number.isFinite(el.x) ? el.x : 0,
-          y: Number.isFinite(el.y) ? el.y : 0,
-          width: Number.isFinite(el.width) ? el.width : 120,
-          height: Number.isFinite(el.height) ? el.height : 35,
-          rotation: Number.isFinite(el.rotation) ? el.rotation : 0,
-          opacity: Number.isFinite(el.opacity) ? Math.max(0, Math.min(1, el.opacity)) : 1,
-          zIndex: Number.isFinite(el.zIndex) ? el.zIndex : 10,
-          locked: Boolean(el.locked),
-          groupId: el.groupId || null,
-          style,
-          textRuns,
-          styledRanges,
-        };
-      }
-      const [tl, tr, br, bl] = getCornerRadii(el);
-      return {
-        ...el,
-        type: 'photo',
-        locked: Boolean(el.locked),
-        cornerRadiusTl: tl,
-        cornerRadiusTr: tr,
-        cornerRadiusBr: br,
-        cornerRadiusBl: bl,
-        cornerRadius: (tl === tr && tr === br && br === bl) ? tl : [tl, tr, br, bl],
-      };
-    };
-
     try {
       const payload = await invoke<any>('load_album_structure', { projectId });
       if (payload?.coverSpread && Array.isArray(payload.spreads)) {
@@ -653,92 +910,6 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
 
     set({ saveStatus: 'saving' });
 
-    // Clean up / sanitize album payload so all fields are defined
-    const sanitizeElement = (el: AlbumElement): any => {
-      if (el.type === 'text') {
-        const textEl = el as TextNodeElement;
-        const textStr = typeof textEl.text === 'string' ? textEl.text : ((textEl as any).fileName || '');
-        const styleObj = { ...DEFAULT_TEXT_STYLE, ...(textEl.style || {}) };
-        return {
-          ...textEl,
-          id: textEl.id,
-          type: 'text',
-          text: textStr,
-          style: styleObj,
-          textRuns: textEl.textRuns || [],
-          photoId: null,
-          groupId: textEl.groupId || null,
-          filePath: '',
-          fileName: textStr,
-          previewPath: '',
-          thumbnailPath: '',
-          x: Number.isFinite(textEl.x) ? textEl.x : 0,
-          y: Number.isFinite(textEl.y) ? textEl.y : 0,
-          width: Number.isFinite(textEl.width) ? textEl.width : 120,
-          height: Number.isFinite(textEl.height) ? textEl.height : 35,
-          rotation: Number.isFinite(textEl.rotation) ? textEl.rotation : 0,
-          zIndex: Number.isFinite(textEl.zIndex) ? textEl.zIndex : 10,
-          photoAspect: 1.0,
-          originalWidth: textEl.width,
-          originalHeight: textEl.height,
-          cropX: 0,
-          cropY: 0,
-          cropScale: 1.0,
-          cropRotation: 0,
-          borderEnabled: false,
-          borderWidth: 0,
-          cornerRadius: 0,
-          cornerRadiusTl: 0,
-          cornerRadiusTr: 0,
-          cornerRadiusBr: 0,
-          cornerRadiusBl: 0,
-          borderColor: '#FFFFFF',
-          opacity: Number.isFinite(textEl.opacity) ? Math.max(0, Math.min(1, textEl.opacity!)) : 1.0,
-          locked: Boolean(textEl.locked),
-          textPayload: serializeTextPayload({
-            ...textEl,
-            text: textStr,
-            style: styleObj,
-          }, layoutContext),
-        };
-      }
-      const [rTl, rTr, rBr, rBl] = getCornerRadii(el as PhotoFrameElement);
-      return {
-        ...el,
-        type: el.type || 'photo',
-        photoId: el.photoId || null,
-        groupId: el.groupId || null,
-        filePath: el.filePath || '',
-        fileName: el.fileName || '',
-        previewPath: el.previewPath || '',
-        thumbnailPath: el.thumbnailPath || '',
-        x: Number.isFinite(el.x) ? el.x : 0,
-        y: Number.isFinite(el.y) ? el.y : 0,
-        width: Number.isFinite(el.width) ? el.width : 100,
-        height: Number.isFinite(el.height) ? el.height : 100,
-        rotation: Number.isFinite(el.rotation) ? el.rotation : 0,
-        zIndex: Number.isFinite(el.zIndex) ? el.zIndex : 1,
-        photoAspect: typeof el.photoAspect === 'number' && el.photoAspect > 0 ? el.photoAspect : 1.5,
-        originalWidth: el.originalWidth || el.width,
-        originalHeight: el.originalHeight || el.height,
-        cropX: Number.isFinite(el.cropX) ? el.cropX : 0,
-        cropY: Number.isFinite(el.cropY) ? el.cropY : 0,
-        cropScale: Number.isFinite(el.cropScale) && el.cropScale > 0 ? el.cropScale : 1.0,
-        cropRotation: Number.isFinite(el.cropRotation) ? el.cropRotation : 0,
-        borderEnabled: Boolean(el.borderEnabled),
-        borderWidth: Number.isFinite(el.borderWidth) ? el.borderWidth : 0,
-        borderColor: el.borderColor || '#FFFFFF',
-        cornerRadiusTl: rTl,
-        cornerRadiusTr: rTr,
-        cornerRadiusBr: rBr,
-        cornerRadiusBl: rBl,
-        cornerRadius: (rTl === rTr && rTr === rBr && rBr === rBl) ? rTl : [rTl, rTr, rBr, rBl],
-        opacity: Number.isFinite(el.opacity) ? Math.max(0, Math.min(1, el.opacity)) : 1.0,
-        locked: Boolean(el.locked),
-        textPayload: null,
-      };
-    };
-
     const sanitizedAlbum: any = {
       ...currentAlbum,
       coverSpread: {
@@ -748,7 +919,7 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
             ? Number(currentAlbum.coverSpread.spacingValue)
             : null,
         spacingUnit: currentAlbum.coverSpread?.spacingUnit || null,
-        elements: (currentAlbum.coverSpread.elements || []).map(sanitizeElement),
+        elements: (currentAlbum.coverSpread.elements || []).map((el) => sanitizeElement(el, layoutContext)),
       },
       spreads: (currentAlbum.spreads || []).map((spread) => ({
         ...spread,
@@ -757,7 +928,7 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
             ? Number(spread.spacingValue)
             : null,
         spacingUnit: spread.spacingUnit || null,
-        elements: (spread.elements || []).map(sanitizeElement),
+        elements: (spread.elements || []).map((el) => sanitizeElement(el, layoutContext)),
       })),
     };
 
