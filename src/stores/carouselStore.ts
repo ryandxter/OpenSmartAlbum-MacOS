@@ -23,6 +23,7 @@ import { AdaptivePhoto } from '../domain/adaptiveLayout';
 import { generateAutoFlowPlan } from '../domain/storytelling/autoFlowEngine';
 import type { Photo } from '../domain/photo';
 import type { PhotoFrameElement } from '../domain/editor';
+import { getCornerRadii, permuteCornerRadiiOnFlip } from '../domain/editor';
 import { StudioFramingPreset, FramingConfig } from '../domain/ai/faceDetection';
 import { calculateOptimalStudioCrop } from '../domain/ai/framingMath';
 import { usePhotoStore } from './photoStore';
@@ -118,6 +119,12 @@ export interface CarouselState {
   setAllElementsLock: (slideIndex: number, locked: boolean) => void;
   setAllElementsVisibility: (slideIndex: number, visible: boolean) => void;
   deleteSingleElement: (slideIndex: number | undefined, elementId: string) => void;
+  // Visual Effects & Flip (Phase 2)
+  flipElements: (elementIds: string[], axis: 'horizontal' | 'vertical') => void;
+  updateElementVisualEffects: (
+    elementIds: string[],
+    effects: Partial<CarouselPhotoFrame> & Partial<CarouselTextFrame>
+  ) => void;
 }
 
 export const useCarouselStore = create<CarouselState>((set, get) => ({
@@ -2293,6 +2300,69 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
       currentCarousel: { ...currentCarousel, slides: updatedSlides },
       selectedFrameId: selectedFrameId === elementId ? null : selectedFrameId,
       selectedFrameIds: selectedFrameIds.filter((id) => id !== elementId),
+    });
+    markDirty();
+  },
+
+  flipElements: (elementIds, axis) => {
+    const { currentCarousel, activeSlideIndex, pushHistory, markDirty } = get();
+    if (!currentCarousel || elementIds.length === 0) return;
+
+    pushHistory();
+
+    const currentSlide = currentCarousel.slides[activeSlideIndex];
+    if (!currentSlide) return;
+
+    const matchedElements = (currentSlide.elements || []).filter((el) => elementIds.includes(el.id));
+    if (matchedElements.length === 0) return;
+
+    const prop = axis === 'horizontal' ? 'flipHorizontal' : 'flipVertical';
+    const anyFalse = matchedElements.some((el) => !(el as any)[prop]);
+    const nextFlipVal = anyFalse;
+
+    const updatedElements = (currentSlide.elements || []).map((el) => {
+      if (!elementIds.includes(el.id)) return el;
+      const radii = getCornerRadii(el as any);
+      const permuted = permuteCornerRadiiOnFlip(radii, axis);
+      return {
+        ...el,
+        [prop]: nextFlipVal,
+        cornerRadiusTl: permuted[0],
+        cornerRadiusTr: permuted[1],
+        cornerRadiusBr: permuted[2],
+        cornerRadiusBl: permuted[3],
+        cornerRadius: permuted[0],
+      } as CarouselElement;
+    });
+
+    const updatedSlides = currentCarousel.slides.map((s, idx) =>
+      idx === activeSlideIndex ? { ...s, elements: updatedElements } : s
+    );
+
+    set({
+      currentCarousel: { ...currentCarousel, slides: updatedSlides },
+    });
+    markDirty();
+  },
+
+  updateElementVisualEffects: (elementIds, effects) => {
+    const { currentCarousel, activeSlideIndex, markDirty } = get();
+    if (!currentCarousel || elementIds.length === 0) return;
+
+    const currentSlide = currentCarousel.slides[activeSlideIndex];
+    if (!currentSlide) return;
+
+    const updatedElements = (currentSlide.elements || []).map((el) => {
+      if (!elementIds.includes(el.id)) return el;
+      return { ...el, ...effects } as CarouselElement;
+    });
+
+    const updatedSlides = currentCarousel.slides.map((s, idx) =>
+      idx === activeSlideIndex ? { ...s, elements: updatedElements } : s
+    );
+
+    set({
+      currentCarousel: { ...currentCarousel, slides: updatedSlides },
     });
     markDirty();
   },

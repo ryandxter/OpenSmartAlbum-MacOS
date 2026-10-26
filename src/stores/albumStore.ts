@@ -36,7 +36,7 @@ import { useHistoryStore } from './historyStore';
 import { useEditorStore } from './editorStore';
 import { useProjectStore } from './projectStore';
 import { usePhotoStore } from './photoStore';
-import { getCornerRadii, type PhotoFrameElement } from '../domain/editor';
+import { getCornerRadii, permuteCornerRadiiOnFlip, type PhotoFrameElement } from '../domain/editor';
 import { convertUnit } from '../domain/units';
 import { StudioFramingPreset, FramingConfig } from '../domain/ai/faceDetection';
 import { calculateOptimalStudioCrop } from '../domain/ai/framingMath';
@@ -446,6 +446,14 @@ export interface AlbumState {
 
   // AI Face & Studio Framing (Phase 23)
   applyStudioFramingPreset: (frameId: string, preset: StudioFramingPreset, customConfig?: Partial<FramingConfig>) => void;
+
+  // Visual Effects & Flip (Phase 2)
+  flipElements: (spreadId: string, elementIds: string[], axis: 'horizontal' | 'vertical') => void;
+  updateElementVisualEffects: (
+    spreadId: string,
+    elementIds: string[],
+    effects: Partial<PhotoFrameElement>
+  ) => void;
 }
 
 export function hydrateElement(el: any): AlbumElement {
@@ -2653,6 +2661,93 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
               : s
           ),
         },
+        saveStatus: 'unsaved',
+      });
+    }
+  },
+
+  flipElements: (spreadId, elementIds, axis) => {
+    const { currentAlbum } = get();
+    if (!currentAlbum || elementIds.length === 0) return;
+
+    useHistoryStore.getState().pushState(currentAlbum);
+
+    const targetSpread = currentAlbum.coverSpread.id === spreadId
+      ? currentAlbum.coverSpread
+      : currentAlbum.spreads.find((s) => s.id === spreadId);
+    if (!targetSpread) return;
+
+    const matchedElements = (targetSpread.elements || []).filter((el) => elementIds.includes(el.id));
+    if (matchedElements.length === 0) return;
+
+    const prop = axis === 'horizontal' ? 'flipHorizontal' : 'flipVertical';
+    const anyFalse = matchedElements.some((el) => !(el as any)[prop]);
+    const nextFlipVal = anyFalse;
+
+    const updatedElements = (targetSpread.elements || []).map((el) => {
+      if (!elementIds.includes(el.id)) return el;
+
+      const radii = getCornerRadii(el as any);
+      const permuted = permuteCornerRadiiOnFlip(radii, axis);
+
+      return {
+        ...el,
+        [prop]: nextFlipVal,
+        cornerRadiusTl: permuted[0],
+        cornerRadiusTr: permuted[1],
+        cornerRadiusBr: permuted[2],
+        cornerRadiusBl: permuted[3],
+        cornerRadius: permuted,
+      } as AlbumElement;
+    });
+
+    if (currentAlbum.coverSpread.id === spreadId) {
+      set({
+        currentAlbum: {
+          ...currentAlbum,
+          coverSpread: { ...currentAlbum.coverSpread, elements: updatedElements },
+        },
+        saveStatus: 'unsaved',
+      });
+    } else {
+      const updatedSpreads = currentAlbum.spreads.map((s) =>
+        s.id === spreadId ? { ...s, elements: updatedElements } : s
+      );
+      set({
+        currentAlbum: { ...currentAlbum, spreads: updatedSpreads },
+        saveStatus: 'unsaved',
+      });
+    }
+  },
+
+  updateElementVisualEffects: (spreadId, elementIds, effects) => {
+    const { currentAlbum } = get();
+    if (!currentAlbum || elementIds.length === 0) return;
+
+    const targetSpread = currentAlbum.coverSpread.id === spreadId
+      ? currentAlbum.coverSpread
+      : currentAlbum.spreads.find((s) => s.id === spreadId);
+    if (!targetSpread) return;
+
+    const updatedElements = (targetSpread.elements || []).map((el) => {
+      if (!elementIds.includes(el.id)) return el;
+      return { ...el, ...effects } as AlbumElement;
+    });
+
+    if (currentAlbum.coverSpread.id === spreadId) {
+      set({
+        currentAlbum: {
+          ...currentAlbum,
+          coverSpread: { ...currentAlbum.coverSpread, elements: updatedElements },
+        },
+        saveStatus: 'unsaved',
+      });
+    } else {
+      const updatedSpreads = currentAlbum.spreads.map((s) =>
+        s.id === spreadId ? { ...s, elements: updatedElements } : s
+      );
+      set({
+        currentAlbum: { ...currentAlbum, spreads: updatedSpreads },
         saveStatus: 'unsaved',
       });
     }

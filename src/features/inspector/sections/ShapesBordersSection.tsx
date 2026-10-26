@@ -114,14 +114,6 @@ export function ShapesBordersSection({ onToast, activeMode = 'print' }: ShapesBo
   const borderColor = String(activeTarget.borderColor || '#FFFFFF');
   const borderStyle = String(activeTarget.borderStyle || 'solid');
 
-  // Shadow values
-  const shadowEnabled = Boolean(activeTarget.shadowEnabled);
-  const shadowColor = String(activeTarget.shadowColor || 'rgba(0, 0, 0, 0.6)');
-  const shadowBlur = Number(activeTarget.shadowBlur ?? 15);
-  const shadowOffsetX = Number(activeTarget.shadowOffsetX ?? 0);
-  const shadowOffsetY = Number(activeTarget.shadowOffsetY ?? 6);
-  const shadowOpacity = Math.round(Number(activeTarget.shadowOpacity ?? 0.6) * 100);
-
   const updateSelectedBorders = (updates: Record<string, any>) => {
     if (isCarousel) {
       if (!selectedCarouselFrameId) return;
@@ -511,81 +503,6 @@ export function ShapesBordersSection({ onToast, activeMode = 'print' }: ShapesBo
           </>
         )}
       </div>
-
-      {!isCarousel && (
-        <>
-          <div className={styles.divider} />
-
-          {/* 4. Contour Drop Shadow */}
-          <div className={styles.propGroup}>
-            <div className={styles.groupHeader}>
-              <span className={styles.label}>Drop Shadow</span>
-              <Switch
-                checked={shadowEnabled}
-                onChange={(checked) => updateSelectedBorders({ shadowEnabled: checked })}
-              />
-            </div>
-
-            {shadowEnabled && (
-              <>
-                <div className={styles.propRow}>
-                  <span className={styles.subLabel}>Shadow Color</span>
-                  <ColorPicker
-                    value={shadowColor}
-                    onChange={(c) => updateSelectedBorders({ shadowColor: c })}
-                  />
-                </div>
-
-                <div className={styles.propRow}>
-                  <span className={styles.subLabel}>Blur Radius</span>
-                  <div style={{ width: '100px' }}>
-                    <NumberInput
-                      value={shadowBlur}
-                      min={0}
-                      max={60}
-                      suffix="px"
-                      onChange={(b) => updateSelectedBorders({ shadowBlur: b })}
-                    />
-                  </div>
-                </div>
-
-                <div className={styles.propGrid2} style={{ marginTop: '8px' }}>
-                  <NumberInput
-                    label="Offset X"
-                    value={shadowOffsetX}
-                    min={-50}
-                    max={50}
-                    suffix="px"
-                    onChange={(ox) => updateSelectedBorders({ shadowOffsetX: ox })}
-                  />
-                  <NumberInput
-                    label="Offset Y"
-                    value={shadowOffsetY}
-                    min={-50}
-                    max={50}
-                    suffix="px"
-                    onChange={(oy) => updateSelectedBorders({ shadowOffsetY: oy })}
-                  />
-                </div>
-
-                <div className={styles.propGroup} style={{ marginTop: '8px' }}>
-                  <span className={styles.subLabel}>Opacity ({shadowOpacity}%)</span>
-                  <div className={styles.sliderContainer} style={{ marginTop: '4px' }}>
-                    <input
-                      type="range"
-                      className={styles.slider}
-                      min={0}
-                      max={100}
-                      value={shadowOpacity}
-                      onChange={(e) => updateSelectedBorders({ shadowOpacity: Number(e.target.value) / 100 })}
-                    />
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </>
-      )}
     </div>
   );
 }

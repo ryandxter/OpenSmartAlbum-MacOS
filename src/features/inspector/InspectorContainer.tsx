@@ -236,7 +236,7 @@ export function InspectorContainer({ onClose, onToast, activeMode }: InspectorCo
               isOpen={isOpen('effects')}
               onToggle={() => toggleSection('effects')}
             >
-              <EffectsShadowsSection onToast={onToast} />
+              <EffectsShadowsSection onToast={onToast} activeMode={activeMode} />
             </AccordionSection>
           </div>
         )}
