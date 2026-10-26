@@ -120,6 +120,12 @@ export function CarouselTextNode({
       width={frame.width}
       height={frame.height}
       rotation={frame.rotation || 0}
+      opacity={frame.opacity ?? 1}
+      shadowColor={frame.shadowEnabled ? (frame.shadowColor || '#000000') : undefined}
+      shadowBlur={frame.shadowEnabled ? (frame.shadowBlur ?? 8) : undefined}
+      shadowOffsetX={frame.shadowEnabled ? (frame.shadowOffsetX ?? 0) : undefined}
+      shadowOffsetY={frame.shadowEnabled ? (frame.shadowOffsetY ?? 4) : undefined}
+      shadowOpacity={frame.shadowEnabled ? (frame.shadowOpacity ?? 0.5) : undefined}
       draggable={!frame.locked && !isEditing}
       onMouseDown={(e) => {
         if ('button' in e.evt && (e.evt.button === 2 || e.evt.button === 1)) return;
@@ -292,16 +298,23 @@ export function CarouselTextNode({
       />
 
       {/* Rendered Rich Text Canvas Layer */}
-      <KonvaShape
-        ref={textRef}
-        width={frame.width}
-        height={frame.height}
-        opacity={isEditing ? 0 : (frame.opacity ?? 1)}
-        listening={false}
-        sceneFunc={(context) =>
-          drawRichTextLayout(context._context, liveLayoutRef.current ?? richLayout)
-        }
-      />
+      <Group
+        scaleX={frame.flipHorizontal ? -1 : 1}
+        scaleY={frame.flipVertical ? -1 : 1}
+        offsetX={frame.flipHorizontal ? frame.width : 0}
+        offsetY={frame.flipVertical ? frame.height : 0}
+      >
+        <KonvaShape
+          ref={textRef}
+          width={frame.width}
+          height={frame.height}
+          opacity={isEditing ? 0 : (frame.opacity ?? 1)}
+          listening={false}
+          sceneFunc={(context) =>
+            drawRichTextLayout(context._context, liveLayoutRef.current ?? richLayout)
+          }
+        />
+      </Group>
 
       {/* Overflow Indicator Badge */}
       <Group

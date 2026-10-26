@@ -124,6 +124,12 @@ export function TextNode({
       width={displayPixelW}
       height={displayPixelH}
       rotation={element.rotation || 0}
+      opacity={element.opacity ?? 1}
+      shadowColor={element.shadowEnabled ? (element.shadowColor || '#000000') : undefined}
+      shadowBlur={element.shadowEnabled ? ((element.shadowBlur ?? 8) * scaleFactor) : undefined}
+      shadowOffsetX={element.shadowEnabled ? ((element.shadowOffsetX ?? 0) * scaleFactor) : undefined}
+      shadowOffsetY={element.shadowEnabled ? ((element.shadowOffsetY ?? 4) * scaleFactor) : undefined}
+      shadowOpacity={element.shadowEnabled ? (element.shadowOpacity ?? 0.5) : undefined}
       draggable={!element.locked && !isEditing}
       onMouseDown={(e) => {
         // Ignore right clicks (button 2) or middle clicks (button 1)
@@ -346,16 +352,23 @@ export function TextNode({
       />
 
       {/* Rendered Text Element - Centered in middle of frame */}
-      <KonvaShape
-        ref={textRef}
-        width={internalW}
-        height={internalH}
-        scaleX={visualScale}
-        scaleY={visualScale}
-        opacity={isEditing ? 0 : (element.opacity ?? 1)}
-        listening={false}
-        sceneFunc={(context) => drawRichTextLayout(context._context, liveLayoutRef.current ?? richLayout)}
-      />
+      <Group
+        scaleX={element.flipHorizontal ? -1 : 1}
+        scaleY={element.flipVertical ? -1 : 1}
+        offsetX={element.flipHorizontal ? displayPixelW : 0}
+        offsetY={element.flipVertical ? displayPixelH : 0}
+      >
+        <KonvaShape
+          ref={textRef}
+          width={internalW}
+          height={internalH}
+          scaleX={visualScale}
+          scaleY={visualScale}
+          opacity={isEditing ? 0 : (element.opacity ?? 1)}
+          listening={false}
+          sceneFunc={(context) => drawRichTextLayout(context._context, liveLayoutRef.current ?? richLayout)}
+        />
+      </Group>
       <Group ref={overflowRef} visible={isSelected && !isEditing && richLayout.overflow}
         x={Math.max(0, displayPixelW - 12)} y={Math.max(0, displayPixelH - 12)}
         scaleX={Math.min(1, displayPixelW / 12, displayPixelH / 12)}

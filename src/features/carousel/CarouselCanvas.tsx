@@ -21,6 +21,7 @@ import { DividerOverlayLayer } from '../editor/DividerOverlayLayer';
 import { TextInlineEditor } from '../editor/TextInlineEditor';
 import { CarouselTextNode } from './CarouselTextNode';
 import { extractCanvasDividers, findPhotoSwapTarget, RectFrameInput } from '../../domain/layout/dividerGraph';
+import { renderFilteredPhotoToCanvas } from '../../utils/imageFilters';
 import styles from './CarouselCanvas.module.css';
 
 interface CarouselCanvasProps {
@@ -154,6 +155,24 @@ function CarouselFrameNode({
     frame.cropY || 0
   );
 
+  const hasVisualEffects = Boolean(
+    (frame.grayscaleAmount && frame.grayscaleAmount > 0) ||
+    (frame.noiseAmount && frame.noiseAmount > 0) ||
+    (frame.blurRadius && frame.blurRadius > 0)
+  );
+
+  const displayImage = useMemo(() => {
+    if (!imageObj) return null;
+    if (!hasVisualEffects) return imageObj;
+
+    return renderFilteredPhotoToCanvas(imageObj, Math.round(imgW), Math.round(imgH), {
+      grayscale: frame.grayscaleAmount || 0,
+      noise: frame.noiseAmount || 0,
+      blur: frame.blurRadius || 0,
+      seed: frame.id,
+    });
+  }, [imageObj, hasVisualEffects, frame.grayscaleAmount, frame.noiseAmount, frame.blurRadius, imgW, imgH, frame.id]);
+
   return (
     <Group
       ref={shapeRef}
@@ -163,6 +182,12 @@ function CarouselFrameNode({
       width={frame.width}
       height={frame.height}
       rotation={frame.rotation || 0}
+      opacity={frame.opacity ?? 1}
+      shadowColor={frame.shadowEnabled ? (frame.shadowColor || '#000000') : undefined}
+      shadowBlur={frame.shadowEnabled ? (frame.shadowBlur ?? 8) : undefined}
+      shadowOffsetX={frame.shadowEnabled ? (frame.shadowOffsetX ?? 0) : undefined}
+      shadowOffsetY={frame.shadowEnabled ? (frame.shadowOffsetY ?? 4) : undefined}
+      shadowOpacity={frame.shadowEnabled ? (frame.shadowOpacity ?? 0.5) : undefined}
       draggable={!frame.locked}
       onClick={onSelect}
       onTap={onSelect}
@@ -215,14 +240,22 @@ function CarouselFrameNode({
         />
 
         {/* Render Image with proportional Aspect-Cover Fit */}
-        {imageObj && (
-          <KonvaImage
-            image={imageObj}
-            x={offsetX}
-            y={offsetY}
-            width={imgW}
-            height={imgH}
-          />
+        {displayImage && (
+          <Group
+            x={offsetX + imgW / 2}
+            y={offsetY + imgH / 2}
+            rotation={frame.cropRotation || 0}
+            scaleX={frame.flipHorizontal ? -1 : 1}
+            scaleY={frame.flipVertical ? -1 : 1}
+          >
+            <KonvaImage
+              image={displayImage}
+              x={-imgW / 2}
+              y={-imgH / 2}
+              width={imgW}
+              height={imgH}
+            />
+          </Group>
         )}
 
         {/* AI Face Reticle & Facial Landmarks Overlay */}

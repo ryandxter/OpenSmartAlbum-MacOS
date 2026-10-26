@@ -58,6 +58,7 @@ import { convertPtToUnit, convertUnit, Unit } from '../../domain/units';
 import { ContextMenu, ContextMenuItem } from '../../components/ui';
 import { findPhotoSwapTarget } from './photoSwapDrag';
 import { drawShapeToContext, getShapeSvgPath } from '../../domain/shapes';
+import { renderFilteredPhotoToCanvas } from '../../utils/imageFilters';
 import { DividerOverlayLayer } from './DividerOverlayLayer';
 import { extractCanvasDividers, RectFrameInput } from '../../domain/layout/dividerGraph';
 import { isMac } from '../../utils/platform';
@@ -294,6 +295,35 @@ function PhotoFrameNode({
   // Exact center of photo relative to frame (frame top-left is 0,0)
   const photoCenterX = offsetX + renderImgW / 2;
   const photoCenterY = offsetY + renderImgH / 2;
+
+  const hasVisualEffects = Boolean(
+    (frame.grayscaleAmount && frame.grayscaleAmount > 0) ||
+    (frame.noiseAmount && frame.noiseAmount > 0) ||
+    (frame.blurRadius && frame.blurRadius > 0)
+  );
+
+  const displayImage = useMemo(() => {
+    if (!imageObj) return null;
+    if (!hasVisualEffects) return imageObj;
+
+    const blurPx = (frame.blurRadius || 0) * scaleFactor;
+    return renderFilteredPhotoToCanvas(imageObj, renderImgW, renderImgH, {
+      grayscale: frame.grayscaleAmount || 0,
+      noise: frame.noiseAmount || 0,
+      blur: blurPx,
+      seed: frame.id,
+    });
+  }, [
+    imageObj,
+    hasVisualEffects,
+    frame.grayscaleAmount,
+    frame.noiseAmount,
+    frame.blurRadius,
+    scaleFactor,
+    renderImgW,
+    renderImgH,
+    frame.id,
+  ]);
 
   const setCursor = (e: Konva.KonvaEventObject<any>, cursor: string) => {
     const stage = e.target.getStage();
@@ -606,15 +636,20 @@ function PhotoFrameNode({
           rotation={effectiveCropRot}
           listening={false}
         >
-          <KonvaImage
-            ref={ghostImgRef}
-            image={imageObj}
-            x={-renderImgW / 2}
-            y={-renderImgH / 2}
-            width={renderImgW}
-            height={renderImgH}
-            opacity={0.28}
-          />
+          <Group
+            scaleX={frame.flipHorizontal ? -1 : 1}
+            scaleY={frame.flipVertical ? -1 : 1}
+          >
+            <KonvaImage
+              ref={ghostImgRef}
+              image={displayImage || imageObj}
+              x={-renderImgW / 2}
+              y={-renderImgH / 2}
+              width={renderImgW}
+              height={renderImgH}
+              opacity={0.28}
+            />
+          </Group>
         </Group>
       )}
 
@@ -737,15 +772,20 @@ function PhotoFrameNode({
               }
             }}
           >
-            <KonvaImage
-              id={`crop-img-${frame.id}`}
-              ref={cropImgRef}
-              image={imageObj}
-              x={-renderImgW / 2}
-              y={-renderImgH / 2}
-              width={renderImgW}
-              height={renderImgH}
-            />
+            <Group
+              scaleX={frame.flipHorizontal ? -1 : 1}
+              scaleY={frame.flipVertical ? -1 : 1}
+            >
+              <KonvaImage
+                id={`crop-img-${frame.id}`}
+                ref={cropImgRef}
+                image={displayImage || undefined}
+                x={-renderImgW / 2}
+                y={-renderImgH / 2}
+                width={renderImgW}
+                height={renderImgH}
+              />
+            </Group>
             {/* AI Face Reticle & Facial Landmarks Overlay */}
             <KonvaFaceReticleOverlay
               faceData={faceData}
