@@ -56,6 +56,7 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
     searchOpenLibrary,
     loadCanvaStatus,
     connectCanva,
+    completeCanvaOAuth,
     disconnectCanva,
     loadCanvaAssets,
     setActiveTab,
@@ -65,6 +66,7 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
 
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedLibraryTag, setSelectedLibraryTag] = useState<string>('Wedding');
+  const [manualCode, setManualCode] = useState('');
 
   // Print selection
   const activeSpreadId = useAlbumStore((s) => s.activeSpreadId);
@@ -101,6 +103,18 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
       onApplyToast?.('✓ Canva account successfully connected!');
     } catch (err) {
       onApplyToast?.(`❌ Canva connection failed: ${err}`);
+    }
+  };
+
+  const handleManualCodeSubmit = async () => {
+    if (!manualCode.trim()) return;
+    onApplyToast?.('⏳ Mengonfirmasi kode otorisasi Canva...');
+    try {
+      await completeCanvaOAuth(manualCode.trim());
+      setManualCode('');
+      onApplyToast?.('✓ Akun Canva berhasil terhubung!');
+    } catch (err) {
+      onApplyToast?.(`❌ Verifikasi kode gagal: ${err}`);
     }
   };
 
@@ -364,7 +378,9 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
               </div>
               <div className={styles.canvaMetaRow}>
                 <span>Redirect URI:</span>
-                <span className={styles.canvaMetaVal}>http://127.0.0.1:3001/oauth/redirect</span>
+                <span className={styles.canvaMetaVal} title={canvaStatus?.redirect_uri || 'https://auth-osa.rvmeur.com/canva/callback'}>
+                  {canvaStatus?.redirect_uri || 'https://auth-osa.rvmeur.com/canva/callback'}
+                </span>
               </div>
             </div>
             <button
@@ -385,6 +401,29 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
                 </>
               )}
             </button>
+
+            {/* Manual Auth Code Section Fallback */}
+            <div className={styles.manualCodeSection}>
+              <span className={styles.manualCodeTitle}>Punya Auth Code dari Browser?</span>
+              <div className={styles.manualCodeRow}>
+                <input
+                  type="text"
+                  placeholder="Paste Canva code..."
+                  value={manualCode}
+                  onChange={(e) => setManualCode(e.target.value)}
+                  className={styles.manualCodeInput}
+                  disabled={isCanvaConnecting}
+                />
+                <button
+                  type="button"
+                  className={styles.manualCodeBtn}
+                  onClick={handleManualCodeSubmit}
+                  disabled={!manualCode.trim() || isCanvaConnecting}
+                >
+                  Hubungkan
+                </button>
+              </div>
+            </div>
           </div>
         ) : (
           <>
@@ -470,13 +509,9 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
                       ) : (
                         <Box size={24} color="#52525b" />
                       )}
-                      <span className={activeTab === 'canva' ? styles.badgeCanva : styles.badgeFree}>
-                        {activeTab === 'openlibrary'
-                          ? 'CC0 / Free'
-                          : activeTab === 'canva'
-                          ? 'Canva'
-                          : '100% Free'}
-                      </span>
+                      {activeTab === 'canva' && (
+                        <span className={styles.badgeCanva}>Canva</span>
+                      )}
                       {asset.shape && asset.category === 'frame' && (
                         <span className={styles.shapeBadge}>{asset.shape}</span>
                       )}

@@ -207,6 +207,129 @@ pub async fn get_canva_auth_status(app: AppHandle) -> Result<CanvaAuthStatus, St
     })
 }
 
+#[derive(Debug, Clone)]
+pub struct PendingOAuth {
+    pub client_id: String,
+    pub client_secret: String,
+    pub redirect_uri: String,
+    pub code_verifier: String,
+}
+
+static ACTIVE_OAUTH: std::sync::Mutex<Option<PendingOAuth>> = std::sync::Mutex::new(None);
+
+pub fn exchange_canva_code_internal(
+    app: &AppHandle,
+    auth_code: &str,
+    pending: &PendingOAuth,
+) -> Result<CanvaSession, String> {
+    let basic_auth = STANDARD.encode(format!("{}:{}", pending.client_id, pending.client_secret));
+    let token_resp = ureq::post("https://api.canva.com/rest/v1/oauth/token")
+        .set("Authorization", &format!("Basic {}", basic_auth))
+        .set("Content-Type", "application/x-www-form-urlencoded")
+        .send_form(&[
+            ("grant_type", "authorization_code"),
+            ("code", auth_code),
+            ("code_verifier", &pending.code_verifier),
+            ("redirect_uri", &pending.redirect_uri),
+        ])
+        .map_err(|e| format!("Token exchange failed: {}", e))?;
+
+    let token_json: serde_json::Value = serde_json::from_reader(token_resp.into_reader())
+        .map_err(|e| format!("Failed to parse token response: {}", e))?;
+
+    let access_token = token_json
+        .get("access_token")
+        .and_then(|v| v.as_str())
+        .ok_or("No access_token returned by Canva")?
+        .to_string();
+
+    let refresh_token = token_json
+        .get("refresh_token")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    let expires_in = token_json
+        .get("expires_in")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(14400);
+
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
+    let mut display_name = None;
+    if let Ok(profile_resp) = ureq::get("https://api.canva.com/rest/v1/users/me/profile")
+        .set("Authorization", &format!("Bearer {}", access_token))
+        .call()
+    {
+        if let Ok(p_json) = serde_json::from_reader::<_, serde_json::Value>(profile_resp.into_reader()) {
+            if let Some(name) = p_json.get("profile").and_then(|p| p.get("display_name")).and_then(|v| v.as_str()) {
+                display_name = Some(name.to_string());
+            }
+        }
+    }
+
+    let new_session = CanvaSession {
+        client_id: pending.client_id.clone(),
+        client_secret: pending.client_secret.clone(),
+        access_token,
+        refresh_token,
+        expires_at: now + expires_in,
+        display_name,
+        redirect_uri: pending.redirect_uri.clone(),
+    };
+
+    save_canva_session(app, &new_session)?;
+    Ok(new_session)
+}
+
+pub async fn complete_canva_oauth_internal(
+    app: &AppHandle,
+    code: &str,
+) -> Result<CanvaAuthStatus, String> {
+    let pending = {
+        let lock = ACTIVE_OAUTH.lock().unwrap();
+        lock.clone()
+    };
+
+    let pending = match pending {
+        Some(p) => p,
+        None => {
+            let c_secret = resolve_canva_client_secret(None)?;
+            PendingOAuth {
+                client_id: DEFAULT_CLIENT_ID.to_string(),
+                client_secret: c_secret,
+                redirect_uri: resolve_canva_redirect_uri(None),
+                code_verifier: String::new(),
+            }
+        }
+    };
+
+    let app_clone = app.clone();
+    let auth_code = code.trim().to_string();
+    let session = tauri::async_runtime::spawn_blocking(move || {
+        exchange_canva_code_internal(&app_clone, &auth_code, &pending)
+    })
+    .await
+    .map_err(|e| format!("Spawn error: {}", e))??;
+
+    Ok(CanvaAuthStatus {
+        is_connected: true,
+        client_id: session.client_id,
+        redirect_uri: session.redirect_uri,
+        display_name: session.display_name,
+    })
+}
+
+#[tauri::command]
+pub async fn complete_canva_oauth(
+    app: AppHandle,
+    code: String,
+) -> Result<CanvaAuthStatus, String> {
+    complete_canva_oauth_internal(&app, &code).await
+}
+
 #[tauri::command]
 pub async fn disconnect_canva(app: AppHandle) -> Result<(), String> {
     if let Ok(path) = get_canva_session_path(&app) {
@@ -234,6 +357,17 @@ pub async fn start_canva_oauth(
     let (code_verifier, code_challenge) = generate_pkce();
     let state = Uuid::new_v4().to_string().replace('-', "");
 
+    let pending = PendingOAuth {
+        client_id: c_id.clone(),
+        client_secret: c_secret.clone(),
+        redirect_uri: r_uri.clone(),
+        code_verifier: code_verifier.clone(),
+    };
+    {
+        let mut lock = ACTIVE_OAUTH.lock().unwrap();
+        *lock = Some(pending.clone());
+    }
+
     // 1. Parse port from redirect_uri (default: 3001)
     let port = if let Some(idx) = r_uri.find("127.0.0.1:") {
         let after = &r_uri[idx + 10..];
@@ -244,8 +378,19 @@ pub async fn start_canva_oauth(
     };
 
     let bind_addr = format!("127.0.0.1:{}", port);
-    let listener = TcpListener::bind(&bind_addr)
-        .map_err(|e| format!("Failed to bind local OAuth listener on {}: {}", bind_addr, e))?;
+    let listener = match TcpListener::bind(&bind_addr) {
+        Ok(l) => l,
+        Err(e) => {
+            log::warn!("Port {} in use ({}), attempting to unblock previous listener...", port, e);
+            let _ = ureq::get(&format!("http://127.0.0.1:{}/__cancel_previous__", port))
+                .timeout(Duration::from_millis(250))
+                .call();
+            std::thread::sleep(Duration::from_millis(150));
+            TcpListener::bind(&bind_addr).map_err(|e2| {
+                format!("Failed to bind local OAuth listener on {}: {}. Previous attempt: {}", bind_addr, e2, e)
+            })?
+        }
+    };
     let _ = listener.set_nonblocking(false);
 
     // 2. Build Canva OAuth URL (code_challenge_method=s256 matching Canva official spec)
@@ -274,7 +419,6 @@ pub async fn start_canva_oauth(
 
     // 4. Await authorization callback on local listener in background thread
     let session = tauri::async_runtime::spawn_blocking(move || {
-        // Wait up to 120 seconds for user login
         let mut auth_code = String::new();
         for stream in listener.incoming() {
             if let Ok(mut stream) = stream {
@@ -282,6 +426,12 @@ pub async fn start_canva_oauth(
                 let mut buffer = [0u8; 4096];
                 if let Ok(n) = stream.read(&mut buffer) {
                     let req = String::from_utf8_lossy(&buffer[..n]);
+                    if req.contains("__cancel_previous__") {
+                        let resp = "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Private-Network: true\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+                        let _ = stream.write_all(resp.as_bytes());
+                        let _ = stream.flush();
+                        return Err("Previous OAuth superseded".to_string());
+                    }
                     if let Some(first_line) = req.lines().next() {
                         if first_line.contains("code=") {
                             // Extract code
@@ -291,30 +441,35 @@ pub async fn start_canva_oauth(
                                 auth_code = code.to_string();
                             }
 
-                            // Send friendly response
+                            // Send friendly response with PNA & CORS headers
                             let html = r#"<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Canva Terhubung</title>
+  <title>Canva Terhubung — OpenSmartAlbum</title>
   <style>
-    body { background: #18181b; color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-    .card { background: #27272a; border: 1px solid rgba(255,255,255,0.1); padding: 40px; border-radius: 16px; text-align: center; max-width: 420px; box-shadow: 0 12px 32px rgba(0,0,0,0.5); }
+    body { background: #121214; color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .card { background: #1c1c1f; border: 1px solid rgba(255,255,255,0.1); padding: 40px; border-radius: 16px; text-align: center; max-width: 440px; box-shadow: 0 16px 36px rgba(0,0,0,0.6); }
     h2 { color: #a855f7; margin: 0 0 12px; font-size: 22px; }
-    p { color: #a1a1aa; font-size: 14px; line-height: 1.5; margin: 0 0 20px; }
-    .badge { display: inline-block; padding: 6px 14px; background: rgba(168,85,247,0.15); border: 1px solid rgba(168,85,247,0.3); border-radius: 20px; color: #d8b4fe; font-size: 12px; font-weight: 600; }
+    p { color: #a1a1aa; font-size: 14px; line-height: 1.6; margin: 0 0 24px; }
+    .badge { display: inline-block; padding: 6px 14px; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); border-radius: 20px; color: #34d399; font-size: 12px; font-weight: 600; margin-bottom: 12px; }
+    .btn { display: inline-block; padding: 10px 22px; background: #27272a; color: #fff; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="badge">OpenSmartAlbum Canva Integration</div>
-    <h2>✓ Canva Berhasil Terhubung!</h2>
-    <p>Akun Canva Anda telah terhubung secara resmi ke OpenSmartAlbum. Anda dapat menutup tab ini dan kembali berkreasi di aplikasi.</p>
+    <div class="badge">✓ Otorisasi Berhasil</div>
+    <h2>Canva Telah Terhubung!</h2>
+    <p>Akun Canva Anda berhasil dihubungkan ke OpenSmartAlbum. Anda dapat menutup tab ini dan kembali berkreasi di aplikasi.</p>
+    <button class="btn" onclick="window.close()">Tutup Tab Ini</button>
   </div>
+  <script>
+    setTimeout(function() { window.close(); }, 2000);
+  </script>
 </body>
 </html>"#;
                             let resp = format!(
-                                "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                                "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Private-Network: true\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
                                 html.len(),
                                 html
                             );
@@ -331,69 +486,7 @@ pub async fn start_canva_oauth(
             return Err("OAuth timeout or no authorization code received from Canva".to_string());
         }
 
-        // 5. Exchange code for token
-        let basic_auth = STANDARD.encode(format!("{}:{}", c_id, c_secret));
-        let token_resp = ureq::post("https://api.canva.com/rest/v1/oauth/token")
-            .set("Authorization", &format!("Basic {}", basic_auth))
-            .set("Content-Type", "application/x-www-form-urlencoded")
-            .send_form(&[
-                ("grant_type", "authorization_code"),
-                ("code", &auth_code),
-                ("code_verifier", &code_verifier),
-                ("redirect_uri", &r_uri),
-            ])
-            .map_err(|e| format!("Token exchange failed: {}", e))?;
-
-        let token_json: serde_json::Value = serde_json::from_reader(token_resp.into_reader())
-            .map_err(|e| format!("Failed to parse token response: {}", e))?;
-
-        let access_token = token_json
-            .get("access_token")
-            .and_then(|v| v.as_str())
-            .ok_or("No access_token returned by Canva")?
-            .to_string();
-
-        let refresh_token = token_json
-            .get("refresh_token")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string());
-
-        let expires_in = token_json
-            .get("expires_in")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(14400);
-
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-
-        // 6. Fetch user profile
-        let mut display_name = None;
-        if let Ok(profile_resp) = ureq::get("https://api.canva.com/rest/v1/users/me/profile")
-            .set("Authorization", &format!("Bearer {}", access_token))
-            .call()
-        {
-            if let Ok(p_json) = serde_json::from_reader::<_, serde_json::Value>(profile_resp.into_reader()) {
-                if let Some(name) = p_json.get("profile").and_then(|p| p.get("display_name")).and_then(|v| v.as_str()) {
-                    display_name = Some(name.to_string());
-                }
-            }
-        }
-
-        let new_session = CanvaSession {
-            client_id: c_id.clone(),
-            client_secret: c_secret,
-            access_token,
-            refresh_token,
-            expires_at: now + expires_in,
-            display_name,
-            redirect_uri: r_uri.clone(),
-        };
-
-        let _ = save_canva_session(&app_clone, &new_session);
-
-        Ok::<CanvaSession, String>(new_session)
+        exchange_canva_code_internal(&app_clone, &auth_code, &pending)
     })
     .await
     .map_err(|e| format!("Spawn error: {}", e))??;

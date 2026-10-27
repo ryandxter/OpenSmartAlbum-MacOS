@@ -37,6 +37,25 @@ pub fn run() {
                 let _ = window.set_focus();
             }
 
+            for arg in &args {
+                if arg.starts_with("opensmartalbum://oauth/canva") {
+                    log::info!("Received Canva OAuth deep link: {}", arg);
+                    let app_handle = app.clone();
+                    let uri = arg.clone();
+                    tauri::async_runtime::spawn(async move {
+                        if let Some(code_idx) = uri.find("code=") {
+                            let after = &uri[code_idx + 5..];
+                            let code = after.split('&').next().unwrap_or("").trim();
+                            if !code.is_empty() {
+                                if let Ok(status) = commands::canva_commands::complete_canva_oauth_internal(&app_handle, code).await {
+                                    let _ = app_handle.emit("canva-oauth-success", status);
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+
             // Check if any arg passed in single instance is a project file
             for arg in args.into_iter().skip(1) {
                 let path = std::path::Path::new(&arg);
@@ -212,6 +231,7 @@ pub fn run() {
             commands::frame_asset_commands::search_open_library_assets,
             commands::canva_commands::get_canva_auth_status,
             commands::canva_commands::start_canva_oauth,
+            commands::canva_commands::complete_canva_oauth,
             commands::canva_commands::disconnect_canva,
             commands::canva_commands::list_canva_assets,
             commands::canva_commands::download_canva_asset,

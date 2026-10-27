@@ -47,6 +47,15 @@ export const canvaService = {
     });
   },
 
+  async completeOAuth(code: string): Promise<CanvaAuthStatus> {
+    if (!isTauri()) {
+      throw new Error('Canva integration requires Tauri desktop environment');
+    }
+    return await invoke<CanvaAuthStatus>('complete_canva_oauth', {
+      code,
+    });
+  },
+
   async disconnect(): Promise<void> {
     if (!isTauri()) return;
     await invoke('disconnect_canva');

@@ -64,6 +64,7 @@
       "frameworks": [],
       "minimumSystemVersion": "13.0",
       "entitlements": "./Entitlements.plist",
+      "infoPlist": "./Info.plist",
       "dmg": {
         "background": null,
         "windowPosition": {

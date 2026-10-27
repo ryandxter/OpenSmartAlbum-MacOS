@@ -130,14 +130,14 @@ function renderSuccessHtml(code: string, state: string): string {
       border: 1px solid var(--border);
       border-radius: 20px;
       padding: 40px 32px;
-      max-width: 460px;
+      max-width: 480px;
       width: 100%;
       text-align: center;
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
     }
     .logo-badge {
-      width: 60px;
-      height: 60px;
+      width: 64px;
+      height: 64px;
       border-radius: 50%;
       background: linear-gradient(135deg, var(--purple), var(--cyan));
       display: inline-flex;
@@ -180,6 +180,7 @@ function renderSuccessHtml(code: string, state: string): string {
       display: flex;
       flex-direction: column;
       gap: 10px;
+      margin-bottom: 20px;
     }
     .btn-primary {
       display: block;
@@ -203,7 +204,7 @@ function renderSuccessHtml(code: string, state: string): string {
     .btn-secondary {
       display: block;
       width: 100%;
-      padding: 10px 20px;
+      padding: 11px 20px;
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid var(--border);
       color: var(--text-muted);
@@ -212,18 +213,65 @@ function renderSuccessHtml(code: string, state: string): string {
       font-weight: 500;
       border-radius: 10px;
       cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+    .close-hint {
+      display: none;
+      font-size: 12px;
+      color: #34d399;
+      margin-top: -6px;
+      margin-bottom: 14px;
+    }
+    .code-box-container {
+      margin-top: 14px;
+      text-align: left;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .code-box-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .code-box-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .btn-copy {
+      padding: 4px 10px;
+      background: rgba(168, 85, 247, 0.2);
+      border: 1px solid rgba(168, 85, 247, 0.4);
+      border-radius: 6px;
+      color: #d8b4fe;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-copy:hover {
+      background: rgba(168, 85, 247, 0.35);
+      color: #fff;
     }
     .code-box {
-      margin-top: 20px;
-      padding: 12px;
-      background: rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-      border-radius: 8px;
       font-family: ui-monospace, Menlo, Consolas, monospace;
       font-size: 11px;
-      color: #71717a;
+      color: #cbd5e1;
       word-break: break-all;
       user-select: all;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
     }
   </style>
 </head>
@@ -237,24 +285,82 @@ function renderSuccessHtml(code: string, state: string): string {
     <p>Akun Canva Anda telah terhubung secara resmi ke <strong>OpenSmartAlbum</strong>. Anda dapat kembali berkreasi merancang album foto.</p>
 
     <div class="btn-group">
-      <a href="${deepLink}" class="btn-primary" id="openAppBtn">Buka OpenSmartAlbum</a>
-      <button class="btn-secondary" onclick="window.close()">Tutup Jendela Ini</button>
+      <button class="btn-primary" id="openAppBtn" onclick="openDesktopApp()">Buka OpenSmartAlbum</button>
+      <button class="btn-secondary" id="closeBtn" onclick="closeWindow()">Tutup Jendela Ini</button>
     </div>
+    <div class="close-hint" id="closeHint">✓ Tab aman ditutup (tekan ⌘+W) — Anda sudah dapat beralih ke jendela OpenSmartAlbum.</div>
 
-    <div class="code-box" id="codeBox" title="Klik untuk salin kode auth">
-      Auth Code: ${safeCode.substring(0, 16)}...
+    <div class="code-box-container">
+      <div class="code-box-header">
+        <span class="code-box-label">Kode Otorisasi (Fail-Safe)</span>
+        <button class="btn-copy" id="copyBtn" onclick="copyCode()">Salin Kode</button>
+      </div>
+      <div class="code-box" id="codeText">${safeCode}</div>
     </div>
   </div>
 
-  <script>
-    // 1. Dual Relay Beacon: Coba panggil local loopback server Tauri secara silent
-    try {
-      fetch("${localLoopback}", { mode: 'no-cors' }).catch(function() {});
-    } catch (e) {}
+  <iframe id="loopbackFrame" style="display:none;" src="${localLoopback}"></iframe>
 
-    // 2. Coba buka aplikasi desktop otomatis via deep-link
+  <script>
+    var rawCode = "${safeCode}";
+    var deepLink = "${deepLink}";
+    var loopback = "${localLoopback}";
+
+    function openDesktopApp() {
+      // Coba deep-link native
+      window.location.href = deepLink;
+      // Coba trigger loopback via hidden frame
+      setTimeout(function() {
+        var frame = document.getElementById('loopbackFrame');
+        if (frame) frame.src = loopback;
+      }, 300);
+    }
+
+    function closeWindow() {
+      window.close();
+      setTimeout(function() {
+        var hint = document.getElementById('closeHint');
+        if (hint) hint.style.display = 'block';
+        var btn = document.getElementById('closeBtn');
+        if (btn) btn.innerText = 'Tab dapat ditutup manual (⌘+W)';
+      }, 300);
+    }
+
+    function copyCode() {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(rawCode).then(function() {
+          var b = document.getElementById('copyBtn');
+          if (b) {
+            b.innerText = '✓ Tersalin!';
+            setTimeout(function() { b.innerText = 'Salin Kode'; }, 2500);
+          }
+        });
+      } else {
+        var range = document.createRange();
+        range.selectNodeContents(document.getElementById('codeText'));
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        document.execCommand('copy');
+        var b = document.getElementById('copyBtn');
+        if (b) {
+          b.innerText = '✓ Tersalin!';
+          setTimeout(function() { b.innerText = 'Salin Kode'; }, 2500);
+        }
+      }
+    }
+
+    // 1. Silent Loopback Beacon via Image / Fetch
+    try {
+      var img = new Image();
+      img.src = loopback;
+    } catch(e) {}
+
+    // 2. Auto trigger deep link ke OpenSmartAlbum
     setTimeout(function() {
-      window.location.href = "${deepLink}";
+      try {
+        window.location.href = deepLink;
+      } catch (e) {}
     }, 400);
   </script>
 </body>

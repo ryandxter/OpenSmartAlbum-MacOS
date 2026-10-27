@@ -1,6 +1,8 @@
 import { create } from 'zustand';
+import { listen } from '@tauri-apps/api/event';
 import { frameAssetService, FrameAssetMeta, FrameSlotPayload } from '../services/frameAssetService';
 import { canvaService, CanvaAuthStatus } from '../services/canvaService';
+import { isTauri } from '../utils/platform';
 
 export type AssetShapeFilter = 'all' | 'rectangle' | 'square' | 'oval' | 'arch' | 'circle';
 
@@ -24,6 +26,7 @@ interface AssetState {
   searchOpenLibrary: (query: string) => Promise<void>;
   loadCanvaStatus: () => Promise<void>;
   connectCanva: () => Promise<void>;
+  completeCanvaOAuth: (code: string) => Promise<void>;
   disconnectCanva: () => Promise<void>;
   loadCanvaAssets: () => Promise<void>;
   importAsset: (
@@ -38,7 +41,19 @@ interface AssetState {
   setSearchQuery: (query: string) => void;
 }
 
-export const useAssetStore = create<AssetState>((set, get) => ({
+export const useAssetStore = create<AssetState>((set, get) => {
+  if (isTauri()) {
+    void listen<CanvaAuthStatus>('canva-oauth-success', (event) => {
+      if (event.payload) {
+        set({ canvaStatus: event.payload, isCanvaConnecting: false });
+        void get().loadCanvaAssets();
+      } else {
+        void get().loadCanvaStatus();
+      }
+    });
+  }
+
+  return {
   assets: [],
   openLibraryResults: [],
   canvaItems: [],
@@ -90,6 +105,21 @@ export const useAssetStore = create<AssetState>((set, get) => ({
     }
   },
 
+  completeCanvaOAuth: async (code: string) => {
+    set({ isCanvaConnecting: true });
+    try {
+      const status = await canvaService.completeOAuth(code);
+      set({ canvaStatus: status, isCanvaConnecting: false });
+      if (status.is_connected) {
+        void get().loadCanvaAssets();
+      }
+    } catch (err) {
+      console.error('[assetStore] Failed completing Canva OAuth:', err);
+      set({ isCanvaConnecting: false });
+      throw err;
+    }
+  },
+
   disconnectCanva: async () => {
     try {
       await canvaService.disconnect();
@@ -97,7 +127,7 @@ export const useAssetStore = create<AssetState>((set, get) => ({
         canvaStatus: {
           is_connected: false,
           client_id: 'OC-AaF8fmOD6b3W',
-          redirect_uri: 'http://127.0.0.1:3001/oauth/redirect',
+          redirect_uri: 'https://auth-osa.rvmeur.com/canva/callback',
           display_name: null,
         },
         canvaItems: [],
@@ -186,4 +216,5 @@ export const useAssetStore = create<AssetState>((set, get) => ({
   setActiveTab: (tab) => set({ activeTab: tab }),
   setSelectedShape: (shape) => set({ selectedShape: shape }),
   setSearchQuery: (query) => set({ searchQuery: query }),
-}));
+  };
+});
