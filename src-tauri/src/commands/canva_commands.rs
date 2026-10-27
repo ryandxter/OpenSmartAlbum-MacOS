@@ -13,7 +13,57 @@ use tauri::AppHandle;
 use uuid::Uuid;
 
 const DEFAULT_CLIENT_ID: &str = "OC-AaF8fmOD6b3W";
-const DEFAULT_REDIRECT_URI: &str = "http://127.0.0.1:3001/oauth/redirect";
+const DEFAULT_REDIRECT_URI: &str = "https://auth-osa.rvmeur.com/canva/callback";
+
+fn url_encode(input: &str) -> String {
+    let mut encoded = String::with_capacity(input.len() * 3);
+    for b in input.bytes() {
+        match b {
+            b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                encoded.push(b as char);
+            }
+            _ => {
+                encoded.push_str(&format!("%{:02X}", b));
+            }
+        }
+    }
+    encoded
+}
+
+fn resolve_canva_redirect_uri(passed_uri: Option<String>) -> String {
+    if let Some(u) = passed_uri {
+        let trimmed = u.trim().to_string();
+        if !trimmed.is_empty() {
+            return trimmed;
+        }
+    }
+    if let Ok(env_uri) = std::env::var("CANVA_REDIRECT_URI") {
+        let trimmed = env_uri.trim().to_string();
+        if !trimmed.is_empty() {
+            return trimmed;
+        }
+    }
+    let candidate_paths = [
+        PathBuf::from(".env"),
+        PathBuf::from("canva.env"),
+        PathBuf::from(".env.canva"),
+        PathBuf::from("../.env"),
+        PathBuf::from("../canva.env"),
+    ];
+    for p in &candidate_paths {
+        if let Ok(content) = fs::read_to_string(p) {
+            for line in content.lines() {
+                if let Some(val) = line.strip_prefix("CANVA_REDIRECT_URI=") {
+                    let clean = val.trim().trim_matches('"').trim_matches('\'').to_string();
+                    if !clean.is_empty() {
+                        return clean;
+                    }
+                }
+            }
+        }
+    }
+    DEFAULT_REDIRECT_URI.to_string()
+}
 
 fn resolve_canva_client_secret(passed_secret: Option<String>) -> Result<String, String> {
     if let Some(s) = passed_secret {
@@ -164,9 +214,7 @@ pub async fn start_canva_oauth(
         .filter(|s| !s.trim().is_empty())
         .unwrap_or_else(|| DEFAULT_CLIENT_ID.to_string());
     let c_secret = resolve_canva_client_secret(client_secret)?;
-    let r_uri = redirect_uri
-        .filter(|s| !s.trim().is_empty())
-        .unwrap_or_else(|| DEFAULT_REDIRECT_URI.to_string());
+    let r_uri = resolve_canva_redirect_uri(redirect_uri);
 
     let (code_verifier, code_challenge) = generate_pkce();
     let state = Uuid::new_v4().to_string().replace('-', "");
@@ -185,12 +233,13 @@ pub async fn start_canva_oauth(
         .map_err(|e| format!("Failed to bind local OAuth listener on {}: {}", bind_addr, e))?;
     let _ = listener.set_nonblocking(false);
 
-    // 2. Build Canva OAuth URL
+    // 2. Build Canva OAuth URL (code_challenge_method=s256 matching Canva official spec)
     let scopes = "asset:read asset:write design:content:read design:meta:read folder:read folder:write profile:read";
     let encoded_scopes = scopes.replace(' ', "%20");
+    let encoded_redirect_uri = url_encode(&r_uri);
     let auth_url = format!(
-        "https://www.canva.com/api/oauth/authorize?client_id={}&response_type=code&code_challenge={}&code_challenge_method=S256&redirect_uri={}&scope={}&state={}",
-        c_id, code_challenge, r_uri, encoded_scopes, state
+        "https://www.canva.com/api/oauth/authorize?client_id={}&response_type=code&code_challenge={}&code_challenge_method=s256&redirect_uri={}&scope={}&state={}",
+        c_id, code_challenge, encoded_redirect_uri, encoded_scopes, state
     );
 
     // 3. Open system browser
@@ -238,7 +287,7 @@ pub async fn start_canva_oauth(
 </body>
 </html>"#;
                             let resp = format!(
-                                "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                                "HTTP/1.1 200 OK\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
                                 html.len(),
                                 html
                             );

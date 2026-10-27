@@ -15,7 +15,7 @@ export const canvaService = {
       return {
         is_connected: false,
         client_id: 'OC-AaF8fmOD6b3W',
-        redirect_uri: 'http://127.0.0.1:3001/oauth/redirect',
+        redirect_uri: 'https://auth-osa.rvmeur.com/canva/callback',
         display_name: null,
       };
     }
@@ -26,7 +26,7 @@ export const canvaService = {
       return {
         is_connected: false,
         client_id: 'OC-AaF8fmOD6b3W',
-        redirect_uri: 'http://127.0.0.1:3001/oauth/redirect',
+        redirect_uri: 'https://auth-osa.rvmeur.com/canva/callback',
         display_name: null,
       };
     }
