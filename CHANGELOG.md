@@ -9,6 +9,27 @@ Format adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 ---
 
+### [v1.5.1] — 2026-10-27
+#### 🛠️ Rilis Perbaikan: Resolusi React Error #310, Tab Canva di Preferences & Penyelarasan UI Storage
+
+Pembaruan rilis perbaikan (*hotfix release*) ini menuntaskan isu kritis pembuatan dokumen baru, menambahkan tab integrasi Canva terpusat di Preferences, serta menyelaraskan seluruh variabel pengaturan dengan arsitektur engine v1.5.
+
+#### Perbaikan & Penyempurnaan (Bug Fixes & Enhancements)
+* **Resolusi React Error #310 (Hook Order Invariant Violation)**:
+  * Memperbaiki pelanggaran aturan Hooks di `FilmstripTray.tsx` dan `KonvaEditorCanvas.tsx` akibat pengembalian kondisional awal (*early return*) sebelum pemanggilan hooks saat proyek baru dibuka atau beralih.
+* **Tab Baru Canva & Cloud Integrations di Preferences**:
+  * Menghadirkan tab terpadu **Canva & Cloud** di dialog Preferences:
+    * Kartu status koneksi akun (Connected / Disconnected).
+    * Tombol *Connect Account* via browser OAuth PKCE satu klik dan tombol *Disconnect*.
+    * Tombol *Sync Assets* langsung dari dialog pengaturan.
+    * Panel verifikasi keamanan dan rincian Production Gateway `auth-osa.rvmeur.com`.
+* **Penyelarasan Discrepancy Storage & Cache**:
+  * Menghapus duplikasi kartu cache lama di tab *General* dan menyatukannya sebagai ringkasan cerdas yang mengarah ke tab *Storage & Cache*.
+  * Menyelaraskan teks native macOS Finder (*"A project file opened directly from Finder takes priority"*).
+  * Memperbarui versi rilis internal dan fallback browser secara presisi ke `v1.5.1`.
+
+---
+
 ### [v1.5.0] — 2026-10-27
 #### 🌟 Rilis Utama: Ekosistem Aset Terbuka, Integrasi Resmi Canva Apps SDK & Zero-Hassle Drag & Drop
 
@@ -39,6 +60,27 @@ Pembaruan besar ini menghadirkan perombakan total pada panel aset elemen dan bin
 
 <a name="-english"></a>
 ## 🇬🇧 English
+
+---
+
+### [v1.5.1] — 2026-10-27
+#### 🛠️ Hotfix Release: React Hook Order Invariant Resolution, Canva Preferences Tab & Storage UI Reconciliation
+
+This hotfix release resolves a critical hook order violation when creating new documents, introduces a centralized Canva & Cloud integration tab in Preferences, and eliminates UI storage discrepancies.
+
+#### Fixed & Improved
+* **React Error #310 Resolution (Hook Order Invariant Violation)**:
+  * Resolved conditional early returns placed prior to hook invocations in `FilmstripTray.tsx` and `KonvaEditorCanvas.tsx` when opening or resetting projects.
+* **New Canva & Cloud Integrations Tab in Preferences**:
+  * Added unified **Canva & Cloud** tab in the desktop Preferences dialog:
+    * Real-time account connection status indicator.
+    * One-click browser authorization via OAuth 2.0 PKCE and account disconnection controls.
+    * Direct asset catalog synchronization from settings.
+    * Production Auth Gateway verification panel (`auth-osa.rvmeur.com`).
+* **Preferences & Storage UI Reconciliation**:
+  * Removed redundant preview cache card in the *General* tab in favor of a unified overview pointing to the *Storage & Cache* tab.
+  * Corrected platform-specific text to native macOS terminology (*"A project file opened directly from Finder takes priority"*).
+  * Synchronized internal runtime and fallback versions to `v1.5.1`.
 
 ---
 

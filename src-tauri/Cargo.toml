@@ -1,6 +1,6 @@
 [package]
 name = "opensmartalbum"
-version = "1.5.0"
+version = "1.5.1"
 description = "OpenSmartAlbum - Free & Open Source Desktop Photo Album Layout Studio"
 authors = ["OpenSmartAlbum Contributors"]
 license = "MIT OR Apache-2.0"
