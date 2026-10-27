@@ -8,6 +8,8 @@ import { useAlbumStore } from './stores/albumStore';
 import { useCarouselStore } from './stores/carouselStore';
 import { usePhotoStore } from './stores/photoStore';
 import { useEditorStore } from './stores/editorStore';
+import { useAssetStore } from './stores/assetStore';
+import { useAppStore } from './stores/appStore';
 
 if (typeof window !== 'undefined') {
   (window as any).__STORES__ = {
@@ -16,6 +18,8 @@ if (typeof window !== 'undefined') {
     useCarouselStore,
     usePhotoStore,
     useEditorStore,
+    useAssetStore,
+    useAppStore,
   };
 }
 

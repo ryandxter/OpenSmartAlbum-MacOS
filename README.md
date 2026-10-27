@@ -175,6 +175,8 @@ Seamlessly switch between fine-art print albums and modern digital social storyt
 - **Independent Viewport Zooms:** Preserves `printZoom` and `carouselZoom` independently with zero scaling jumps or pan drift.
 - **Full SQLite v16 & `.afsn` Package Persistence:** All carousel slides, photo frames, aspect ratios, and custom backgrounds are fully serialized to SQLite and `.afsn` archives.
 - **Real-Time Dirty Tracking & Close Guard:** Dynamic title bar save status (green "Saved" vs amber "Unsaved Changes") with a native macOS close safeguard sheet.
+</details>
+
 <details>
 <summary><h3>🧠 9. On-Device AI Face Detection & Studio Framing Engine (New in v1.4.0)</h3></summary>
 
@@ -239,17 +241,43 @@ Museum-grade print fidelity for ultra-thin photo borders:
 - **Continuous Sub-Pixel Anti-Aliasing:** Rust export engine computes exact sub-pixel geometric alpha coverage (`compute_rect_border_alpha`) for smooth 300 DPI exports.
 </details>
 
-<details open>
-<summary><h3>🌟 15. Open Asset Ecosystem & Canva Apps SDK Integration (New in v1.5.0)</h3></summary>
+<details>
+<summary><h3>🌐 15. Open Asset Ecosystem & 200,000+ CC0 Vector Library (New in v1.5.0)</h3></summary>
 
-Canva-grade zero-hassle graphic design combined with open public-domain freedom:
-- **Open Library CC0 (200,000+ Vectors):** Live search across Lucide, Tabler, Fluent, Twemoji, and OpenMoji vectors with instant Rust SVG-to-PNG 2048px subpixel rasterization (`resvg`).
-- **Official Canva Connect API / Apps SDK:** Dedicated Canva tab with OAuth 2.0 PKCE authentication. Synchronize your Canva design projects and asset library directly into OpenSmartAlbum.
-- **Canva-Grade 3-Method Drag & Drop:**
-  1. *Empty Canvas Drop:* Automatically creates a `GraphicElement` at cursor coordinates with Konva Transformer immediately activated.
-  2. *Photo Frame Drop:* Dragging decorative frames onto photo frames locks them as `FrameOverlay` with automatic aperture clipping.
-  3. *Finder / Desktop Drop:* Direct drop of `.svg`, `.png`, `.webp`, `.jpg` from macOS Finder auto-imports and places assets seamlessly.
-- **Bundled Offline Starter Pack:** 26 high-resolution real assets (11 vintage frames + 15 decorative stickers) pre-packaged for 100% offline workflow.
+High-resolution decorative elements and vector illustrations without licensing fees or subscription walls:
+- **200,000+ Free Vectors via OpenSearch API:** Seamlessly queries open-source icon and illustration registries (Lucide, Tabler, Fluent, Twemoji, OpenMoji, HugeIcons).
+- **1-Click Suggestion Chips:** Instant keyword filtering for wedding and portrait projects (*Wedding*, *Floral*, *Hearts*, *Banners*, *Stars*, *Camera*, *Border*, *Ribbon*, *Vintage*, *Rings*).
+- **Native Rust Subpixel SVG Rasterizer:** Renders crisp, anti-aliased 2048px transparent PNGs via Rust's `resvg` engine on the fly.
+- **Offline-First Persistence:** Downloaded vectors and cached SVG assets are saved locally in `$APPDATA/frame_assets/` for offline access.
+- **26 Bundled Starter Assets:** Pre-loaded with 11 vintage ornamental frames (with transparent aperture cutouts) and 15 decorative stickers.
+</details>
+
+<details>
+<summary><h3>☁️ 16. Official Canva Connect API & Apps SDK Integration (New in v1.5.0)</h3></summary>
+
+Bridge professional desktop print design with your personal Canva cloud library:
+- **Official OAuth 2.0 with PKCE:** Secure authentication utilizing SHA-256 code challenge/verifier pairs without storing credentials in plain text.
+- **Zero-Risk Compliance:** Strictly utilizes official Canva Apps SDK / Canva Connect API endpoints, eliminating account ban risks associated with web scraping or cookie hijacking.
+- **Dual Relay & Auth Gateway:** Features an ephemeral localhost listener (`127.0.0.1:3001`) with automatic cloud fallback to our production Auth Gateway (`auth-osa.rvmeur.com`).
+- **Live Asset Browsing:** Access personal Canva folders, brand kits, and recent exports directly inside the OpenSmartAlbum studio inspector.
+</details>
+
+<details open>
+<summary><h3>🎯 17. Canva-Grade Zero-Hassle Drag & Drop (3 Distinct Modes) (New in v1.5.0)</h3></summary>
+
+Fluid, frictionless asset manipulation matching the Canva design experience:
+- **Method 1 — Empty Canvas Auto-Placement:** Drag any graphic sticker onto an empty area of the spread to immediately instantiate a `GraphicElement` at cursor coordinates with Konva Transformer handles active for instant scaling and rotation.
+- **Method 2 — Photo Frame Binding & Aperture Clipping:** Drag a decorative frame directly over an existing photo frame to bind it as a `FrameOverlay` with automatic aperture mask clipping.
+- **Method 3 — Direct macOS Finder Ingestion:** Drag `.svg`, `.png`, `.webp`, or `.jpg` files straight from macOS Finder or Desktop onto the canvas to auto-import, cache, and place them on the page.
+</details>
+
+<details>
+<summary><h3>🍏 18. Clean-Room REA Freedom & macOS Studio Dark Theme (v1.4.14 Parity)</h3></summary>
+
+Pure open-source independence tailored natively for macOS:
+- **100% Clean-Room Architecture:** Engineered completely free of proprietary DRM, closed telemetry, or annoying donation nagware screens.
+- **Zero-Chromatic Bias Dark Palette:** Studio interface crafted in neutral charcoal (`#18181b`) and graphite tokens for color-accurate photo proofing and editing.
+- **Native macOS HIG Compliance:** Integrated window close safety sheets, native macOS menu shortcuts, and dual architecture binaries optimized for Apple Silicon (M1/M2/M3/M4) and Intel.
 </details>
 
 ---
@@ -592,17 +620,43 @@ Fidelitas cetak standar museum untuk garis tepi ultra-tipis:
 - **Anti-Aliasing Sub-Piksel Kontinu:** Engine ekspor Rust menghitung nilai alpha geometri sub-piksel (`compute_rect_border_alpha`) untuk hasil cetak 300 DPI tanpa jagged edge.
 </details>
 
-<details open>
-<summary><h3>🌟 15. Ekosistem Aset Terbuka & Integrasi Canva Apps SDK (Baru di v1.5.0)</h3></summary>
+<details>
+<summary><h3>🌐 15. Ekosistem Aset Terbuka & Repositori 200.000+ Vektor CC0 (Baru di v1.5.0)</h3></summary>
 
-Desain grafis bebas hambatan (*zero-hassle*) setara Canva yang dipadukan dengan kebebasan repositori publik:
-- **Open Library CC0 (200.000+ Vektor):** Live search repositori ikon Lucide, Tabler, Fluent, Twemoji, dan OpenMoji dengan auto-rasterisasi subpixel SVG ke PNG 2048px di backend Rust (`resvg`).
-- **Integrasi Resmi Canva Connect API / Apps SDK:** Tab Canva bawaan dengan otorisasi OAuth 2.0 PKCE resmi. Sinkronkan folder aset dan desain Canva Anda langsung ke dalam OpenSmartAlbum.
-- **Canva-Grade 3-Method Drag & Drop:**
-  1. *Empty Canvas Drop:* Otomatis membuat `GraphicElement` pada titik kursor kanvas kosong dengan Konva Transformer langsung aktif.
-  2. *Photo Frame Drop:* Mengedrop bingkai dekoratif ke atas foto menguncinya sebagai `FrameOverlay` dengan lubang aperture transparan otomatis.
-  3. *Finder / Desktop Drop:* Drop langsung file `.svg`, `.png`, `.webp`, `.jpg` dari Finder macOS ke kanvas untuk auto-import dan auto-place instan.
-- **Starter Asset Pack Offline:** 26 aset nyata beresolusi tinggi (11 bingkai vintage + 15 stiker grafis) ter-bundle langsung secara offline tanpa broken placeholder.
+Elemen dekoratif beresolusi tinggi dan ilustrasi vektor tanpa batasan biaya lisensi atau langganan:
+- **200.000+ Vektor Gratis via OpenSearch API:** Pencarian instan ke repositori ikon dan ilustrasi open-source (Lucide, Tabler, Fluent, Twemoji, OpenMoji, HugeIcons).
+- **10 Chip Kata Kunci Cepat:** Tombol filter sekali klik untuk desain pernikahan dan potret (*Wedding*, *Floral*, *Hearts*, *Banners*, *Stars*, *Camera*, *Border*, *Ribbon*, *Vintage*, *Rings*).
+- **Rasterizer Sub-Piksel SVG Rust Native:** Merender PNG transparan 2048px tajam dan anti-aliased secara instan menggunakan engine Rust `resvg`.
+- **Offline-First Persistence:** Vektor yang diunduh disimpan permanen di `$APPDATA/frame_assets/` sehingga tetap dapat diakses tanpa koneksi internet.
+- **26 Starter Asset Ter-Bundle:** Dilengkapi 11 bingkai vintage berlubang transparan (*aperture cutouts*) dan 15 stiker grafis nyata.
+</details>
+
+<details>
+<summary><h3>☁️ 16. Integrasi Resmi Canva Connect API & Canva Apps SDK (Baru di v1.5.0)</h3></summary>
+
+Menghubungkan alur kerja studio album desktop dengan koleksi cloud Canva Anda:
+- **Resmi OAuth 2.0 PKCE:** Autentikasi aman berstandar industri dengan pasangan kode challenge/verifier SHA-256 tanpa menyimpan kredensial plaintext.
+- **Bebas Risiko Blokir Akun:** Menggunakan endpoint resmi Canva Connect API v1, bebas dari risiko pemblokiran akun akibat scraping ilegal atau pembajakan cookies.
+- **Dual Relay & Auth Gateway:** Dilengkapi penangkap callback lokal ephemeral (`127.0.0.1:3001`) dan failover otomatis ke Auth Gateway produksi (`auth-osa.rvmeur.com`).
+- **Sinkronisasi Langsung:** Jelajahi folder pribadi Canva, kit merek, dan desain terbaru langsung dari sidebar Inspector OpenSmartAlbum.
+</details>
+
+<details open>
+<summary><h3>🎯 17. Canva-Grade Zero-Hassle Drag & Drop (3 Metode Interaksi) (Baru di v1.5.0)</h3></summary>
+
+Pengalaman manipulasi aset grafis yang mulus dan bebas hambatan setara Canva:
+- **Metode 1 — Penempatan Otomatis di Kanvas Kosong:** Tarik stiker grafis ke area kosong kanvas untuk langsung membuat `GraphicElement` di koordinat kursor dengan kontrol transform Konva langsung aktif untuk rotasi dan pengubahan ukuran.
+- **Metode 2 — Binding Bingkai Foto & Aperture Masking:** Tarik bingkai dekoratif langsung ke atas bingkai foto yang sudah ada untuk menguncinya sebagai `FrameOverlay` dengan lubang transparan otomatis.
+- **Metode 3 — Ingesti Langsung dari Finder macOS:** Tarik file `.svg`, `.png`, `.webp`, atau `.jpg` langsung dari macOS Finder atau Desktop ke kanvas untuk auto-import, cache, dan penempatan otomatis.
+</details>
+
+<details>
+<summary><h3>🍏 18. Evolusi Clean-Room REA & Tema Studio macOS Native (Setara v1.4.14)</h3></summary>
+
+Kemandirian open-source 100% yang dirancang khusus untuk kenyamanan ekosistem macOS:
+- **100% Arsitektur Clean-Room:** Dikembangkan bebas dari DRM proprietary, telemetri tertutup, maupun jendela nagware donasi berulang.
+- **Palet Studio Netral Dark-Mode:** Antarmuka bertema charcoal netral (`#18181b`) tanpa bias kromatik untuk akurasi proofing warna foto cetak.
+- **Kepatuhan Apple HIG Native:** Dilengkapi sheet pengaman saat menutup aplikasi dengan perubahan belum tersimpan, shortcut menu macOS native, serta binary universal yang dioptimalkan untuk Apple Silicon (M1/M2/M3/M4) dan Intel.
 </details>
 
 ---
