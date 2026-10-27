@@ -1,7 +1,7 @@
 {
   "name": "open-smart-album",
   "private": true,
-  "version": "1.4.14",
+  "version": "1.5.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

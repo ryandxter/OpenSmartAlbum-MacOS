@@ -139,8 +139,76 @@ pub fn save_frame_asset_to_cache(
     Ok(meta)
 }
 
+/// Discovers the location of bundled starter assets on disk or in the app bundle.
+pub fn find_bundled_assets_dir(app_handle: &AppHandle) -> Option<PathBuf> {
+    // 1. Check Tauri resource directory
+    if let Ok(res_dir) = app_handle.path().resource_dir() {
+        let p1 = res_dir.join("resources").join("assets").join("bundled");
+        if p1.exists() { return Some(p1); }
+        let p2 = res_dir.join("assets").join("bundled");
+        if p2.exists() { return Some(p2); }
+    }
+    // 2. Check current working directory / development paths
+    let dev_candidates = [
+        PathBuf::from("src-tauri/resources/assets/bundled"),
+        PathBuf::from("resources/assets/bundled"),
+        PathBuf::from("../src-tauri/resources/assets/bundled"),
+    ];
+    for p in &dev_candidates {
+        if p.exists() {
+            return Some(p.clone());
+        }
+    }
+    None
+}
+
+/// Seeds bundled starter frames and graphic elements into the user's application support directory.
+pub fn seed_bundled_assets_if_needed(app_handle: &AppHandle) {
+    let Ok(dest_base) = get_frame_assets_dir(app_handle) else { return; };
+    let Some(src_base) = find_bundled_assets_dir(app_handle) else { return; };
+
+    let Ok(entries) = fs::read_dir(src_base) else { return; };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            let folder_name = entry.file_name();
+            let dest_dir = dest_base.join(&folder_name);
+            let dest_asset = dest_dir.join("asset.png");
+            let dest_thumb = dest_dir.join("thumb.png");
+            let dest_meta = dest_dir.join("meta.json");
+
+            if !dest_asset.exists() || !dest_meta.exists() {
+                let _ = fs::create_dir_all(&dest_dir);
+                let src_asset = path.join("asset.png");
+                let src_thumb = path.join("thumb.png");
+                let src_meta = path.join("meta.json");
+
+                if src_asset.exists() {
+                    let _ = fs::copy(&src_asset, &dest_asset);
+                }
+                if src_thumb.exists() {
+                    let _ = fs::copy(&src_thumb, &dest_thumb);
+                }
+                if src_meta.exists() {
+                    if let Ok(content) = fs::read_to_string(&src_meta) {
+                        if let Ok(mut meta) = serde_json::from_str::<FrameAssetMeta>(&content) {
+                            meta.is_pro = false;
+                            meta.local_path = dest_asset.to_string_lossy().to_string();
+                            meta.thumb_path = dest_thumb.to_string_lossy().to_string();
+                            if let Ok(json) = serde_json::to_string_pretty(&meta) {
+                                let _ = fs::write(&dest_meta, json);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// Lists all cached assets from the disk cache.
 pub fn list_cached_frame_assets(app_handle: &AppHandle) -> Result<Vec<FrameAssetMeta>, String> {
+    seed_bundled_assets_if_needed(app_handle);
     let base_dir = get_frame_assets_dir(app_handle)?;
     let mut assets = Vec::new();
 
@@ -151,6 +219,14 @@ pub fn list_cached_frame_assets(app_handle: &AppHandle) -> Result<Vec<FrameAsset
                 if let Ok(content) = fs::read_to_string(&meta_path) {
                     if let Ok(mut meta) = serde_json::from_str::<FrameAssetMeta>(&content) {
                         meta.is_pro = false;
+                        let asset_file = entry.path().join("asset.png");
+                        if asset_file.exists() {
+                            meta.local_path = asset_file.to_string_lossy().to_string();
+                        }
+                        let thumb_file = entry.path().join("thumb.png");
+                        if thumb_file.exists() {
+                            meta.thumb_path = thumb_file.to_string_lossy().to_string();
+                        }
                         assets.push(meta);
                     }
                 }

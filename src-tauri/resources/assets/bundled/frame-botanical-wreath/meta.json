@@ -1,0 +1,25 @@
+{
+  "id": "frame-botanical-wreath",
+  "title": "Botanical Floral Circle",
+  "category": "frame",
+  "shape": "circle",
+  "slot": {
+    "slotX": 0.15,
+    "slotY": 0.15,
+    "slotWidth": 0.7,
+    "slotHeight": 0.7,
+    "shape": "circle"
+  },
+  "is_pro": false,
+  "local_path": "/Users/chiio/VSCode/albumaker/src-tauri/resources/assets/bundled/frame-botanical-wreath/asset.png",
+  "thumb_path": "/Users/chiio/VSCode/albumaker/src-tauri/resources/assets/bundled/frame-botanical-wreath/thumb.png",
+  "remote_url": null,
+  "tags": [
+    "floral",
+    "circle",
+    "wedding",
+    "nature",
+    "wreath"
+  ],
+  "created_at": "2026-10-27"
+}

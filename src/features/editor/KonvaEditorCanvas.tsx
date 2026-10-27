@@ -63,6 +63,7 @@ import { findPhotoSwapTarget } from './photoSwapDrag';
 import { drawShapeToContext, getShapeSvgPath } from '../../domain/shapes';
 import { renderFilteredPhotoToCanvas, getSeededGrainTile } from '../../utils/imageFilters';
 import { DividerOverlayLayer } from './DividerOverlayLayer';
+import { frameAssetService, type FrameAssetMeta } from '../../services/frameAssetService';
 import { extractCanvasDividers, RectFrameInput } from '../../domain/layout/dividerGraph';
 import { isMac } from '../../utils/platform';
 import { CanvasToolDock } from './CanvasToolDock';
@@ -2628,6 +2629,104 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool: propActiv
     setTimeout(() => {
       justDroppedRef.current = false;
     }, 250);
+
+    // 1. Method 1 & 2: Internal Decorative Frame / Graphic Asset Drop
+    const rawAssetData = e.dataTransfer.getData('application/x-smartalbum-asset');
+    if (rawAssetData) {
+      try {
+        let asset: FrameAssetMeta = JSON.parse(rawAssetData);
+        const stageBox = stageRef.current ? stageRef.current.container().getBoundingClientRect() : null;
+        const dropX = stageBox ? e.clientX - stageBox.left : 0;
+        const dropY = stageBox ? e.clientY - stageBox.top : 0;
+        const { x: physicalX, y: physicalY } = screenToSpreadPoint({ x: dropX, y: dropY }, stageOrigin, scaleFactor);
+
+        const targetFrame = findPhotoSwapTarget(
+          activeSpread.elements || [],
+          { x: physicalX, y: physicalY },
+          '',
+        );
+
+        const applyAsset = (effectiveAsset: FrameAssetMeta) => {
+          if (targetFrame && (effectiveAsset.category === 'frame' || targetFrame.type === 'photo')) {
+            useAlbumStore.getState().applyFrameOverlayToPhoto(activeSpread.id, targetFrame.id, effectiveAsset);
+            useEditorStore.getState().selectFrame(targetFrame.id);
+          } else {
+            const unit = currentProject?.canvasUnit || 'mm';
+            const dpi = currentProject?.canvasDpi || 300;
+            const defaultDim = convertUnit(60, 'mm', unit, dpi, 4);
+            const graphicId = useAlbumStore.getState().addGraphicElement(activeSpread.id, effectiveAsset, {
+              x: physicalX - defaultDim / 2,
+              y: physicalY - defaultDim / 2,
+              width: defaultDim,
+              height: defaultDim,
+            });
+            if (graphicId) {
+              useEditorStore.getState().selectFrame(graphicId);
+            }
+          }
+        };
+
+        if (!asset.local_path && asset.remote_url) {
+          void frameAssetService.downloadAsset(asset.id, asset.remote_url).then((downloaded) => {
+            applyAsset(downloaded || asset);
+          });
+        } else {
+          applyAsset(asset);
+        }
+        return;
+      } catch (err) {
+        console.error('Failed to parse dropped frame asset:', err);
+      }
+    }
+
+    // 2. Method 3: External Finder/Desktop File Drop (.png, .svg, .webp, .jpg)
+    const droppedFiles = Array.from(e.dataTransfer.files || []);
+    if (droppedFiles.length > 0) {
+      const firstFile = droppedFiles[0] as File & { path?: string };
+      const nativePath = firstFile.path;
+      const fileName = firstFile.name.toLowerCase();
+      const isGraphicOrFrame = fileName.endsWith('.svg') || fileName.endsWith('.png') || fileName.endsWith('.webp') || fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.tiff');
+
+      if (nativePath && isGraphicOrFrame) {
+        const stageBox = stageRef.current ? stageRef.current.container().getBoundingClientRect() : null;
+        const dropX = stageBox ? e.clientX - stageBox.left : 0;
+        const dropY = stageBox ? e.clientY - stageBox.top : 0;
+        const { x: physicalX, y: physicalY } = screenToSpreadPoint({ x: dropX, y: dropY }, stageOrigin, scaleFactor);
+
+        const targetFrame = findPhotoSwapTarget(
+          activeSpread.elements || [],
+          { x: physicalX, y: physicalY },
+          '',
+        );
+
+        const isFrame = fileName.includes('frame') || fileName.includes('border') || Boolean(targetFrame);
+
+        void frameAssetService.importCustomAsset(
+          nativePath,
+          isFrame ? 'frame' : 'element'
+        ).then((imported) => {
+          if (!imported) return;
+          if (targetFrame && isFrame) {
+            useAlbumStore.getState().applyFrameOverlayToPhoto(activeSpread.id, targetFrame.id, imported);
+            useEditorStore.getState().selectFrame(targetFrame.id);
+          } else {
+            const unit = currentProject?.canvasUnit || 'mm';
+            const dpi = currentProject?.canvasDpi || 300;
+            const defaultDim = convertUnit(60, 'mm', unit, dpi, 4);
+            const graphicId = useAlbumStore.getState().addGraphicElement(activeSpread.id, imported, {
+              x: physicalX - defaultDim / 2,
+              y: physicalY - defaultDim / 2,
+              width: defaultDim,
+              height: defaultDim,
+            });
+            if (graphicId) {
+              useEditorStore.getState().selectFrame(graphicId);
+            }
+          }
+        });
+        return;
+      }
+    }
 
     const libraryPhotos = usePhotoStore.getState().photos;
     const byId = new Map(libraryPhotos.map((photo) => [photo.id, photo]));

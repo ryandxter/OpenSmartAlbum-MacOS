@@ -4,4 +4,5 @@ pub mod photo_commands;
 pub mod export_commands;
 pub mod template_commands;
 pub mod frame_asset_commands;
+pub mod canva_commands;
 

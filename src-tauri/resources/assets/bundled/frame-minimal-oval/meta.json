@@ -1,0 +1,24 @@
+{
+  "id": "frame-minimal-oval",
+  "title": "Minimalist Oval",
+  "category": "frame",
+  "shape": "oval",
+  "slot": {
+    "slotX": 0.12,
+    "slotY": 0.1,
+    "slotWidth": 0.76,
+    "slotHeight": 0.8,
+    "shape": "oval"
+  },
+  "is_pro": false,
+  "local_path": "/Users/chiio/VSCode/albumaker/src-tauri/resources/assets/bundled/frame-minimal-oval/asset.png",
+  "thumb_path": "/Users/chiio/VSCode/albumaker/src-tauri/resources/assets/bundled/frame-minimal-oval/thumb.png",
+  "remote_url": null,
+  "tags": [
+    "portrait",
+    "oval",
+    "clean",
+    "minimal"
+  ],
+  "created_at": "2026-10-27"
+}

@@ -1,18 +1,31 @@
 import { create } from 'zustand';
 import { frameAssetService, FrameAssetMeta, FrameSlotPayload } from '../services/frameAssetService';
+import { canvaService, CanvaAuthStatus } from '../services/canvaService';
 
 export type AssetShapeFilter = 'all' | 'rectangle' | 'square' | 'oval' | 'arch' | 'circle';
 
 interface AssetState {
   assets: FrameAssetMeta[];
-  activeTab: 'frames' | 'elements';
+  openLibraryResults: FrameAssetMeta[];
+  canvaItems: FrameAssetMeta[];
+  canvaStatus: CanvaAuthStatus | null;
+  activeTab: 'frames' | 'elements' | 'openlibrary' | 'canva';
   selectedShape: AssetShapeFilter;
   searchQuery: string;
   isLoading: boolean;
   isSyncing: boolean;
+  isOpenSearching: boolean;
+  isCanvaConnecting: boolean;
+  isCanvaLoading: boolean;
 
   loadAssets: () => Promise<void>;
   syncCatalog: (url?: string) => Promise<void>;
+  downloadAsset: (id: string, remoteUrl: string) => Promise<FrameAssetMeta | null>;
+  searchOpenLibrary: (query: string) => Promise<void>;
+  loadCanvaStatus: () => Promise<void>;
+  connectCanva: () => Promise<void>;
+  disconnectCanva: () => Promise<void>;
+  loadCanvaAssets: () => Promise<void>;
   importAsset: (
     filePath: string,
     category: 'frame' | 'element',
@@ -20,18 +33,24 @@ interface AssetState {
     customSlot?: FrameSlotPayload
   ) => Promise<FrameAssetMeta | null>;
   deleteAsset: (id: string) => Promise<void>;
-  setActiveTab: (tab: 'frames' | 'elements') => void;
+  setActiveTab: (tab: 'frames' | 'elements' | 'openlibrary' | 'canva') => void;
   setSelectedShape: (shape: AssetShapeFilter) => void;
   setSearchQuery: (query: string) => void;
 }
 
 export const useAssetStore = create<AssetState>((set, get) => ({
   assets: [],
+  openLibraryResults: [],
+  canvaItems: [],
+  canvaStatus: null,
   activeTab: 'frames',
   selectedShape: 'all',
   searchQuery: '',
   isLoading: false,
   isSyncing: false,
+  isOpenSearching: false,
+  isCanvaConnecting: false,
+  isCanvaLoading: false,
 
   loadAssets: async () => {
     set({ isLoading: true });
@@ -44,6 +63,61 @@ export const useAssetStore = create<AssetState>((set, get) => ({
     }
   },
 
+  loadCanvaStatus: async () => {
+    try {
+      const status = await canvaService.getAuthStatus();
+      set({ canvaStatus: status });
+      if (status.is_connected) {
+        void get().loadCanvaAssets();
+      }
+    } catch (err) {
+      console.warn('[assetStore] Failed loading Canva status:', err);
+    }
+  },
+
+  connectCanva: async () => {
+    set({ isCanvaConnecting: true });
+    try {
+      const status = await canvaService.startOAuth();
+      set({ canvaStatus: status, isCanvaConnecting: false });
+      if (status.is_connected) {
+        void get().loadCanvaAssets();
+      }
+    } catch (err) {
+      console.error('[assetStore] Failed connecting Canva:', err);
+      set({ isCanvaConnecting: false });
+      throw err;
+    }
+  },
+
+  disconnectCanva: async () => {
+    try {
+      await canvaService.disconnect();
+      set({
+        canvaStatus: {
+          is_connected: false,
+          client_id: 'OC-AaF8fmOD6b3W',
+          redirect_uri: 'http://127.0.0.1:3001/oauth/redirect',
+          display_name: null,
+        },
+        canvaItems: [],
+      });
+    } catch (err) {
+      console.error('[assetStore] Failed disconnecting Canva:', err);
+    }
+  },
+
+  loadCanvaAssets: async () => {
+    set({ isCanvaLoading: true });
+    try {
+      const items = await canvaService.listAssets();
+      set({ canvaItems: items, isCanvaLoading: false });
+    } catch (err) {
+      console.error('[assetStore] Failed loading Canva assets:', err);
+      set({ isCanvaLoading: false });
+    }
+  },
+
   syncCatalog: async (url?: string) => {
     set({ isSyncing: true });
     try {
@@ -52,6 +126,40 @@ export const useAssetStore = create<AssetState>((set, get) => ({
     } catch (err) {
       console.error('[assetStore] Failed to sync catalog:', err);
       set({ isSyncing: false });
+    }
+  },
+
+  downloadAsset: async (id: string, remoteUrl: string) => {
+    try {
+      const downloaded = await frameAssetService.downloadAsset(id, remoteUrl);
+      if (downloaded) {
+        set((s) => ({
+          assets: s.assets.some((a) => a.id === id)
+            ? s.assets.map((a) => (a.id === id ? downloaded : a))
+            : [downloaded, ...s.assets],
+          openLibraryResults: s.openLibraryResults.map((a) => (a.id === id ? downloaded : a)),
+        }));
+      }
+      return downloaded;
+    } catch (err) {
+      console.error('[assetStore] Failed to download asset:', err);
+      return null;
+    }
+  },
+
+  searchOpenLibrary: async (query: string) => {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      set({ openLibraryResults: [] });
+      return;
+    }
+    set({ isOpenSearching: true });
+    try {
+      const results = await frameAssetService.searchOpenLibrary(trimmed, 36);
+      set({ openLibraryResults: results, isOpenSearching: false });
+    } catch (err) {
+      console.error('[assetStore] Failed searching open library:', err);
+      set({ isOpenSearching: false });
     }
   },
 

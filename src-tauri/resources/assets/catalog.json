@@ -14,8 +14,14 @@
     "is_pro": false,
     "local_path": "",
     "thumb_path": "",
-    "remote_url": "https://assets.opensmartalbum.org/frames/vintage-gold.png",
-    "tags": ["wedding", "vintage", "gold", "classic"],
+    "remote_url": null,
+    "tags": [
+      "wedding",
+      "vintage",
+      "gold",
+      "classic",
+      "ornate"
+    ],
     "created_at": "2026-10-27"
   },
   {
@@ -33,8 +39,13 @@
     "is_pro": false,
     "local_path": "",
     "thumb_path": "",
-    "remote_url": "https://assets.opensmartalbum.org/frames/elegant-arch.png",
-    "tags": ["wedding", "arch", "minimal"],
+    "remote_url": null,
+    "tags": [
+      "wedding",
+      "arch",
+      "minimal",
+      "modern"
+    ],
     "created_at": "2026-10-27"
   },
   {
@@ -52,8 +63,13 @@
     "is_pro": false,
     "local_path": "",
     "thumb_path": "",
-    "remote_url": "https://assets.opensmartalbum.org/frames/retro-polaroid.png",
-    "tags": ["polaroid", "retro", "square"],
+    "remote_url": null,
+    "tags": [
+      "polaroid",
+      "retro",
+      "square",
+      "instant"
+    ],
     "created_at": "2026-10-27"
   },
   {
@@ -71,8 +87,13 @@
     "is_pro": false,
     "local_path": "",
     "thumb_path": "",
-    "remote_url": "https://assets.opensmartalbum.org/frames/minimal-oval.png",
-    "tags": ["portrait", "oval", "clean"],
+    "remote_url": null,
+    "tags": [
+      "portrait",
+      "oval",
+      "clean",
+      "minimal"
+    ],
     "created_at": "2026-10-27"
   },
   {
@@ -90,8 +111,14 @@
     "is_pro": false,
     "local_path": "",
     "thumb_path": "",
-    "remote_url": "https://assets.opensmartalbum.org/frames/botanical-wreath.png",
-    "tags": ["floral", "circle", "wedding", "nature"],
+    "remote_url": null,
+    "tags": [
+      "floral",
+      "circle",
+      "wedding",
+      "nature",
+      "wreath"
+    ],
     "created_at": "2026-10-27"
   },
   {
@@ -103,8 +130,14 @@
     "is_pro": false,
     "local_path": "",
     "thumb_path": "",
-    "remote_url": "https://assets.opensmartalbum.org/elements/gold-star.png",
-    "tags": ["star", "sparkle", "gold"],
+    "remote_url": null,
+    "tags": [
+      "star",
+      "sparkle",
+      "gold",
+      "shine",
+      "sticker"
+    ],
     "created_at": "2026-10-27"
   },
   {
@@ -116,8 +149,15 @@
     "is_pro": false,
     "local_path": "",
     "thumb_path": "",
-    "remote_url": "https://assets.opensmartalbum.org/elements/olive-branch.png",
-    "tags": ["foliage", "leaves", "wedding", "botanical"],
+    "remote_url": null,
+    "tags": [
+      "foliage",
+      "leaves",
+      "wedding",
+      "botanical",
+      "nature",
+      "olive"
+    ],
     "created_at": "2026-10-27"
   },
   {
@@ -129,8 +169,14 @@
     "is_pro": false,
     "local_path": "",
     "thumb_path": "",
-    "remote_url": "https://assets.opensmartalbum.org/elements/vintage-ribbon.png",
-    "tags": ["ribbon", "banner", "vintage"],
+    "remote_url": null,
+    "tags": [
+      "ribbon",
+      "banner",
+      "vintage",
+      "heraldic",
+      "sticker"
+    ],
     "created_at": "2026-10-27"
   },
   {
@@ -142,8 +188,386 @@
     "is_pro": false,
     "local_path": "",
     "thumb_path": "",
-    "remote_url": "https://assets.opensmartalbum.org/elements/heart-flourish.png",
-    "tags": ["heart", "romantic", "love"],
+    "remote_url": null,
+    "tags": [
+      "heart",
+      "romantic",
+      "love",
+      "wedding",
+      "flourish"
+    ],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "afsn-frame-be997215",
+    "title": "Vintage Frame FR1",
+    "category": "frame",
+    "shape": "oval",
+    "slot": {
+      "slotX": 0.34,
+      "slotY": 0.335,
+      "slotWidth": 0.32,
+      "slotHeight": 0.43,
+      "shape": "oval"
+    },
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://afsn.afsun.my.id/uploads/frames/frame-1792611425901-f8068bd2cb2e.webp",
+    "tags": [
+      "vintage",
+      "frame",
+      "ornate",
+      "oval"
+    ],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "afsn-frame-d3509516",
+    "title": "Vintage Frame FR2",
+    "category": "frame",
+    "shape": "arch",
+    "slot": {
+      "slotX": 0.165,
+      "slotY": 0.105,
+      "slotWidth": 0.665,
+      "slotHeight": 0.705,
+      "shape": "arch"
+    },
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://afsn.afsun.my.id/uploads/frames/frame-1792611422289-307e81a48f9a.webp",
+    "tags": [
+      "vintage",
+      "frame",
+      "ornate",
+      "arch"
+    ],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "afsn-frame-779d5ac8",
+    "title": "Vintage Frame FR3",
+    "category": "frame",
+    "shape": "rectangle",
+    "slot": {
+      "slotX": 0.265,
+      "slotY": 0.16,
+      "slotWidth": 0.47,
+      "slotHeight": 0.685,
+      "shape": "rectangle"
+    },
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://afsn.afsun.my.id/uploads/frames/frame-1792611419908-8445c467c5e1.webp",
+    "tags": [
+      "vintage",
+      "frame",
+      "ornate",
+      "rectangle"
+    ],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "afsn-frame-444518e6",
+    "title": "Vintage Frame FR4",
+    "category": "frame",
+    "shape": "oval",
+    "slot": {
+      "slotX": 0.26,
+      "slotY": 0.185,
+      "slotWidth": 0.475,
+      "slotHeight": 0.72,
+      "shape": "oval"
+    },
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://afsn.afsun.my.id/uploads/frames/frame-1792611415400-1cd1c085fe37.webp",
+    "tags": [
+      "vintage",
+      "frame",
+      "ornate",
+      "oval"
+    ],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "afsn-frame-5a014d37",
+    "title": "Vintage Frame FR5",
+    "category": "frame",
+    "shape": "rectangle",
+    "slot": {
+      "slotX": 0.25,
+      "slotY": 0.16,
+      "slotWidth": 0.495,
+      "slotHeight": 0.685,
+      "shape": "rectangle"
+    },
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://afsn.afsun.my.id/uploads/frames/frame-1792611413109-8fb54116c49f.webp",
+    "tags": [
+      "vintage",
+      "frame",
+      "ornate",
+      "rectangle"
+    ],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "afsn-frame-419790fe",
+    "title": "Vintage Frame FR6",
+    "category": "frame",
+    "shape": "rectangle",
+    "slot": {
+      "slotX": 0.25,
+      "slotY": 0.305,
+      "slotWidth": 0.5,
+      "slotHeight": 0.45,
+      "shape": "rectangle"
+    },
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://afsn.afsun.my.id/uploads/frames/frame-1792611409166-96e9643c85c9.webp",
+    "tags": [
+      "vintage",
+      "frame",
+      "ornate",
+      "rectangle"
+    ],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "afsn-frame-92585eea",
+    "title": "Vintage Frame FR7",
+    "category": "frame",
+    "shape": "oval",
+    "slot": {
+      "slotX": 0.22,
+      "slotY": 0.285,
+      "slotWidth": 0.55,
+      "slotHeight": 0.475,
+      "shape": "oval"
+    },
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://afsn.afsun.my.id/uploads/frames/frame-1792611405937-95b4c4443a2d.webp",
+    "tags": [
+      "vintage",
+      "frame",
+      "ornate",
+      "oval"
+    ],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "afsn-frame-abcb4265",
+    "title": "Vintage Frame FR8",
+    "category": "frame",
+    "shape": "oval",
+    "slot": {
+      "slotX": 0.235,
+      "slotY": 0.225,
+      "slotWidth": 0.525,
+      "slotHeight": 0.565,
+      "shape": "oval"
+    },
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://afsn.afsun.my.id/uploads/frames/frame-1792611402357-b9733bc2ee11.webp",
+    "tags": [
+      "vintage",
+      "frame",
+      "ornate",
+      "oval"
+    ],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "afsn-frame-9f428497",
+    "title": "Vintage Frame FR9",
+    "category": "frame",
+    "shape": "arch",
+    "slot": {
+      "slotX": 0.195,
+      "slotY": 0.13,
+      "slotWidth": 0.61,
+      "slotHeight": 0.715,
+      "shape": "arch"
+    },
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://afsn.afsun.my.id/uploads/frames/frame-1792611398781-fbcdeb3625ee.webp",
+    "tags": [
+      "vintage",
+      "frame",
+      "ornate",
+      "arch"
+    ],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "afsn-frame-703666c7",
+    "title": "Vintage Frame FR10",
+    "category": "frame",
+    "shape": "oval",
+    "slot": {
+      "slotX": 0.235,
+      "slotY": 0.205,
+      "slotWidth": 0.53,
+      "slotHeight": 0.585,
+      "shape": "oval"
+    },
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://afsn.afsun.my.id/uploads/frames/frame-1792611395344-e01cc20e8ca0.webp",
+    "tags": [
+      "vintage",
+      "frame",
+      "ornate",
+      "oval"
+    ],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "afsn-frame-3e42e36d",
+    "title": "Vintage Frame FR11",
+    "category": "frame",
+    "shape": "rectangle",
+    "slot": {
+      "slotX": 0.22,
+      "slotY": 0.21,
+      "slotWidth": 0.565,
+      "slotHeight": 0.6,
+      "shape": "rectangle"
+    },
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://afsn.afsun.my.id/uploads/frames/frame-1792611391851-a4ebe6d68172.webp",
+    "tags": [
+      "vintage",
+      "frame",
+      "ornate",
+      "rectangle"
+    ],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "afsn-elem-cf33f432",
+    "title": "Vintage Graphic G6",
+    "category": "element",
+    "shape": "rectangle",
+    "slot": null,
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://afsn.afsun.my.id/uploads/graphics/graphic-1792605152530-821fbcaa14a1.webp",
+    "tags": [
+      "vintage",
+      "graphic",
+      "ornament",
+      "sticker"
+    ],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "afsn-elem-6aa9164d",
+    "title": "Vintage Graphic G1",
+    "category": "element",
+    "shape": "rectangle",
+    "slot": null,
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://afsn.afsun.my.id/uploads/graphics/graphic-1792597981039-025ccf810283.webp",
+    "tags": [
+      "vintage",
+      "graphic",
+      "ornament",
+      "sticker"
+    ],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "afsn-elem-0d4326a5",
+    "title": "Vintage Graphic G2",
+    "category": "element",
+    "shape": "rectangle",
+    "slot": null,
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://afsn.afsun.my.id/uploads/graphics/graphic-1792598049020-9047f566b62b.webp",
+    "tags": [
+      "vintage",
+      "graphic",
+      "ornament",
+      "sticker"
+    ],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "afsn-elem-72b6aed8",
+    "title": "Vintage Graphic G3",
+    "category": "element",
+    "shape": "rectangle",
+    "slot": null,
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://afsn.afsun.my.id/uploads/graphics/graphic-1792597200955-1e755b7bfaaa.webp",
+    "tags": [
+      "vintage",
+      "graphic",
+      "ornament",
+      "sticker"
+    ],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "afsn-elem-837c03ac",
+    "title": "Vintage Graphic G4",
+    "category": "element",
+    "shape": "rectangle",
+    "slot": null,
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://afsn.afsun.my.id/uploads/graphics/graphic-1792597196880-cdf774f0246e.webp",
+    "tags": [
+      "vintage",
+      "graphic",
+      "ornament",
+      "sticker"
+    ],
+    "created_at": "2026-10-27"
+  },
+  {
+    "id": "afsn-elem-c493d7a6",
+    "title": "Vintage Graphic G5",
+    "category": "element",
+    "shape": "rectangle",
+    "slot": null,
+    "is_pro": false,
+    "local_path": "",
+    "thumb_path": "",
+    "remote_url": "https://afsn.afsun.my.id/uploads/graphics/graphic-1792597191388-57114e514c39.webp",
+    "tags": [
+      "vintage",
+      "graphic",
+      "ornament",
+      "sticker"
+    ],
     "created_at": "2026-10-27"
   }
 ]

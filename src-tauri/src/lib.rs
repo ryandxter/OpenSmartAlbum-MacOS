@@ -209,6 +209,12 @@ pub fn run() {
             commands::frame_asset_commands::pick_frame_asset_file_dialog,
             commands::frame_asset_commands::get_frame_assets_storage_stats,
             commands::frame_asset_commands::clear_frame_assets_cache,
+            commands::frame_asset_commands::search_open_library_assets,
+            commands::canva_commands::get_canva_auth_status,
+            commands::canva_commands::start_canva_oauth,
+            commands::canva_commands::disconnect_canva,
+            commands::canva_commands::list_canva_assets,
+            commands::canva_commands::download_canva_asset,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

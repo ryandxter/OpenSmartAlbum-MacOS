@@ -7,11 +7,13 @@
 # OpenSmartAlbum for macOS
 ### Professional, Offline-First Photo Album & Instagram Panorama Suite
 
-[![Release](https://img.shields.io/badge/Release-v1.4.0-0A84FF.svg?style=for-the-badge&logo=github)](https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases)
+[![Release](https://img.shields.io/badge/Release-v1.5.0-0A84FF.svg?style=for-the-badge&logo=github)](https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases)
 [![Platform](https://img.shields.io/badge/Platform-macOS%2013%2B%20%7C%20Apple%20Silicon%20%26%20Intel-000000.svg?style=for-the-badge&logo=apple)](https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases)
 [![Tauri](https://img.shields.io/badge/Tauri-2.0-FFC131.svg?style=for-the-badge&logo=tauri)](https://tauri.app/)
 [![Rust](https://img.shields.io/badge/Rust-Rayon%20Engine-DEA584.svg?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
 [![On-Device AI](https://img.shields.io/badge/AI%20Framing-YuNet%20ONNX-9333EA.svg?style=for-the-badge&logo=openai)](https://github.com/ryandxter/OpenSmartAlbum-MacOS)
+[![Canva Connect](https://img.shields.io/badge/Canva%20Apps%20SDK-OAuth%202.0-7C3AED.svg?style=for-the-badge&logo=canva)](https://www.canva.dev/)
+[![Open Library](https://img.shields.io/badge/Open%20Library-200k%2B%20CC0%20Vectors-10B981.svg?style=for-the-badge)](https://iconify.design/)
 [![React](https://img.shields.io/badge/React-18%20%2B%20Konva-61DAFB.svg?style=for-the-badge&logo=react)](https://reactjs.org/)
 
 <p align="center">
@@ -20,7 +22,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases"><img src="https://img.shields.io/badge/⬇️_Download_Latest_.DMG_(v1.4.0)-Apple_Silicon_&_Intel-2ea44f?style=for-the-badge&logo=apple" alt="Download DMG" /></a>
+  <a href="https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases"><img src="https://img.shields.io/badge/⬇️_Download_Latest_.DMG_(v1.5.0)-Apple_Silicon_&_Intel-2ea44f?style=for-the-badge&logo=apple" alt="Download DMG" /></a>
 </p>
 
 > [!IMPORTANT]
@@ -237,15 +239,32 @@ Museum-grade print fidelity for ultra-thin photo borders:
 - **Continuous Sub-Pixel Anti-Aliasing:** Rust export engine computes exact sub-pixel geometric alpha coverage (`compute_rect_border_alpha`) for smooth 300 DPI exports.
 </details>
 
+<details open>
+<summary><h3>🌟 15. Open Asset Ecosystem & Canva Apps SDK Integration (New in v1.5.0)</h3></summary>
+
+Canva-grade zero-hassle graphic design combined with open public-domain freedom:
+- **Open Library CC0 (200,000+ Vectors):** Live search across Lucide, Tabler, Fluent, Twemoji, and OpenMoji vectors with instant Rust SVG-to-PNG 2048px subpixel rasterization (`resvg`).
+- **Official Canva Connect API / Apps SDK:** Dedicated Canva tab with OAuth 2.0 PKCE authentication. Synchronize your Canva design projects and asset library directly into OpenSmartAlbum.
+- **Canva-Grade 3-Method Drag & Drop:**
+  1. *Empty Canvas Drop:* Automatically creates a `GraphicElement` at cursor coordinates with Konva Transformer immediately activated.
+  2. *Photo Frame Drop:* Dragging decorative frames onto photo frames locks them as `FrameOverlay` with automatic aperture clipping.
+  3. *Finder / Desktop Drop:* Direct drop of `.svg`, `.png`, `.webp`, `.jpg` from macOS Finder auto-imports and places assets seamlessly.
+- **Bundled Offline Starter Pack:** 26 high-resolution real assets (11 vintage frames + 15 decorative stickers) pre-packaged for 100% offline workflow.
+</details>
+
 ---
 
-<a name="en-v140"></a>
-## 🚀 What's New in v1.4.0: Workflow & Canvas Precision Suite
+<a name="en-v150"></a>
+## 🚀 What's New in v1.5.0: Open Asset Ecosystem & Canva Apps Suite
 
 | Feature / Fix | Description | Status |
 | :--- | :--- | :---: |
-| **On-Device AI Face Framing** | YuNet ONNX embedded in Rust backend (<10ms), 5-landmark face detection, studio presets (`Pasfoto`, `Wisuda UNY`, `Rule of Thirds`), reticle overlay (`Shift+F`), Hero shot badges | ✅ Complete |
-| **Studio Layers Panel** | Inspector Layers tab with live counter, 8-state polymorphic cards, midpoint crossing drag & drop, multi-selection block drag, lock/hide controls | ✅ Complete |
+| **Open Library CC0** | OpenSearch integration with 200,000+ free vectors, 10 quick-search chips, subpixel SVG rasterization via Rust `resvg` | ✅ Complete |
+| **Canva Connect API** | Official Canva Apps SDK OAuth 2.0 PKCE integration with local loopback & `auth-osa.rvmeur.com` gateway support | ✅ Complete |
+| **Zero-Hassle Drag & Drop** | 3-method drag-and-drop: empty canvas graphic creation, photo frame overlay binding, and native Finder file drops | ✅ Complete |
+| **Real Starter Pack** | 26 bundled offline assets (11 vintage frames with aperture slots + 15 stickers) with zero broken placeholders | ✅ Complete |
+| **On-Device AI Face Framing** | YuNet ONNX embedded in Rust backend (<10ms), 5-landmark face detection, studio presets (`Pasfoto`, `Wisuda UNY`, `Rule of Thirds`) | ✅ Complete |
+| **Studio Layers Panel** | Inspector Layers tab with live counter, polymorphic cards, midpoint crossing drag & drop, multi-selection block drag | ✅ Complete |
 | **Direct-Canvas Text Bar** | Floating text toolbar, inline `#RGB`/`#RRGGBB` hex editor, background highlight, zero-blur focus preservation | ✅ Complete |
 | **Quick Guides & Wheel Scroll** | Bottom bar Quick Guides & Snapping popover, dynamic snap thresholds, direct vertical wheel to horizontal thumbnail drawer scrolling | ✅ Complete |
 | **Decorative Exclusion & Swap** | `excludeFromAdaptiveLayout` keeps overlays fixed during Spacebar shuffle, obstacle subtraction algorithm, `S` key swap handle & instant swap | ✅ Complete |
@@ -573,19 +592,32 @@ Fidelitas cetak standar museum untuk garis tepi ultra-tipis:
 - **Anti-Aliasing Sub-Piksel Kontinu:** Engine ekspor Rust menghitung nilai alpha geometri sub-piksel (`compute_rect_border_alpha`) untuk hasil cetak 300 DPI tanpa jagged edge.
 </details>
 
+<details open>
+<summary><h3>🌟 15. Ekosistem Aset Terbuka & Integrasi Canva Apps SDK (Baru di v1.5.0)</h3></summary>
+
+Desain grafis bebas hambatan (*zero-hassle*) setara Canva yang dipadukan dengan kebebasan repositori publik:
+- **Open Library CC0 (200.000+ Vektor):** Live search repositori ikon Lucide, Tabler, Fluent, Twemoji, dan OpenMoji dengan auto-rasterisasi subpixel SVG ke PNG 2048px di backend Rust (`resvg`).
+- **Integrasi Resmi Canva Connect API / Apps SDK:** Tab Canva bawaan dengan otorisasi OAuth 2.0 PKCE resmi. Sinkronkan folder aset dan desain Canva Anda langsung ke dalam OpenSmartAlbum.
+- **Canva-Grade 3-Method Drag & Drop:**
+  1. *Empty Canvas Drop:* Otomatis membuat `GraphicElement` pada titik kursor kanvas kosong dengan Konva Transformer langsung aktif.
+  2. *Photo Frame Drop:* Mengedrop bingkai dekoratif ke atas foto menguncinya sebagai `FrameOverlay` dengan lubang aperture transparan otomatis.
+  3. *Finder / Desktop Drop:* Drop langsung file `.svg`, `.png`, `.webp`, `.jpg` dari Finder macOS ke kanvas untuk auto-import dan auto-place instan.
+- **Starter Asset Pack Offline:** 26 aset nyata beresolusi tinggi (11 bingkai vintage + 15 stiker grafis) ter-bundle langsung secara offline tanpa broken placeholder.
+</details>
+
 ---
 
-<a name="id-v140"></a>
-## 🚀 Pembaruan v1.4.0: Presisi Kanvas, AI Studio Framing & Manajemen Layer
+<a name="id-v150"></a>
+## 🚀 Pembaruan v1.5.0: Ekosistem Aset Terbuka & Canva Apps Suite
 
 | Fitur / Perbaikan | Keterangan | Status |
 | :--- | :--- | :---: |
-| **Deteksi Wajah AI On-Device** | Model YuNet ONNX tertanam di backend Rust (<10ms), deteksi 5 landmark wajah, preset studio (`Pasfoto`, `Wisuda UNY`, `Rule of Thirds`), overlay reticle (`Shift+F`), badge Hero shot | ✅ Selesai |
-| **Panel Studio Layers** | Tab Layers di Inspector dengan counter live, kartu 8 status polimorfik, drag & drop midpoint crossing, drag blok multi-seleksi, kontrol lock/hide | ✅ Selesai |
-| **Toolbar Teks Direct-Canvas** | Toolbar terapung di atas teks, editor Hex `#RGB`/`#RRGGBB` inline, highlight background, preservasi fokus tanpa blur | ✅ Selesai |
-| **Popover Pemandu & Snap Cepat** | Tombol popover pemandu di bar bawah, sensitivitas snap dinamis, scroll roda mouse vertikal ke horizontal di drawer thumbnail | ✅ Selesai |
-| **Eksklusi Dekoratif & Tukar Foto** | `excludeFromAdaptiveLayout` mengunci logo/watermark saat acak Spacebar, pengurangan rintangan 2D, pintasan `S` untuk handle & tukar instan | ✅ Selesai |
-| **Border Hairline Sub-Piksel** | Penghapusan batas 2px, border mikro (0.01 - 0.1 mm) dengan step desimal, anti-aliasing cakupan sub-piksel kontinu di engine ekspor Rust | ✅ Selesai |
+| **Open Library CC0** | OpenSearch API dengan 200.000+ vektor gratis, 10 chip pencarian cepat, rasterisasi sub-piksel via Rust `resvg` | ✅ Selesai |
+| **Integrasi Canva Connect** | Autentikasi resmi Canva Apps SDK OAuth 2.0 PKCE dengan loopback lokal & dukungan gateway `auth-osa.rvmeur.com` | ✅ Selesai |
+| **Zero-Hassle Drag & Drop** | 3 metode drag & drop: kanvas kosong, binding frame overlay foto, dan drop file dari Finder macOS | ✅ Selesai |
+| **Starter Asset Nyata** | 26 aset offline (11 bingkai vintage berlubang transparan + 15 stiker) tanpa broken placeholder | ✅ Selesai |
+| **Deteksi Wajah AI On-Device** | Model YuNet ONNX tertanam di backend Rust (<10ms), deteksi 5 landmark wajah, preset studio (`Pasfoto`, `Wisuda UNY`, `Rule of Thirds`) | ✅ Selesai |
+| **Panel Studio Layers** | Tab Layers di Inspector dengan counter live, kartu status polimorfik, drag & drop midpoint crossing, drag blok multi-seleksi | ✅ Selesai |
 
 ---
 

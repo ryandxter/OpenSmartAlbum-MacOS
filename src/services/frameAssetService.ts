@@ -49,6 +49,16 @@ export const frameAssetService = {
     }
   },
 
+  async downloadAsset(id: string, remoteUrl: string): Promise<FrameAssetMeta | null> {
+    if (!isTauri()) return null;
+    try {
+      return await invoke<FrameAssetMeta>('download_frame_asset', { id, remoteUrl });
+    } catch (err) {
+      console.warn('[frameAssetService] Download failed:', err);
+      return null;
+    }
+  },
+
   async importCustomAsset(
     filePath: string,
     category: 'frame' | 'element' = 'frame',
@@ -80,6 +90,16 @@ export const frameAssetService = {
   async clearFrameAssetsCache(): Promise<void> {
     if (!isTauri()) return;
     await invoke('clear_frame_assets_cache');
+  },
+
+  async searchOpenLibrary(query: string, limit = 30): Promise<FrameAssetMeta[]> {
+    if (!isTauri()) return [];
+    try {
+      return await invoke<FrameAssetMeta[]>('search_open_library_assets', { query, limit });
+    } catch (err) {
+      console.warn('[frameAssetService] Open Library search failed:', err);
+      return [];
+    }
   },
 
   resolveAssetUrl(asset: FrameAssetMeta, preferThumb = false): string {

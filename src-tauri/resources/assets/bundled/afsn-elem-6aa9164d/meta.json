@@ -1,0 +1,18 @@
+{
+  "id": "afsn-elem-6aa9164d",
+  "title": "Vintage Graphic G1",
+  "category": "element",
+  "shape": "rectangle",
+  "slot": null,
+  "is_pro": false,
+  "local_path": "/Users/chiio/VSCode/albumaker/src-tauri/resources/assets/bundled/afsn-elem-6aa9164d/asset.png",
+  "thumb_path": "/Users/chiio/VSCode/albumaker/src-tauri/resources/assets/bundled/afsn-elem-6aa9164d/thumb.png",
+  "remote_url": "https://afsn.afsun.my.id/uploads/graphics/graphic-1792597981039-025ccf810283.webp",
+  "tags": [
+    "vintage",
+    "graphic",
+    "ornament",
+    "sticker"
+  ],
+  "created_at": "2026-10-27"
+}

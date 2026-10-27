@@ -27,6 +27,7 @@ import { CarouselGraphicNode } from './CarouselGraphicNode';
 import { extractCanvasDividers, findPhotoSwapTarget, RectFrameInput } from '../../domain/layout/dividerGraph';
 import { renderFilteredPhotoToCanvas, getSeededGrainTile } from '../../utils/imageFilters';
 import type { SpreadBackgroundImage } from '../../domain/album';
+import { frameAssetService, type FrameAssetMeta } from '../../services/frameAssetService';
 import styles from './CarouselCanvas.module.css';
 
 interface CarouselCanvasProps {
@@ -1386,6 +1387,103 @@ export function CarouselCanvas({
     setHoveredDropReplaceFrameId(null);
     if (!currentCarousel) return;
 
+    // Translate viewport coords to canvas continuous space
+    const box = e.currentTarget.getBoundingClientRect();
+    const canvasX = (e.clientX - box.left - stagePos.x) / scale;
+    const canvasY = (e.clientY - box.top - stagePos.y) / scale;
+    const targetSlideIdx = getSlideIndexAtX(currentCarousel, canvasX);
+
+    // 1. Method 1 & 2: Internal Decorative Frame / Graphic Asset Drop
+    const rawAssetData = e.dataTransfer.getData('application/x-smartalbum-asset');
+    if (rawAssetData) {
+      try {
+        let asset: FrameAssetMeta = JSON.parse(rawAssetData);
+        const hitFrame = allFrames.find(
+          (f) =>
+            !f.locked &&
+            canvasX >= f.x &&
+            canvasX <= f.x + f.width &&
+            canvasY >= f.y &&
+            canvasY <= f.y + f.height
+        );
+
+        const applyAsset = (effectiveAsset: FrameAssetMeta) => {
+          if (hitFrame && (effectiveAsset.category === 'frame' || hitFrame.type === 'photo')) {
+            useCarouselStore.getState().applyFrameOverlayToPhoto(hitFrame.id, effectiveAsset);
+            useCarouselStore.getState().setSelectedFrameId(hitFrame.id);
+          } else {
+            const w = Math.round(currentCarousel.slideWidthPx * 0.35);
+            const h = Math.round(currentCarousel.slideWidthPx * 0.35);
+            const graphicId = useCarouselStore.getState().addGraphicElement(targetSlideIdx, effectiveAsset, {
+              x: canvasX - w / 2,
+              y: canvasY - h / 2,
+              width: w,
+              height: h,
+            });
+            if (graphicId) {
+              useCarouselStore.getState().setSelectedFrameId(graphicId);
+            }
+          }
+        };
+
+        if (!asset.local_path && asset.remote_url) {
+          void frameAssetService.downloadAsset(asset.id, asset.remote_url).then((downloaded) => {
+            applyAsset(downloaded || asset);
+          });
+        } else {
+          applyAsset(asset);
+        }
+        return;
+      } catch (err) {
+        console.error('Failed to parse dropped carousel asset:', err);
+      }
+    }
+
+    // 2. Method 3: External Finder/Desktop File Drop (.png, .svg, .webp, .jpg)
+    const droppedFiles = Array.from(e.dataTransfer.files || []);
+    if (droppedFiles.length > 0) {
+      const firstFile = droppedFiles[0] as File & { path?: string };
+      const nativePath = firstFile.path;
+      const fileName = firstFile.name.toLowerCase();
+      const isGraphicOrFrame = fileName.endsWith('.svg') || fileName.endsWith('.png') || fileName.endsWith('.webp') || fileName.endsWith('.jpg') || fileName.endsWith('.jpeg') || fileName.endsWith('.tiff');
+
+      if (nativePath && isGraphicOrFrame) {
+        const hitFrame = allFrames.find(
+          (f) =>
+            !f.locked &&
+            canvasX >= f.x &&
+            canvasX <= f.x + f.width &&
+            canvasY >= f.y &&
+            canvasY <= f.y + f.height
+        );
+        const isFrame = fileName.includes('frame') || fileName.includes('border') || Boolean(hitFrame);
+
+        void frameAssetService.importCustomAsset(
+          nativePath,
+          isFrame ? 'frame' : 'element'
+        ).then((imported) => {
+          if (!imported) return;
+          if (hitFrame && isFrame) {
+            useCarouselStore.getState().applyFrameOverlayToPhoto(hitFrame.id, imported);
+            useCarouselStore.getState().setSelectedFrameId(hitFrame.id);
+          } else {
+            const w = Math.round(currentCarousel.slideWidthPx * 0.35);
+            const h = Math.round(currentCarousel.slideWidthPx * 0.35);
+            const graphicId = useCarouselStore.getState().addGraphicElement(targetSlideIdx, imported, {
+              x: canvasX - w / 2,
+              y: canvasY - h / 2,
+              width: w,
+              height: h,
+            });
+            if (graphicId) {
+              useCarouselStore.getState().setSelectedFrameId(graphicId);
+            }
+          }
+        });
+        return;
+      }
+    }
+
     // Extract photo IDs from drag payload with WebKit pasteboard fallbacks
     let photoIds: string[] = [];
     try {
@@ -1425,12 +1523,6 @@ export function CarouselCanvas({
     const byId = new Map(libraryPhotos.map((p) => [p.id, p]));
     const photosToPlace = [...new Set(photoIds)].map((id) => byId.get(id)).filter((p): p is (typeof libraryPhotos)[number] => Boolean(p));
     if (photosToPlace.length === 0) return;
-
-    // Translate viewport coords to canvas continuous space
-    const box = e.currentTarget.getBoundingClientRect();
-    const canvasX = (e.clientX - box.left - stagePos.x) / scale;
-    const canvasY = (e.clientY - box.top - stagePos.y) / scale;
-    const targetSlideIdx = getSlideIndexAtX(currentCarousel, canvasX);
 
     const { addPhotoFrames, setActiveSlide } = useCarouselStore.getState();
 

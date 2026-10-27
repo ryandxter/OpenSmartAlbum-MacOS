@@ -1,0 +1,24 @@
+{
+  "id": "afsn-frame-419790fe",
+  "title": "Vintage Frame FR6",
+  "category": "frame",
+  "shape": "rectangle",
+  "slot": {
+    "slotX": 0.25,
+    "slotY": 0.305,
+    "slotWidth": 0.5,
+    "slotHeight": 0.45,
+    "shape": "rectangle"
+  },
+  "is_pro": false,
+  "local_path": "/Users/chiio/VSCode/albumaker/src-tauri/resources/assets/bundled/afsn-frame-419790fe/asset.png",
+  "thumb_path": "/Users/chiio/VSCode/albumaker/src-tauri/resources/assets/bundled/afsn-frame-419790fe/thumb.png",
+  "remote_url": "https://afsn.afsun.my.id/uploads/frames/frame-1792611409166-96e9643c85c9.webp",
+  "tags": [
+    "vintage",
+    "frame",
+    "ornate",
+    "rectangle"
+  ],
+  "created_at": "2026-10-27"
+}

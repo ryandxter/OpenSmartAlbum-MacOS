@@ -1,0 +1,24 @@
+{
+  "id": "afsn-frame-9f428497",
+  "title": "Vintage Frame FR9",
+  "category": "frame",
+  "shape": "arch",
+  "slot": {
+    "slotX": 0.195,
+    "slotY": 0.13,
+    "slotWidth": 0.61,
+    "slotHeight": 0.715,
+    "shape": "arch"
+  },
+  "is_pro": false,
+  "local_path": "/Users/chiio/VSCode/albumaker/src-tauri/resources/assets/bundled/afsn-frame-9f428497/asset.png",
+  "thumb_path": "/Users/chiio/VSCode/albumaker/src-tauri/resources/assets/bundled/afsn-frame-9f428497/thumb.png",
+  "remote_url": "https://afsn.afsun.my.id/uploads/frames/frame-1792611398781-fbcdeb3625ee.webp",
+  "tags": [
+    "vintage",
+    "frame",
+    "ornate",
+    "arch"
+  ],
+  "created_at": "2026-10-27"
+}

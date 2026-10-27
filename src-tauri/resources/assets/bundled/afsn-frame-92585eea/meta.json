@@ -1,0 +1,24 @@
+{
+  "id": "afsn-frame-92585eea",
+  "title": "Vintage Frame FR7",
+  "category": "frame",
+  "shape": "oval",
+  "slot": {
+    "slotX": 0.22,
+    "slotY": 0.285,
+    "slotWidth": 0.55,
+    "slotHeight": 0.475,
+    "shape": "oval"
+  },
+  "is_pro": false,
+  "local_path": "/Users/chiio/VSCode/albumaker/src-tauri/resources/assets/bundled/afsn-frame-92585eea/asset.png",
+  "thumb_path": "/Users/chiio/VSCode/albumaker/src-tauri/resources/assets/bundled/afsn-frame-92585eea/thumb.png",
+  "remote_url": "https://afsn.afsun.my.id/uploads/frames/frame-1792611405937-95b4c4443a2d.webp",
+  "tags": [
+    "vintage",
+    "frame",
+    "ornate",
+    "oval"
+  ],
+  "created_at": "2026-10-27"
+}

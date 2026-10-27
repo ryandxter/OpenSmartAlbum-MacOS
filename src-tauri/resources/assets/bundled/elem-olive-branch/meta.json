@@ -1,0 +1,20 @@
+{
+  "id": "elem-olive-branch",
+  "title": "Olive Branch Foliage",
+  "category": "element",
+  "shape": "rectangle",
+  "slot": null,
+  "is_pro": false,
+  "local_path": "/Users/chiio/VSCode/albumaker/src-tauri/resources/assets/bundled/elem-olive-branch/asset.png",
+  "thumb_path": "/Users/chiio/VSCode/albumaker/src-tauri/resources/assets/bundled/elem-olive-branch/thumb.png",
+  "remote_url": null,
+  "tags": [
+    "foliage",
+    "leaves",
+    "wedding",
+    "botanical",
+    "nature",
+    "olive"
+  ],
+  "created_at": "2026-10-27"
+}

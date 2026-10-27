@@ -1,0 +1,24 @@
+{
+  "id": "frame-retro-polaroid",
+  "title": "Retro Instant Film",
+  "category": "frame",
+  "shape": "square",
+  "slot": {
+    "slotX": 0.08,
+    "slotY": 0.07,
+    "slotWidth": 0.84,
+    "slotHeight": 0.72,
+    "shape": "square"
+  },
+  "is_pro": false,
+  "local_path": "/Users/chiio/VSCode/albumaker/src-tauri/resources/assets/bundled/frame-retro-polaroid/asset.png",
+  "thumb_path": "/Users/chiio/VSCode/albumaker/src-tauri/resources/assets/bundled/frame-retro-polaroid/thumb.png",
+  "remote_url": null,
+  "tags": [
+    "polaroid",
+    "retro",
+    "square",
+    "instant"
+  ],
+  "created_at": "2026-10-27"
+}

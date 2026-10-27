@@ -1,0 +1,25 @@
+{
+  "id": "frame-vintage-gold",
+  "title": "Vintage Gold Ornate",
+  "category": "frame",
+  "shape": "rectangle",
+  "slot": {
+    "slotX": 0.08,
+    "slotY": 0.08,
+    "slotWidth": 0.84,
+    "slotHeight": 0.84,
+    "shape": "rectangle"
+  },
+  "is_pro": false,
+  "local_path": "/Users/chiio/VSCode/albumaker/src-tauri/resources/assets/bundled/frame-vintage-gold/asset.png",
+  "thumb_path": "/Users/chiio/VSCode/albumaker/src-tauri/resources/assets/bundled/frame-vintage-gold/thumb.png",
+  "remote_url": null,
+  "tags": [
+    "wedding",
+    "vintage",
+    "gold",
+    "classic",
+    "ornate"
+  ],
+  "created_at": "2026-10-27"
+}

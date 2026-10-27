@@ -108,6 +108,40 @@
   color: #ffffff;
 }
 
+.syncBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+  color: var(--text-secondary, #a1a1aa);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.syncBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.syncBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .shapeChipsRow {
   display: flex;
   gap: 4px;
@@ -136,6 +170,43 @@
   background: rgba(59, 130, 246, 0.2);
   border-color: #3b82f6;
   color: #60a5fa;
+  font-weight: 600;
+}
+
+.libraryChipsRow {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  padding: 2px 0 4px;
+  scrollbar-width: none;
+}
+
+.libraryChipsRow::-webkit-scrollbar {
+  display: none;
+}
+
+.libraryChip {
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: var(--text-secondary, #a1a1aa);
+  font-size: 10px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.libraryChip:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.libraryChipActive {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
+  color: #93c5fd;
   font-weight: 600;
 }
 
@@ -200,6 +271,149 @@
   letter-spacing: 0.5px;
   padding: 2px 5px;
   border-radius: 4px;
+}
+
+.badgeCanva {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: linear-gradient(135deg, #7c3aed, #06b6d4);
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.canvaConnectCard {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(168, 85, 247, 0.3);
+  border-radius: 12px;
+  text-align: center;
+  gap: 12px;
+}
+
+.canvaLogoCircle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #06b6d4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 20px;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.4);
+}
+
+.canvaTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: #f4f4f5;
+  margin: 0;
+}
+
+.canvaSubtitle {
+  font-size: 11.5px;
+  color: #a1a1aa;
+  max-width: 280px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.canvaMetaBox {
+  width: 100%;
+  max-width: 280px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  font-size: 10.5px;
+}
+
+.canvaMetaRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #71717a;
+}
+
+.canvaMetaVal {
+  color: #cbd5e1;
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+}
+
+.canvaConnectBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #7c3aed, #06b6d4);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 18px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+}
+
+.canvaConnectBtn:hover {
+  opacity: 0.95;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.45);
+}
+
+.canvaAccountBar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(124, 58, 237, 0.1);
+  border: 1px solid rgba(124, 58, 237, 0.25);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.canvaAccountInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: #e9d5ff;
+}
+
+.canvaDisconnectBtn {
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.canvaDisconnectBtn:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
 }
 
 .shapeBadge {
