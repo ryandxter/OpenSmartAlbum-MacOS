@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Settings,
   Magnet,
@@ -8,7 +8,6 @@ import {
   History,
   ShieldCheck,
   HardDrive,
-  Trash2,
   RefreshCw,
   Columns2,
   Crosshair,
@@ -21,9 +20,9 @@ import {
   SearchX,
   X,
   Sparkles,
+  Palette,
 } from 'lucide-react';
 import { Dialog } from '../../components/ui/Dialog';
-import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Switch } from '../../components/ui/Switch';
 import { useAppStore } from '../../stores/appStore';
 import { useEditorStore } from '../../stores/editorStore';
@@ -31,9 +30,10 @@ import { useProjectStore } from '../../stores/projectStore';
 import { convertUnit, Unit, UNIT_LABELS } from '../../domain/units';
 import { SNAPPING_LEVELS, SnappingLevel } from '../../domain/editor';
 import type { AutoSaveIntervalSeconds, StartupBehavior } from '../../domain/appPreferences';
-import { isTauri, isMac } from '../../utils/platform';
+import { isMac } from '../../utils/platform';
 import { StorageSettingsTab } from './tabs/StorageSettingsTab';
 import { AiSettingsTab } from './tabs/AiSettingsTab';
+import { CanvaSettingsTab } from './tabs/CanvaSettingsTab';
 import styles from './SettingsDialog.module.css';
 
 function normalizeKeyToken(token: string): string {
@@ -594,24 +594,6 @@ const SHORTCUTS: ShortcutDef[] = [
   },
 ];
 
-interface PhotoCacheStats {
-  fileCount: number;
-  totalBytes: number;
-}
-
-interface CacheCleanupResult {
-  removedFiles: number;
-  reclaimedBytes: number;
-}
-
-function formatCacheBytes(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes <= 0) return '0 MB';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  const unitIndex = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  const value = bytes / (1024 ** unitIndex);
-  return `${value >= 10 || unitIndex === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[unitIndex]}`;
-}
-
 const AUTO_SAVE_INTERVAL_OPTIONS: Array<{ value: AutoSaveIntervalSeconds; label: string }> = [
   { value: 10, label: '10 sec' },
   { value: 30, label: '30 sec' },
@@ -644,68 +626,6 @@ export function SettingsDialog() {
   // Shortcuts search and filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('All');
-  const [confirmAction, setConfirmAction] = useState<'unused_cache' | null>(null);
-  const [isGeneralActionBusy, setIsGeneralActionBusy] = useState(false);
-  const [generalActionError, setGeneralActionError] = useState<string | null>(null);
-  const [generalActionNotice, setGeneralActionNotice] = useState<string | null>(null);
-  const [cacheStats, setCacheStats] = useState<PhotoCacheStats | null>(null);
-  const [isCacheStatsLoading, setIsCacheStatsLoading] = useState(false);
-
-  useEffect(() => {
-    if (!generalActionNotice) return;
-    const timeout = window.setTimeout(() => setGeneralActionNotice(null), 5000);
-    return () => window.clearTimeout(timeout);
-  }, [generalActionNotice]);
-
-  useEffect(() => {
-    if (!isOpen || activeTab !== 'general') return;
-    if (!isTauri()) {
-      setCacheStats({ fileCount: 0, totalBytes: 0 });
-      return;
-    }
-
-    let cancelled = false;
-    setIsCacheStatsLoading(true);
-    import('@tauri-apps/api/core')
-      .then(({ invoke }) => invoke<PhotoCacheStats>('get_photo_cache_stats'))
-      .then((stats) => {
-        if (!cancelled) setCacheStats(stats);
-      })
-      .catch((error) => {
-        if (!cancelled) setGeneralActionError(`Cache information is unavailable: ${String(error)}`);
-      })
-      .finally(() => {
-        if (!cancelled) setIsCacheStatsLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, activeTab]);
-
-  const handleConfirmedGeneralAction = async () => {
-    const action = confirmAction;
-    if (!action) return;
-    setIsGeneralActionBusy(true);
-    setGeneralActionError(null);
-    setGeneralActionNotice(null);
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      const cleaned = await invoke<CacheCleanupResult>('clean_unused_photo_cache');
-      const stats = await invoke<PhotoCacheStats>('get_photo_cache_stats');
-      setCacheStats(stats);
-      setGeneralActionNotice(
-        cleaned.removedFiles > 0
-          ? `Removed ${cleaned.removedFiles} unused cache ${cleaned.removedFiles === 1 ? 'file' : 'files'} and reclaimed ${formatCacheBytes(cleaned.reclaimedBytes)}.`
-          : 'No unused cache files were found.'
-      );
-      setConfirmAction(null);
-    } catch (error) {
-      setGeneralActionError(`The operation could not be completed: ${String(error)}`);
-    } finally {
-      setIsGeneralActionBusy(false);
-    }
-  };
 
   const updateStatusPresentation = useMemo(() => {
     if (!preferences.automaticUpdateChecks && updateStatus === 'idle') {
@@ -786,7 +706,6 @@ export function SettingsDialog() {
         width={780}
         height={580}
         noPadding
-        closeOnEscape={!confirmAction}
       >
       <div className={styles.container}>
         {/* Left Navigation Sidebar */}
@@ -865,6 +784,18 @@ export function SettingsDialog() {
               </span>
               <span>Storage &amp; Cache</span>
             </button>
+
+            {/* Tab 7: Canva & Cloud Integrations */}
+            <button
+              type="button"
+              className={`${styles.tabBtn} ${activeTab === 'canva' ? styles.tabBtnActive : ''}`}
+              onClick={() => setActiveTab('canva')}
+            >
+              <span className={styles.tabIcon}>
+                <Palette size={18} strokeWidth={1.5} />
+              </span>
+              <span>Canva &amp; Cloud</span>
+            </button>
           </div>
 
           {/* Sidebar Footer */}
@@ -905,7 +836,7 @@ export function SettingsDialog() {
                   <div className={styles.controlLabelRow}>
                     <div>
                       <div className={styles.infoLabelStrong}>On Launch</div>
-                      <div className={styles.infoHint}>A project file opened from Windows always takes priority.</div>
+                      <div className={styles.infoHint}>A project file opened directly from Finder takes priority.</div>
                     </div>
                   </div>
                   <div className={styles.startupChoiceGrid} role="radiogroup" aria-label="On launch">
@@ -1007,55 +938,32 @@ export function SettingsDialog() {
                 </div>
               </div>
 
-              {/* Storage & Cache Card */}
+              {/* Storage & Cache Overview Card */}
               <div className={styles.card}>
                 <div className={styles.cardHeader}>
                   <div>
-                    <div className={styles.cardTitle}>Storage &amp; Cache</div>
+                    <div className={styles.cardTitle}>Storage &amp; Asset Cache</div>
                     <div className={styles.cardSubtitle}>
-                      Thumbnail and canvas preview files are stored locally and can be regenerated from original photos.
+                      Manage disk usage for downsampled photo previews, decorative frames, stickers, and Canva cloud assets.
                     </div>
                   </div>
                 </div>
 
                 <div className={styles.generalCardBody}>
-                  <div className={styles.cacheMetricPanel}>
-                    <div className={styles.cacheMetricIcon}>
-                      <HardDrive size={18} strokeWidth={1.5} aria-hidden="true" />
-                    </div>
-                    <div className={styles.cacheMetricCopy}>
-                      <strong>Photo Preview Cache</strong>
-                      <span>
-                        {isCacheStatsLoading
-                          ? 'Calculating local cache usage…'
-                          : `${cacheStats?.fileCount ?? 0} generated ${cacheStats?.fileCount === 1 ? 'file' : 'files'}`}
-                      </span>
-                    </div>
-                    <span className={styles.cacheSizeValue}>{isCacheStatsLoading ? '—' : formatCacheBytes(cacheStats?.totalBytes ?? 0)}</span>
-                  </div>
                   <div className={styles.actionStrip}>
                     <div className={styles.actionStripCopy}>
-                      <strong>Unused Cache</strong>
-                      <span>Active project previews and original photos remain untouched.</span>
+                      <strong>Detailed Cache Breakdown &amp; Cleanup</strong>
+                      <span>Monitor and reclaim storage used by preview files and imported graphic overlays.</span>
                     </div>
                     <button
                       type="button"
                       className={styles.generalActionButton}
-                      onClick={() => setConfirmAction('unused_cache')}
-                      disabled={!isTauri() || isCacheStatsLoading || isGeneralActionBusy}
+                      onClick={() => setActiveTab('storage')}
                     >
-                      <Trash2 size={14} strokeWidth={1.5} aria-hidden="true" />
-                      Clean Up
+                      <HardDrive size={14} strokeWidth={1.5} aria-hidden="true" />
+                      Manage Storage &rarr;
                     </button>
                   </div>
-                  {(generalActionNotice || generalActionError) && (
-                    <div
-                      className={`${styles.generalNotice} ${generalActionError ? styles.generalNoticeError : ''}`}
-                      role={generalActionError ? 'alert' : 'status'}
-                    >
-                      {generalActionError || generalActionNotice}
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -1081,8 +989,8 @@ export function SettingsDialog() {
                 <div className={styles.generalCardBody}>
                   <div className={styles.compactSummaryRow}>
                     <div>
-                      <div className={styles.infoLabelStrong}>Automatic Update Checks</div>
-                      <div className={styles.infoHint}>Checks silently after startup; offline use is never interrupted.</div>
+                      <div className={styles.infoLabelStrong}>Background Update Polling</div>
+                      <div className={styles.infoHint}>Checks GitHub Releases quietly upon launch without interrupting offline work.</div>
                     </div>
                     <span className={preferences.automaticUpdateChecks ? styles.summaryPillSuccess : styles.summaryPill}>
                       {preferences.automaticUpdateChecks ? 'Enabled' : 'Disabled'}
@@ -1099,7 +1007,7 @@ export function SettingsDialog() {
                       onClick={openUpdateModal}
                     >
                       <RefreshCw size={14} strokeWidth={1.5} aria-hidden="true" />
-                      Check Now
+                      Check for Updates
                     </button>
                   </div>
                 </div>
@@ -1532,27 +1440,14 @@ export function SettingsDialog() {
           {/* 6. Storage & Cache Tab                                            */}
           {/* ================================================================ */}
           {activeTab === 'storage' && <StorageSettingsTab />}
+
+          {/* ================================================================ */}
+          {/* 7. Canva & Cloud Tab                                              */}
+          {/* ================================================================ */}
+          {activeTab === 'canva' && <CanvaSettingsTab />}
         </div>
       </div>
       </Dialog>
-      <ConfirmDialog
-        isOpen={confirmAction !== null}
-        title="Clean Unused Cache"
-        message="Remove generated cache files that are no longer used by any project?"
-        detail="Active thumbnails and previews remain untouched. This operation cannot be undone, but removed cache files are not original photos."
-        confirmText="Clean Cache"
-        variant="warning"
-        isLoading={isGeneralActionBusy}
-        loadingText="Cleaning…"
-        error={generalActionError}
-        onConfirm={handleConfirmedGeneralAction}
-        onCancel={() => {
-          if (!isGeneralActionBusy) {
-            setConfirmAction(null);
-            setGeneralActionError(null);
-          }
-        }}
-      />
     </>
   );
 }
