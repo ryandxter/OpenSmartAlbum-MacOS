@@ -2413,6 +2413,43 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool: propActiv
     performSmoothFit,
   ]);
 
+  const isCover = activeSpread ? (activeSpread.type === 'cover' || !activeSpread.leftPage || !activeSpread.rightPage) : false;
+  const isInnerBorderActive = Boolean(
+    activeSpread?.borderEnabled ||
+    activeSpread?.leftPageBorderEnabled ||
+    activeSpread?.rightPageBorderEnabled
+  );
+
+  const activePhysicalInnerBorderRects = useMemo(() => {
+    if (!currentProject || !activeSpread || !isInnerBorderActive) return [];
+    const dims = getProjectDimensionsInCanvasUnit(currentProject, activeSpread);
+    const safeAreaMargins = {
+      top: dims.safeMarginTop,
+      bottom: dims.safeMarginBottom,
+      outside: dims.safeMarginOutside,
+      spine: dims.safeMarginSpine,
+    };
+    const targetScope = activeSpread.leftPageBorderEnabled
+      ? 'left'
+      : activeSpread.rightPageBorderEnabled
+      ? 'right'
+      : 'both';
+
+    return computeInnerBorderRects({
+      spreadWidth: isCover ? dims.pageWidth : dims.pageWidth * 2,
+      spreadHeight: dims.pageHeight,
+      safeArea: safeAreaMargins,
+      gutterWidth: 0,
+      target: targetScope,
+      isSpread: !isCover,
+    });
+  }, [
+    isInnerBorderActive,
+    currentProject,
+    activeSpread,
+    isCover,
+  ]);
+
   if (!currentProject || !currentAlbum || !activeSpread) {
     return (
       <div ref={containerRef} className={styles.canvasContainer}>
@@ -2431,42 +2468,6 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool: propActiv
     outside: dims.safeMarginOutside,
     spine: dims.safeMarginSpine,
   };
-
-  const isCover = activeSpread.type === 'cover' || !activeSpread.leftPage || !activeSpread.rightPage;
-  const isInnerBorderActive = Boolean(
-    activeSpread.borderEnabled ||
-    activeSpread.leftPageBorderEnabled ||
-    activeSpread.rightPageBorderEnabled
-  );
-
-  const activePhysicalInnerBorderRects = useMemo(() => {
-    if (!isInnerBorderActive) return [];
-    const targetScope = activeSpread.leftPageBorderEnabled
-      ? 'left'
-      : activeSpread.rightPageBorderEnabled
-      ? 'right'
-      : 'both';
-
-    return computeInnerBorderRects({
-      spreadWidth: isCover ? dims.pageWidth : dims.pageWidth * 2,
-      spreadHeight: dims.pageHeight,
-      safeArea: safeAreaMargins,
-      gutterWidth: 0,
-      target: targetScope,
-      isSpread: !isCover,
-    });
-  }, [
-    isInnerBorderActive,
-    activeSpread.leftPageBorderEnabled,
-    activeSpread.rightPageBorderEnabled,
-    dims.pageWidth,
-    dims.pageHeight,
-    safeAreaMargins.top,
-    safeAreaMargins.bottom,
-    safeAreaMargins.outside,
-    safeAreaMargins.spine,
-    isCover,
-  ]);
 
   // Single page physical dimensions (strictly in canvasUnit)
   const singlePageW = dims.pageWidth;

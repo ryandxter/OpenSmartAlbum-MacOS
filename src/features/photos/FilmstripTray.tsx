@@ -107,6 +107,16 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
   const [photoToDelete, setPhotoToDelete] = useState<{ projectId: string; ids: string[]; name: string } | null>(null);
   const [isDeletingPhoto, setIsDeletingPhoto] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Marquee (Rubberband) Drag-to-Select State (Hooks declared at top level to satisfy Rules of Hooks)
+  const [marqueeBox, setMarqueeBox] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  const marqueeStartRef = useRef<{ clientX: number; clientY: number; scrollLeft: number } | null>(null);
+  const isMarqueeActiveRef = useRef(false);
   const requestPhotoDelete = (ids: string[], name: string) => {
     if (!currentProject || usePhotoStore.getState().isRemoving) return;
     setDeleteError(null);
@@ -425,16 +435,6 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
   const activeFolderName = activeFolderId
     ? folders.find((f) => f.id === activeFolderId)?.name || 'Folder'
     : null;
-
-  // Marquee (Rubberband) Drag-to-Select State
-  const [marqueeBox, setMarqueeBox] = useState<{
-    left: number;
-    top: number;
-    width: number;
-    height: number;
-  } | null>(null);
-  const marqueeStartRef = useRef<{ clientX: number; clientY: number; scrollLeft: number } | null>(null);
-  const isMarqueeActiveRef = useRef(false);
 
   const handleBodyPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
