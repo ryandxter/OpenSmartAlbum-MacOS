@@ -102,8 +102,8 @@ export function BatchActionBar({ onRequestDelete, activeMode = 'print' }: BatchA
             onDragStart={(e) => {
               const ids = selectedPhotos.map((p) => p.id);
               usePhotoStore.setState({ draggedPhotoIds: ids });
-              e.dataTransfer.setData('application/x-afsn-photo-ids', JSON.stringify(ids));
-              e.dataTransfer.setData('application/x-afsn-multi-photo', String(ids.length));
+              e.dataTransfer.setData('application/x-osa-photo-ids', JSON.stringify(ids));
+              e.dataTransfer.setData('application/x-osa-multi-photo', String(ids.length));
               e.dataTransfer.setData('application/json', JSON.stringify(ids));
               e.dataTransfer.setData('text/plain', ids.join(','));
               e.dataTransfer.effectAllowed = 'copyMove';

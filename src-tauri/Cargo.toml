@@ -1,5 +1,5 @@
 [package]
-name = "afsn-smart-album"
+name = "opensmartalbum"
 version = "1.4.14"
 description = "OpenSmartAlbum - Free & Open Source Desktop Photo Album Layout Studio"
 authors = ["OpenSmartAlbum Contributors"]
@@ -8,7 +8,7 @@ edition = "2021"
 rust-version = "1.77.2"
 
 [lib]
-name = "afsn_smart_album_lib"
+name = "opensmartalbum_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

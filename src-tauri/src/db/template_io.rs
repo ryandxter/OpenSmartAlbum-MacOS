@@ -636,9 +636,9 @@ pub fn prepare_import_layout_template(
         .and_then(|e| e.to_str())
         .unwrap_or("")
         .to_ascii_lowercase();
-    if ext != "afsnt" && ext != "json" {
+    if ext != "osat" && ext != "afsnt" && ext != "json" {
         return Err(format!(
-            "Unsupported template file extension '.{}'. Expected '.afsnt'.",
+            "Unsupported template file extension '.{}'. Expected '.osat'.",
             ext
         ));
     }
@@ -780,7 +780,7 @@ pub fn prepare_import_layout_template_package(
             list.contains(&raw_name)
         } else {
             (raw_name.starts_with("templates/") || !raw_name.contains('/'))
-                && (raw_name.ends_with(".json") || raw_name.ends_with(".afsnt"))
+                && (raw_name.ends_with(".json") || raw_name.ends_with(".osat") || raw_name.ends_with(".afsnt"))
                 && raw_name != "manifest.json"
         };
 
@@ -1046,13 +1046,13 @@ pub fn execute_staged_template_export(token: &str) -> Result<String, String> {
         .unwrap_or("")
         .to_ascii_lowercase();
 
-    if ext == "afsnt" || (ext == "json" && op.templates.len() == 1) {
+    if ext == "osat" || ext == "afsnt" || (ext == "json" && op.templates.len() == 1) {
         // Single template JSON export
         let tpl = op.templates.first().ok_or_else(|| "No template to export".to_string())?;
         atomic_write_file(&target_path, tpl.payload.as_bytes())?;
         Ok(target_path.to_string_lossy().to_string())
     } else {
-        // Bundled ZIP package (.afsnp)
+        // Bundled ZIP package (.osatp / .afsnp)
         let parent = target_path.parent().unwrap_or(Path::new("."));
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
 
@@ -1074,7 +1074,7 @@ pub fn execute_staged_template_export(token: &str) -> Result<String, String> {
 
         // Add manifest.json
         let manifest = serde_json::json!({
-            "format": "afsn-template-package",
+            "format": "opensmartalbum-template-package",
             "version": 1,
             "templates": manifest_template_paths
         });
@@ -1152,7 +1152,7 @@ mod tests {
 
     #[test]
     fn test_template_and_folder_crud() {
-        let temp_dir = std::env::temp_dir().join(format!("afsn_tpl_crud_{}", uuid::Uuid::new_v4()));
+        let temp_dir = std::env::temp_dir().join(format!("osa_tpl_crud_{}", uuid::Uuid::new_v4()));
         let _ = std::fs::remove_dir_all(&temp_dir);
         let db = Database::init(temp_dir.join("test.db")).expect("Failed to init DB");
 
@@ -1226,7 +1226,7 @@ mod tests {
 
     #[test]
     fn test_stage_import_afsnt_conflict_detection_and_resolution() {
-        let temp_dir = std::env::temp_dir().join(format!("afsn_tpl_staged_{}", uuid::Uuid::new_v4()));
+        let temp_dir = std::env::temp_dir().join(format!("osa_tpl_staged_{}", uuid::Uuid::new_v4()));
         let _ = std::fs::remove_dir_all(&temp_dir);
         let db = Database::init(temp_dir.join("test.db")).expect("Failed to init DB");
 
@@ -1266,7 +1266,7 @@ mod tests {
 
     #[test]
     fn test_stage_export_and_import_afsnp_package_with_assets() {
-        let temp_dir = std::env::temp_dir().join(format!("afsn_tpl_pkg_{}", uuid::Uuid::new_v4()));
+        let temp_dir = std::env::temp_dir().join(format!("osa_tpl_pkg_{}", uuid::Uuid::new_v4()));
         let _ = std::fs::remove_dir_all(&temp_dir);
         std::fs::create_dir_all(&temp_dir).unwrap();
         let db = Database::init(temp_dir.join("test.db")).expect("Failed to init DB");
@@ -1302,7 +1302,7 @@ mod tests {
         assert!(Path::new(&final_path).exists());
 
         // Import the package into a fresh database
-        let temp_dir2 = std::env::temp_dir().join(format!("afsn_tpl_dest_{}", uuid::Uuid::new_v4()));
+        let temp_dir2 = std::env::temp_dir().join(format!("osa_tpl_dest_{}", uuid::Uuid::new_v4()));
         let db2 = Database::init(temp_dir2.join("dest.db")).unwrap();
         let frames_cache_dir = temp_dir2.join("frames_cache");
 
@@ -1336,7 +1336,7 @@ mod tests {
 
     #[test]
     fn test_cancel_staged_op_cleans_up() {
-        let temp_dir = std::env::temp_dir().join(format!("afsn_tpl_cancel_{}", uuid::Uuid::new_v4()));
+        let temp_dir = std::env::temp_dir().join(format!("osa_tpl_cancel_{}", uuid::Uuid::new_v4()));
         let _ = std::fs::remove_dir_all(&temp_dir);
         std::fs::create_dir_all(&temp_dir).unwrap();
         let db = Database::init(temp_dir.join("test.db")).expect("Failed to init DB");

@@ -47,7 +47,7 @@ export function ExitWarningModal() {
     const current = useProjectStore.getState().currentProject;
     if (current) {
       try {
-        localStorage.removeItem(`afsn_dirty_${current.id}`);
+        localStorage.removeItem(`osa_dirty_${current.id}`);
       } catch {}
     }
     await handleForceExit();

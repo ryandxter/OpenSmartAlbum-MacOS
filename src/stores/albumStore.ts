@@ -876,7 +876,7 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
           const { usePhotoStore } = await import('./photoStore');
           await get().syncPhotoAssets(usePhotoStore.getState().photos, { persist: true });
         } catch (err) {
-          console.warn('[AFSN] sync loaded album photo assets error:', err);
+          console.warn('[OpenSmartAlbum] sync loaded album photo assets error:', err);
         }
         return true;
       }
@@ -886,7 +886,7 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
 
     // Fallback: Check local storage snapshot
     try {
-      const raw = localStorage.getItem(`afsn_snapshot_${projectId}`);
+      const raw = localStorage.getItem(`osa_snapshot_${projectId}`);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed?.album?.coverSpread && Array.isArray(parsed.album.spreads)) {
@@ -927,7 +927,7 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
             const { usePhotoStore } = await import('./photoStore');
             await get().syncPhotoAssets(usePhotoStore.getState().photos, { persist: true });
           } catch (err) {
-            console.warn('[AFSN] sync loaded album photo assets error:', err);
+            console.warn('[OpenSmartAlbum] sync loaded album photo assets error:', err);
           }
           // Resync to SQLite
           try {
@@ -978,14 +978,14 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
       await invoke('save_album_structure', { album: sanitizedAlbum });
       // Update local storage crash recovery snapshot
       try {
-        if (isAlbumDesignEqual(get().currentAlbum, currentAlbum)) localStorage.setItem(`afsn_snapshot_${sanitizedAlbum.projectId}`, JSON.stringify({
+        if (isAlbumDesignEqual(get().currentAlbum, currentAlbum)) localStorage.setItem(`osa_snapshot_${sanitizedAlbum.projectId}`, JSON.stringify({
           projectId: sanitizedAlbum.projectId,
           savedAt: new Date().toISOString(),
           album: sanitizedAlbum,
         }));
       } catch {}
 
-      // This is a recovery checkpoint, not confirmation that the .afsn file saved.
+      // This is a recovery checkpoint, not confirmation that the project file saved.
       // Never replace edits made while the native write was in flight.
       if (isAlbumDesignEqual(get().currentAlbum, currentAlbum)) {
         if (get().saveStatus !== 'saved') {
@@ -997,7 +997,7 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
       console.error('Failed to save album to SQLite DB:', err);
       // Fallback: save to localStorage snapshot so data is never lost
       try {
-        if (isAlbumDesignEqual(get().currentAlbum, currentAlbum)) localStorage.setItem(`afsn_snapshot_${sanitizedAlbum.projectId}`, JSON.stringify({
+        if (isAlbumDesignEqual(get().currentAlbum, currentAlbum)) localStorage.setItem(`osa_snapshot_${sanitizedAlbum.projectId}`, JSON.stringify({
           projectId: sanitizedAlbum.projectId,
           savedAt: new Date().toISOString(),
           album: sanitizedAlbum,

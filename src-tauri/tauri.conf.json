@@ -98,8 +98,9 @@
     "fileAssociations": [
       {
         "ext": [
-          "afsn",
-          "opensmartalbum"
+          "opensmartalbum",
+          "osa",
+          "afsn"
         ],
         "name": "OpenSmartAlbum Project",
         "description": "OpenSmartAlbum Project File",

@@ -448,7 +448,7 @@ export const useTemplateStore = create<TemplateStoreState>((set, get) => ({
 
   prepareImport: async (filePath: string) => {
     try {
-      const isPkg = filePath.toLowerCase().endsWith('.afsnp');
+      const isPkg = filePath.toLowerCase().endsWith('.osatp') || filePath.toLowerCase().endsWith('.afsnp');
       const cmd = isPkg ? 'prepare_import_layout_template_package' : 'prepare_import_layout_template';
       const preview = await tauriInvoke<StagedImportPreview>(cmd, { filePath });
       set({ stagedImport: preview, isImportModalOpen: true });
@@ -516,7 +516,7 @@ export const useTemplateStore = create<TemplateStoreState>((set, get) => ({
       let finalPath = targetPath;
       if (!finalPath) {
         const picked = await tauriInvoke<string | null>('pick_template_export_save_dialog', {
-          suggestedName: 'AFSN_Template_Bundle',
+          suggestedName: 'OpenSmartAlbum_Template_Bundle',
           isPackage: true,
         });
         if (!picked) return null;

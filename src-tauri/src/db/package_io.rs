@@ -8,6 +8,20 @@ fn package_error(message: impl std::fmt::Display) -> rusqlite::Error {
     rusqlite::Error::InvalidPath(message.to_string().into())
 }
 
+pub(super) fn require_project_extension(path: &Path) -> SqliteResult<()> {
+    if let Some(ext) = path.extension().and_then(|v| v.to_str()) {
+        if ext.eq_ignore_ascii_case("opensmartalbum")
+            || ext.eq_ignore_ascii_case("osa")
+            || ext.eq_ignore_ascii_case("afsn")
+        {
+            return Ok(());
+        }
+    }
+    Err(package_error(
+        "Open and save OpenSmartAlbum project files only (.opensmartalbum, .osa). Extract ZIP packages first if opening an archive."
+    ))
+}
+
 pub(super) fn require_extension(path: &Path, extension: &str) -> SqliteResult<()> {
     if path
         .extension()
@@ -16,11 +30,9 @@ pub(super) fn require_extension(path: &Path, extension: &str) -> SqliteResult<()
     {
         Ok(())
     } else {
-        Err(package_error(if extension == "afsn" {
-            "Open and save .afsn project files only. Extract ZIP packages first, then open project.afsn inside the extracted folder."
-        } else {
+        Err(package_error(
             "Complete packages must use the .zip extension."
-        }))
+        ))
     }
 }
 
@@ -37,7 +49,7 @@ fn atomic_write(
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
         .unwrap_or(Path::new("."));
-    let temporary = parent.join(format!(".afsn-{}.tmp", uuid::Uuid::new_v4()));
+    let temporary = parent.join(format!(".osa-{}.tmp", uuid::Uuid::new_v4()));
     let result = (|| {
         let mut file = OpenOptions::new()
             .write(true)
@@ -584,7 +596,7 @@ impl Database {
 
     fn write_project_package(&self, project_id: &str, target_path: &str, replace: bool) -> SqliteResult<()> {
         let path = Path::new(target_path);
-        require_extension(path, "afsn")?;
+        require_project_extension(path)?;
         let mut package = self.project_package(project_id)?;
         package.project.file_path = Some(target_path.to_string());
         if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
@@ -804,7 +816,7 @@ impl Database {
 
     pub fn import_project_package(&self, source_path: &str) -> SqliteResult<ProjectPackagePayload> {
         let path = Path::new(source_path);
-        require_extension(path, "afsn")?;
+        require_project_extension(path)?;
         let canonical = fs::canonicalize(path).map_err(package_error)?;
         let parent = canonical
             .parent()
@@ -1098,7 +1110,7 @@ impl Database {
     }
 
     pub fn save_project_as(&self, source_id: &str, target_path: &str) -> SqliteResult<ProjectRow> {
-        require_extension(Path::new(target_path), "afsn")?;
+        require_project_extension(Path::new(target_path))?;
         let source = self
             .get_project(source_id)?
             .ok_or(rusqlite::Error::QueryReturnedNoRows)?;
@@ -1201,7 +1213,7 @@ mod tests {
 
     #[test]
     fn failed_write_preserves_existing_file_and_cleans_temporary() {
-        let root = std::env::temp_dir().join(format!("afsn-atomic-test-{}", uuid::Uuid::new_v4()));
+        let root = std::env::temp_dir().join(format!("osa-atomic-test-{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&root).unwrap();
         let path = root.join("project.afsn");
         fs::write(&path, b"previous valid file").unwrap();
@@ -1308,7 +1320,7 @@ mod tests {
 
     #[test]
     fn test_carousel_package_export_import_and_bundled_zip() {
-        let root = std::env::temp_dir().join(format!("afsn-carousel-pkg-{}", uuid::Uuid::new_v4()));
+        let root = std::env::temp_dir().join(format!("osa-carousel-pkg-{}", uuid::Uuid::new_v4()));
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
 
@@ -1458,7 +1470,7 @@ mod tests {
 
     #[test]
     fn test_v1_4_14_album_and_social_media_afsn_bidirectional_compat() {
-        let root = std::env::temp_dir().join(format!("afsn-compat-test-{}", uuid::Uuid::new_v4()));
+        let root = std::env::temp_dir().join(format!("osa-compat-test-{}", uuid::Uuid::new_v4()));
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
 
@@ -1693,7 +1705,7 @@ mod tests {
 
     #[test]
     fn test_macos_temp_dir_canonicalization_and_zip_traversal_rejection() {
-        let root = std::env::temp_dir().join(format!("afsn-zip-test-{}", uuid::Uuid::new_v4()));
+        let root = std::env::temp_dir().join(format!("osa-zip-test-{}", uuid::Uuid::new_v4()));
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).unwrap();
 

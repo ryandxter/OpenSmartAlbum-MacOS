@@ -30,6 +30,12 @@ const persistProjectSpacing = async (project: Project): Promise<void> => {
   });
 };
 
+const isProjectFilePath = (p: string | null | undefined): boolean =>
+  Boolean(p && /\.(opensmartalbum|osa|afsn)$/i.test(p));
+
+const stripProjectExtension = (p: string): string =>
+  p.replace(/^.*[\\/]/, '').replace(/\.(opensmartalbum|osa|afsn)$/i, '');
+
 /** Fire-and-forget helper: capture slide 0 canvas thumbnail, cache in localStorage, persist to Tauri cache dir. */
 const captureAndCacheCarouselThumbnail = async (projectId: string): Promise<void> => {
   try {
@@ -47,7 +53,7 @@ const captureAndCacheCarouselThumbnail = async (projectId: string): Promise<void
     }
     if (!dataUrl) return;
     // Shrink to a compact preview (≤1KB via low-res PNG data already)
-    try { localStorage.setItem(`afsn_thumb_${projectId}`, dataUrl); } catch { /* storage full */ }
+    try { localStorage.setItem(`osa_thumb_${projectId}`, dataUrl); } catch { /* storage full */ }
     // Persist to Tauri app cache directory
     const { invoke } = await import('@tauri-apps/api/core');
     await invoke('save_project_thumbnail', { projectId, base64Png: dataUrl });
@@ -86,9 +92,9 @@ interface ProjectState {
   createNewProject: (settings: ProjectSettings) => Promise<Project>;
   openProjectById: (id: string) => Promise<void>;
   saveProject: (options?: { automatic?: boolean }) => Promise<{ success: boolean; filePath: string | null; isSaveAs: boolean }>;
-  exportProjectAsAfsn: () => Promise<string | null>;
+  exportProjectPackage: () => Promise<string | null>;
   exportCompleteProjectPackageWithPhotos: () => Promise<string | null>;
-  importProjectFromAfsn: () => Promise<boolean>;
+  importProjectPackage: () => Promise<boolean>;
   openProjectFromFile: (filePath: string) => Promise<boolean>;
   removeRecentProject: (id: string) => Promise<void>;
   clearAllRecentProjects: () => Promise<void>;
@@ -138,15 +144,15 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         }
 
         try {
-          const existing = JSON.parse(localStorage.getItem('afsn_recent_projects') || '[]');
+          const existing = JSON.parse(localStorage.getItem('osa_recent_projects') || '[]');
           const updatedRecents = existing.map((p: Project) => (p.id === current.id ? updatedProject : p));
-          localStorage.setItem('afsn_recent_projects', JSON.stringify(updatedRecents));
+          localStorage.setItem('osa_recent_projects', JSON.stringify(updatedRecents));
         } catch {}
         await get().loadRecentProjects();
         return;
       }
     } catch (err: any) {
-      console.warn('[AFSN] update_project_name via Tauri error:', err);
+      console.warn('[OpenSmartAlbum] update_project_name via Tauri error:', err);
       throw err;
     }
 
@@ -187,16 +193,16 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         spacingUnit: unit,
       });
     } catch (err) {
-      console.warn('[AFSN] update_project_spacing via Tauri failed, fallback:', err);
+      console.warn('[OpenSmartAlbum] update_project_spacing via Tauri failed, fallback:', err);
     }
 
     // Update in localStorage
     try {
-      const existing = JSON.parse(localStorage.getItem('afsn_recent_projects') || '[]');
+      const existing = JSON.parse(localStorage.getItem('osa_recent_projects') || '[]');
       const updatedRecents = existing.map((p: Project) => (p.id === current.id ? updatedProject : p));
-      localStorage.setItem('afsn_recent_projects', JSON.stringify(updatedRecents));
+      localStorage.setItem('osa_recent_projects', JSON.stringify(updatedRecents));
     } catch (e) {
-      console.warn('[AFSN] localStorage write error:', e);
+      console.warn('[OpenSmartAlbum] localStorage write error:', e);
     }
 
     try {
@@ -241,15 +247,15 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     try {
       await persistProjectMargins(updatedProject);
     } catch (err) {
-      console.warn('[AFSN] update_project_margins via Tauri failed, fallback:', err);
+      console.warn('[OpenSmartAlbum] update_project_margins via Tauri failed, fallback:', err);
     }
 
     try {
-      const existing = JSON.parse(localStorage.getItem('afsn_recent_projects') || '[]');
+      const existing = JSON.parse(localStorage.getItem('osa_recent_projects') || '[]');
       const updatedRecents = existing.map((p: Project) => (p.id === current.id ? updatedProject : p));
-      localStorage.setItem('afsn_recent_projects', JSON.stringify(updatedRecents));
+      localStorage.setItem('osa_recent_projects', JSON.stringify(updatedRecents));
     } catch (err) {
-      console.warn('[AFSN] localStorage write error:', err);
+      console.warn('[OpenSmartAlbum] localStorage write error:', err);
     }
   },
 
@@ -281,15 +287,15 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     try {
       await persistProjectMargins(updatedProject);
     } catch (err) {
-      console.warn('[AFSN] update_project_margins via Tauri failed, fallback:', err);
+      console.warn('[OpenSmartAlbum] update_project_margins via Tauri failed, fallback:', err);
     }
 
     try {
-      const existing = JSON.parse(localStorage.getItem('afsn_recent_projects') || '[]');
+      const existing = JSON.parse(localStorage.getItem('osa_recent_projects') || '[]');
       const updatedRecents = existing.map((p: Project) => (p.id === current.id ? updatedProject : p));
-      localStorage.setItem('afsn_recent_projects', JSON.stringify(updatedRecents));
+      localStorage.setItem('osa_recent_projects', JSON.stringify(updatedRecents));
     } catch (err) {
-      console.warn('[AFSN] localStorage write error:', err);
+      console.warn('[OpenSmartAlbum] localStorage write error:', err);
     }
   },
 
@@ -311,11 +317,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
     // Update in localStorage recents
     try {
-      const existing = JSON.parse(localStorage.getItem('afsn_recent_projects') || '[]');
+      const existing = JSON.parse(localStorage.getItem('osa_recent_projects') || '[]');
       const updatedRecents = existing.map((p: Project) => (p.id === current.id ? updatedProject : p));
-      localStorage.setItem('afsn_recent_projects', JSON.stringify(updatedRecents));
+      localStorage.setItem('osa_recent_projects', JSON.stringify(updatedRecents));
     } catch (e) {
-      console.warn('[AFSN] localStorage write error:', e);
+      console.warn('[OpenSmartAlbum] localStorage write error:', e);
     }
   },
 
@@ -337,11 +343,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
     // Update in localStorage recents
     try {
-      const existing = JSON.parse(localStorage.getItem('afsn_recent_projects') || '[]');
+      const existing = JSON.parse(localStorage.getItem('osa_recent_projects') || '[]');
       const updatedRecents = existing.map((p: Project) => (p.id === current.id ? updatedProject : p));
-      localStorage.setItem('afsn_recent_projects', JSON.stringify(updatedRecents));
+      localStorage.setItem('osa_recent_projects', JSON.stringify(updatedRecents));
     } catch (e) {
-      console.warn('[AFSN] localStorage write error:', e);
+      console.warn('[OpenSmartAlbum] localStorage write error:', e);
     }
   },
 
@@ -372,15 +378,15 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         borderColor: updatedProject.borderColor,
       });
     } catch (e) {
-      console.warn('[AFSN] update_project_border via Tauri failed:', e);
+      console.warn('[OpenSmartAlbum] update_project_border via Tauri failed:', e);
     }
 
     try {
-      const existing = JSON.parse(localStorage.getItem('afsn_recent_projects') || '[]');
+      const existing = JSON.parse(localStorage.getItem('osa_recent_projects') || '[]');
       const updatedRecents = existing.map((p: Project) => (p.id === current.id ? updatedProject : p));
-      localStorage.setItem('afsn_recent_projects', JSON.stringify(updatedRecents));
+      localStorage.setItem('osa_recent_projects', JSON.stringify(updatedRecents));
     } catch (e) {
-      console.warn('[AFSN] localStorage write error:', e);
+      console.warn('[OpenSmartAlbum] localStorage write error:', e);
     }
   },
 
@@ -391,7 +397,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const { usePhotoStore } = await import('./photoStore');
       await usePhotoStore.getState().cancelAllImports();
     } catch (err) {
-      console.warn('[AFSN] Error cancelling imports on closeProject:', err);
+      console.warn('[OpenSmartAlbum] Error cancelling imports on closeProject:', err);
     }
     try {
       const { invoke } = await import('@tauri-apps/api/core');
@@ -443,7 +449,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const projects = await invoke<Project[]>('list_recent_projects', { limit: 10 });
       if (Array.isArray(projects)) {
         set({ recentProjects: projects });
-        try { localStorage.setItem('afsn_recent_projects', JSON.stringify(projects)); } catch {}
+        try { localStorage.setItem('osa_recent_projects', JSON.stringify(projects)); } catch {}
         const current = get().currentProject;
         if (current) {
           const latest = projects.find((p) => p.id === current.id)
@@ -459,17 +465,17 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         return;
       }
     } catch (err) {
-      console.warn('[AFSN] Could not load recent projects from Tauri, checking localStorage:', err);
+      console.warn('[OpenSmartAlbum] Could not load recent projects from Tauri, checking localStorage:', err);
       if (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window) return;
     }
 
     try {
-      const stored = localStorage.getItem('afsn_recent_projects');
+      const stored = localStorage.getItem('osa_recent_projects');
       if (stored) {
         set({ recentProjects: JSON.parse(stored) });
       }
     } catch (e) {
-      console.warn('[AFSN] localStorage read error:', e);
+      console.warn('[OpenSmartAlbum] localStorage read error:', e);
     }
   },
 
@@ -511,13 +517,13 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       backgroundColor: String(settings.background.color),
     };
 
-    console.log('[AFSN] Creating project with payload:', payload);
+    console.log('[OpenSmartAlbum] Creating project with payload:', payload);
 
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      console.log('[AFSN] Invoking Tauri create_project...');
+      console.log('[OpenSmartAlbum] Invoking Tauri create_project...');
       const created = await invoke<Project>('create_project', { request: payload });
-      console.log('[AFSN] Project successfully created via Tauri:', created);
+      console.log('[OpenSmartAlbum] Project successfully created via Tauri:', created);
 
       set((state) => ({
         currentProject: created,
@@ -548,7 +554,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
       return created;
     } catch (tauriErr) {
-      console.warn('[AFSN] Tauri create_project invoke failed, falling back to local storage:', tauriErr);
+      console.warn('[OpenSmartAlbum] Tauri create_project invoke failed, falling back to local storage:', tauriErr);
 
       // Local fallback
       const mockProject: Project = {
@@ -561,11 +567,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       };
 
       try {
-        const existing = JSON.parse(localStorage.getItem('afsn_recent_projects') || '[]');
+        const existing = JSON.parse(localStorage.getItem('osa_recent_projects') || '[]');
         const updated = [mockProject, ...existing.filter((p: Project) => p.id !== mockProject.id)].slice(0, 10);
-        localStorage.setItem('afsn_recent_projects', JSON.stringify(updated));
+        localStorage.setItem('osa_recent_projects', JSON.stringify(updated));
       } catch (e) {
-        console.warn('[AFSN] localStorage write error:', e);
+        console.warn('[OpenSmartAlbum] localStorage write error:', e);
       }
 
       set((state) => ({
@@ -602,7 +608,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   openProjectById: async (id: string) => {
     if (get().isSaving || get().isLoading || usePhotoStore.getState().isRemoving || usePhotoStore.getState().isRelinking) return;
     let hasUnsavedRecovery = false;
-    try { hasUnsavedRecovery = localStorage.getItem(`afsn_dirty_${id}`) === '1'; } catch {}
+    try { hasUnsavedRecovery = localStorage.getItem(`osa_dirty_${id}`) === '1'; } catch {}
     // Terminate any existing import tasks before switching projects
     try {
       const { usePhotoStore } = await import('./photoStore');
@@ -616,7 +622,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const { invoke } = await import('@tauri-apps/api/core');
       project = await invoke<Project | null>('get_project', { id });
     } catch (err) {
-      console.warn('[AFSN] get_project via Tauri failed, checking state/localStorage:', err);
+      console.warn('[OpenSmartAlbum] get_project via Tauri failed, checking state/localStorage:', err);
       const hasTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
       if (hasTauri) {
         set({ isLoading: false, error: `Open failed: ${String(err)}` });
@@ -646,7 +652,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         await usePhotoStore.getState().loadFolders(project.id);
 
         let hasProjectFile = false;
-        if (project.filePath && /\.afsn$/i.test(project.filePath)) {
+        if (isProjectFilePath(project.filePath)) {
           try {
             const { invoke } = await import('@tauri-apps/api/core');
             hasProjectFile = await invoke<boolean>('check_path_exists', { path: project.filePath });
@@ -680,7 +686,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         }
         await get().loadRecentProjects();
       } catch (e) {
-        console.error('[AFSN] Failed to load structure/photos on openProjectById:', e);
+        console.error('[OpenSmartAlbum] Failed to load structure/photos on openProjectById:', e);
       }
     } else {
       set({ error: 'Project not found', isLoading: false });
@@ -696,9 +702,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const isCarousel = normalizeProjectType(current.projectType, current.canvasUnit) === 'carousel';
 
     // Old database entries may still point at a ZIP opened by a previous release.
-    const workingPath = current.filePath && /\.afsn$/i.test(current.filePath) ? current.filePath : null;
+    const workingPath = isProjectFilePath(current.filePath) ? current.filePath : null;
     if (!workingPath && !options.automatic) {
-      const path = await get().exportProjectAsAfsn();
+      const path = await get().exportProjectPackage();
       return { success: Boolean(path), filePath: path, isSaveAs: true };
     }
     set({ isSaving: true, error: null });
@@ -722,19 +728,19 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         if (!exists) {
           carouselStore.setSaveStatus('unsaved');
           if (options.automatic) return failed;
-          const path = await invoke<string | null>('export_afsn_with_dialog', { projectId: current.id, suggestedName: current.name });
+          const path = await invoke<string | null>('export_project_with_dialog', { projectId: current.id, suggestedName: current.name });
           if (!path) return failed;
           savedPath = path;
           if (get().currentProject?.id === current.id) {
-            const saved = { ...get().currentProject!, filePath: path, name: path.replace(/^.*[\\/]/, '').replace(/\.afsn$/i, '') };
+            const saved = { ...get().currentProject!, filePath: path, name: stripProjectExtension(path) };
             set((state) => ({
               currentProject: saved,
               recentProjects: [saved, ...state.recentProjects.filter((p) => p.id !== saved.id)].slice(0, 10),
             }));
-            try { localStorage.setItem('afsn_recent_projects', JSON.stringify(get().recentProjects)); } catch {}
+            try { localStorage.setItem('osa_recent_projects', JSON.stringify(get().recentProjects)); } catch {}
           }
         } else {
-          await invoke('export_afsn_package', { projectId: current.id, targetPath: workingPath });
+          await invoke('export_project_package', { projectId: current.id, targetPath: workingPath });
         }
         if (get().currentProject?.id === current.id && isCarouselEqual(useCarouselStore.getState().currentCarousel, carousel)) {
           useCarouselStore.getState().setSaveStatus('saved');
@@ -771,18 +777,18 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         useAlbumStore.getState().setSaveStatus('unsaved');
         // Recovery checkpoints must never recreate a deleted document silently.
         if (options.automatic) return failed;
-        const path = await invoke<string | null>('export_afsn_with_dialog', { projectId: current.id, suggestedName: current.name });
+        const path = await invoke<string | null>('export_project_with_dialog', { projectId: current.id, suggestedName: current.name });
         if (!path) return failed;
         savedPath = path;
         if (get().currentProject?.id === current.id) {
           // Relocate the recovered project without creating a duplicate recent entry.
-          const saved = { ...get().currentProject!, filePath: path, name: path.replace(/^.*[\\/]/, '').replace(/\.afsn$/i, '') };
+          const saved = { ...get().currentProject!, filePath: path, name: stripProjectExtension(path) };
           set((state) => ({ currentProject: saved,
             recentProjects: [saved, ...state.recentProjects.filter((p) => p.id !== saved.id)].slice(0, 10) }));
-          try { localStorage.setItem('afsn_recent_projects', JSON.stringify(get().recentProjects)); } catch {}
+          try { localStorage.setItem('osa_recent_projects', JSON.stringify(get().recentProjects)); } catch {}
         }
       } else {
-        await invoke('export_afsn_package', { projectId: current.id, targetPath: workingPath });
+        await invoke('export_project_package', { projectId: current.id, targetPath: workingPath });
       }
       if (get().currentProject?.id === current.id && isAlbumDesignEqual(useAlbumStore.getState().currentAlbum, album)) {
         useAlbumStore.setState({ saveStatus: 'saved', lastSavedAt: new Date().toLocaleTimeString() });
@@ -801,7 +807,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }
   },
 
-  exportProjectAsAfsn: async () => {
+  exportProjectPackage: async () => {
     const current = get().currentProject;
     if (!current || get().isSaving || get().isLoading || usePhotoStore.getState().isRemoving || usePhotoStore.getState().isRelinking) return null;
     const isCarousel = normalizeProjectType(current.projectType, current.canvasUnit) === 'carousel';
@@ -819,11 +825,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         if (!await useCarouselStore.getState().saveCarouselToDb()) throw new Error('The recovery database could not be saved. Your project file was not changed.');
         const { invoke } = await import('@tauri-apps/api/core');
         let saved: Project | null;
-        if (current.filePath && /\.afsn$/i.test(current.filePath)) {
+        if (isProjectFilePath(current.filePath)) {
           saved = await invoke<Project | null>('save_project_as_with_dialog', { projectId: current.id, suggestedName: current.name });
         } else {
-          const path = await invoke<string | null>('export_afsn_with_dialog', { projectId: current.id, suggestedName: current.name });
-          saved = path ? { ...current, filePath: path, name: path.replace(/^.*[\\/]/, '').replace(/\.afsn$/i, '') } : null;
+          const path = await invoke<string | null>('export_project_with_dialog', { projectId: current.id, suggestedName: current.name });
+          saved = path ? { ...current, filePath: path, name: stripProjectExtension(path) } : null;
         }
         if (!saved) return null; // Cancel preserves the current identity and dirty state.
         if (get().currentProject?.id !== current.id) return saved.filePath || null;
@@ -836,7 +842,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           currentProject: saved,
           recentProjects: [saved!, ...state.recentProjects.filter((p) => p.id !== saved!.id)].slice(0, 10),
         }));
-        try { localStorage.setItem('afsn_recent_projects', JSON.stringify(get().recentProjects)); } catch {}
+        try { localStorage.setItem('osa_recent_projects', JSON.stringify(get().recentProjects)); } catch {}
         if (saved.id !== current.id) {
           await usePhotoStore.getState().loadPhotos(saved.id);
           await usePhotoStore.getState().loadFolders(saved.id);
@@ -867,11 +873,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       if (!await useAlbumStore.getState().saveAlbumToDb()) throw new Error('The recovery database could not be saved. Your project file was not changed.');
       const { invoke } = await import('@tauri-apps/api/core');
       let saved: Project | null;
-      if (current.filePath && /\.afsn$/i.test(current.filePath)) {
+      if (isProjectFilePath(current.filePath)) {
         saved = await invoke<Project | null>('save_project_as_with_dialog', { projectId: current.id, suggestedName: current.name });
       } else {
-        const path = await invoke<string | null>('export_afsn_with_dialog', { projectId: current.id, suggestedName: current.name });
-        saved = path ? { ...current, filePath: path, name: path.replace(/^.*[\\/]/, '').replace(/\.afsn$/i, '') } : null;
+        const path = await invoke<string | null>('export_project_with_dialog', { projectId: current.id, suggestedName: current.name });
+        saved = path ? { ...current, filePath: path, name: stripProjectExtension(path) } : null;
       }
       if (!saved) return null; // Cancel preserves the current identity and dirty state.
       if (get().currentProject?.id !== current.id) return saved.filePath || null;
@@ -885,7 +891,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         currentProject: saved,
         recentProjects: [saved!, ...state.recentProjects.filter((p) => p.id !== saved!.id)].slice(0, 10),
       }));
-      try { localStorage.setItem('afsn_recent_projects', JSON.stringify(get().recentProjects)); } catch {}
+      try { localStorage.setItem('osa_recent_projects', JSON.stringify(get().recentProjects)); } catch {}
       if (saved.id !== current.id) {
         await usePhotoStore.getState().loadPhotos(saved.id);
         await usePhotoStore.getState().loadFolders(saved.id);
@@ -938,14 +944,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }
   },
 
-  importProjectFromAfsn: async (): Promise<boolean> => {
+  importProjectPackage: async (): Promise<boolean> => {
     if (get().isSaving || get().isLoading || usePhotoStore.getState().isRemoving || usePhotoStore.getState().isRelinking) return false;
     set({ isLoading: true, error: null });
     try {
       const { usePhotoStore } = await import('./photoStore');
       await usePhotoStore.getState().cancelAllImports();
       const { invoke } = await import('@tauri-apps/api/core');
-      const packageData = await invoke<any>('import_afsn_with_dialog');
+      const packageData = await invoke<any>('import_project_with_dialog');
       if (packageData && packageData.project) {
         const project = packageData.project as Project;
         project.projectType = normalizeProjectType(project.projectType, project.canvasUnit);
@@ -956,7 +962,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         }));
 
         try {
-          localStorage.setItem('afsn_recent_projects', JSON.stringify(get().recentProjects));
+          localStorage.setItem('osa_recent_projects', JSON.stringify(get().recentProjects));
         } catch {}
 
         // Load imported photos, folders, and project structure
@@ -978,7 +984,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         return true;
       }
     } catch (err) {
-      console.error('[AFSN] import_afsn_with_dialog failed:', err);
+      console.error('[OpenSmartAlbum] import_project_with_dialog failed:', err);
       set({ error: `Open failed: ${String(err)}` });
     } finally {
       await get().loadRecentProjects();
@@ -989,8 +995,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   openProjectFromFile: async (filePath: string): Promise<boolean> => {
     if (get().isSaving || get().isLoading || usePhotoStore.getState().isRemoving || usePhotoStore.getState().isRelinking) return false;
-    if (!/\.afsn$/i.test(filePath)) {
-      set({ error: 'Open .afsn project files only. Extract ZIP packages first, then open project.afsn inside the extracted folder.' });
+    if (!isProjectFilePath(filePath)) {
+      set({ error: 'Open OpenSmartAlbum project files only (.opensmartalbum, .osa).' });
       return false;
     }
     set({ isLoading: true, error: null });
@@ -998,8 +1004,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const { usePhotoStore } = await import('./photoStore');
       await usePhotoStore.getState().cancelAllImports();
       const { invoke } = await import('@tauri-apps/api/core');
-      console.log('[AFSN] Opening project from file:', filePath);
-      const packageData = await invoke<any>('import_afsn_package', { sourcePath: filePath });
+      console.log('[OpenSmartAlbum] Opening project from file:', filePath);
+      const packageData = await invoke<any>('import_project_package', { sourcePath: filePath });
       if (packageData && packageData.project) {
         const project = packageData.project as Project;
         project.projectType = normalizeProjectType(project.projectType, project.canvasUnit);
@@ -1010,7 +1016,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         }));
 
         try {
-          localStorage.setItem('afsn_recent_projects', JSON.stringify(get().recentProjects));
+          localStorage.setItem('osa_recent_projects', JSON.stringify(get().recentProjects));
         } catch {}
 
         // Load imported photos, folders, and project structure
@@ -1032,7 +1038,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         return true;
       }
     } catch (err) {
-      console.error('[AFSN] openProjectFromFile failed:', err);
+      console.error('[OpenSmartAlbum] openProjectFromFile failed:', err);
       set({ error: `Open failed: ${String(err)}` });
     } finally {
       await get().loadRecentProjects();
@@ -1046,15 +1052,15 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const { invoke } = await import('@tauri-apps/api/core');
       await invoke('delete_project', { id });
     } catch (err) {
-      console.warn('[AFSN] delete_project via Tauri failed, fallback:', err);
+      console.warn('[OpenSmartAlbum] delete_project via Tauri failed, fallback:', err);
     }
 
     const updated = get().recentProjects.filter((p) => p.id !== id);
     set({ recentProjects: updated });
     try {
-      localStorage.setItem('afsn_recent_projects', JSON.stringify(updated));
+      localStorage.setItem('osa_recent_projects', JSON.stringify(updated));
     } catch (e) {
-      console.warn('[AFSN] localStorage write error:', e);
+      console.warn('[OpenSmartAlbum] localStorage write error:', e);
     }
   },
 
@@ -1063,14 +1069,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const { invoke } = await import('@tauri-apps/api/core');
       await invoke('clear_recent_projects');
     } catch (err) {
-      console.warn('[AFSN] clear_recent_projects via Tauri failed, fallback:', err);
+      console.warn('[OpenSmartAlbum] clear_recent_projects via Tauri failed, fallback:', err);
     }
 
     set({ recentProjects: [] });
     try {
-      localStorage.removeItem('afsn_recent_projects');
+      localStorage.removeItem('osa_recent_projects');
     } catch (e) {
-      console.warn('[AFSN] localStorage write error:', e);
+      console.warn('[OpenSmartAlbum] localStorage write error:', e);
     }
   },
 }));

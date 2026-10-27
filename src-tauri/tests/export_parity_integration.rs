@@ -1,9 +1,9 @@
 use std::fs;
 use std::path::PathBuf;
-use afsn_smart_album_lib::db::{
+use opensmartalbum_lib::db::{
     ElementPayload, ProjectRow, SpreadBackgroundImagePayload, SpreadPayload,
 };
-use afsn_smart_album_lib::export_engine::{
+use opensmartalbum_lib::export_engine::{
     assemble_pdf_from_jpegs, encode_jpeg_with_dpi, encode_png_with_dpi, encode_tiff_with_dpi,
     render_spread_base_to_image_with_progress, render_spread_text_to_canvas, render_spread_to_psd,
     carousel_slicer::{

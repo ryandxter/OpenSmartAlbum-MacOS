@@ -738,8 +738,8 @@ npm run tauri build -- --target aarch64-apple-darwin
 
 ## 🤝 Credits & Acknowledgements
 
-* **Original Creator:** [Asrofims](https://github.com/asrofims) / Afsunmedia — Pencipta arsitektur awal AFSNSmartAlbum, sistem kalkulasi matematika tata letak, dan domain album.
-* **macOS Port & Enhancements:** [@ryandxter](https://github.com/ryandxter) — Porting penuh ke ekosistem native macOS, ekstraksi Win32, Instagram Carousel slicer, eksportir Layered PSD, dan installer DMG.
+* **Origins & Architecture:** OpenSmartAlbum evolved from an early open-source album layout proof-of-concept into a full-featured macOS/cross-platform application.
+* **Lead Maintainer:** [@ryandxter](https://github.com/ryandxter) — Native macOS architecture, full engine refactor, Instagram Carousel slicer, Layered PSD exporter, and standalone bundles.
 
 ### Fondasi Open Source
 - [Tauri](https://tauri.app/) (MIT / Apache-2.0) • [React](https://reactjs.org/) (MIT) • [Konva](https://konvajs.org/) (MIT) • [SQLite](https://www.sqlite.org/) (Public Domain) • [Rayon](https://github.com/rayon-rs/rayon) (MIT / Apache-2.0) • [image crate](https://github.com/image-rs/image) (MIT) • [tract](https://github.com/sonos/tract) (MIT / Apache-2.0)

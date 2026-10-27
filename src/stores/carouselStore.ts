@@ -381,12 +381,12 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
       // Crash recovery snapshot
       try {
         if (isCarouselEqual(get().currentCarousel, currentCarousel)) {
-          localStorage.setItem(`afsn_carousel_snapshot_${sanitizedCarousel.projectId}`, JSON.stringify({
+          localStorage.setItem(`osa_carousel_snapshot_${sanitizedCarousel.projectId}`, JSON.stringify({
             projectId: sanitizedCarousel.projectId,
             savedAt: new Date().toISOString(),
             carousel: sanitizedCarousel,
           }));
-          localStorage.removeItem(`afsn_dirty_${sanitizedCarousel.projectId}`);
+          localStorage.removeItem(`osa_dirty_${sanitizedCarousel.projectId}`);
         }
       } catch {}
 
@@ -398,10 +398,10 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
       }
       return true;
     } catch (err) {
-      console.warn('[AFSN] save_carousel_structure failed or non-Tauri environment:', err);
+      console.warn('[OpenSmartAlbum] save_carousel_structure failed or non-Tauri environment:', err);
       // Fallback: save to localStorage snapshot
       try {
-        localStorage.setItem(`afsn_carousel_snapshot_${sanitizedCarousel.projectId}`, JSON.stringify({
+        localStorage.setItem(`osa_carousel_snapshot_${sanitizedCarousel.projectId}`, JSON.stringify({
           projectId: sanitizedCarousel.projectId,
           savedAt: new Date().toISOString(),
           carousel: sanitizedCarousel,
@@ -422,13 +422,13 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         const { invoke } = await import('@tauri-apps/api/core');
         payload = await invoke<any>('load_carousel_structure', { projectId });
       } catch (invokeErr) {
-        console.warn('[AFSN] load_carousel_structure invoke failed, checking snapshot:', invokeErr);
+        console.warn('[OpenSmartAlbum] load_carousel_structure invoke failed, checking snapshot:', invokeErr);
       }
 
       if (!payload) {
         // Fallback to localStorage snapshot
         try {
-          const snapshotRaw = localStorage.getItem(`afsn_carousel_snapshot_${projectId}`);
+          const snapshotRaw = localStorage.getItem(`osa_carousel_snapshot_${projectId}`);
           if (snapshotRaw) {
             const parsed = JSON.parse(snapshotRaw);
             payload = parsed.carousel || parsed;
@@ -614,7 +614,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
 
       return true;
     } catch (err) {
-      console.error('[AFSN] Error loading carousel structure:', err);
+      console.error('[OpenSmartAlbum] Error loading carousel structure:', err);
       return false;
     }
   },

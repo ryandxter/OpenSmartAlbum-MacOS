@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
 import {
   LayoutTemplate,
   LayoutTemplateSpec,
@@ -15,6 +14,8 @@ import { useAlbumStore } from '../../stores/albumStore';
 import { useProjectStore } from '../../stores/projectStore';
 import { useCarouselStore } from '../../stores/carouselStore';
 import { useHistoryStore } from '../../stores/historyStore';
+import { Dialog } from '../../components/ui/Dialog';
+import { Button } from '../../components/ui/Button';
 import styles from './ApplyTemplateDialog.module.css';
 
 interface ApplyTemplateDialogProps {
@@ -175,57 +176,41 @@ export function ApplyTemplateDialog({
   };
 
   return (
-    <div className={styles.backdrop} onClick={onClose}>
-      <div
-        className={styles.dialog}
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-labelledby="dialog-title"
-      >
-        {/* Header */}
-        <div className={styles.header}>
-          <div className={styles.titleArea}>
-            <h3 id="dialog-title" className={styles.title}>
-              Apply Layout Template
-            </h3>
-            <p className={styles.subtitle}>
-              {spec.name} &bull; {slotCount} {slotCount === 1 ? 'Slot' : 'Slots'}
-            </p>
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-            }}
-          >
-            <div
-              style={{
-                borderRadius: 4,
-                overflow: 'hidden',
-                border: '1px solid #3f3f46',
-                display: 'flex',
-              }}
-              dangerouslySetInnerHTML={{ __html: svgPreview }}
-            />
-            <button
-              type="button"
-              className={styles.closeBtn}
-              onClick={onClose}
-              aria-label="Close dialog"
-            >
-              <X size={16} />
-            </button>
-          </div>
+    <Dialog
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Apply Layout Template"
+      width={460}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={handleApply}>
+            Apply Template
+          </Button>
+        </>
+      }
+    >
+      <div className={styles.headerPreviewRow}>
+        <div className={styles.templateInfo}>
+          <span className={styles.templateName}>{spec.name}</span>
+          <span className={styles.templateMeta}>
+            {slotCount} {slotCount === 1 ? 'Slot' : 'Slots'} · {(spec as any).canvasKind || 'Spread'}
+          </span>
         </div>
+        <div
+          className={styles.svgWrapper}
+          dangerouslySetInnerHTML={{ __html: svgPreview }}
+        />
+      </div>
 
-        {/* Body */}
-        <div className={styles.body}>
-          {/* Target Area */}
-          <div className={styles.section}>
-            <div className={styles.sectionHeader}>
-              <span className={styles.sectionLabel}>Target Area</span>
-            </div>
+      <div className={styles.body}>
+        {/* Target Area */}
+        <div className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <span className={styles.sectionLabel}>Target Area</span>
+          </div>
             {activeMode === 'carousel' ? (
               <div className={styles.segmentedControl}>
                 <button
@@ -375,19 +360,6 @@ export function ApplyTemplateDialog({
             <span style={{ fontWeight: 600 }}>⚡ Pro Tip:</span> Shift + Click any template card in &quot;My Templates&quot; to Quick Apply instantly using these remembered preferences.
           </div>
         </div>
-
-        {/* Footer */}
-        <div className={styles.footer}>
-          <button type="button" className={styles.cancelBtn} onClick={onClose}>
-            Cancel
-          </button>
-          <div className={styles.footerActions}>
-            <button type="button" className={styles.applyBtn} onClick={handleApply}>
-              Apply Template
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }

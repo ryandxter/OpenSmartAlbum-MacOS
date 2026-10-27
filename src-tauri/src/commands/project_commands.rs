@@ -13,9 +13,13 @@ fn project_file_job() -> Result<std::sync::MutexGuard<'static, ()>, String> {
     PROJECT_FILE_JOB.lock().map_err(|_| "The project file worker is unavailable.".to_string())
 }
 
+fn is_project_extension(ext: &str) -> bool {
+    ext.eq_ignore_ascii_case("opensmartalbum") || ext.eq_ignore_ascii_case("osa") || ext.eq_ignore_ascii_case("afsn")
+}
+
 fn normalize_save_destination(mut path: std::path::PathBuf) -> Option<std::path::PathBuf> {
     if path.extension().is_none() {
-        path.set_extension("afsn");
+        path.set_extension("opensmartalbum");
         // The native picker may have confirmed the name without the appended extension.
         if path.exists() && rfd::MessageDialog::new()
             .set_title("Replace Project File")
@@ -261,14 +265,15 @@ pub fn update_project_name(
 
     let mut new_file_path = existing_proj.file_path.clone();
 
-    // If an associated .afsn file exists on disk, rename it automatically (Option 1)
+    // If an associated project file exists on disk, rename it automatically
     if let Some(ref old_path_str) = existing_proj.file_path {
         let old_path = std::path::Path::new(old_path_str);
-        if old_path.exists() && old_path.extension().and_then(|s| s.to_str()).is_some_and(|s| s.eq_ignore_ascii_case("afsn")) {
+        if old_path.exists() && old_path.extension().and_then(|s| s.to_str()).is_some_and(is_project_extension) {
             db.validate_project_file(&id, old_path_str).map_err(|e| e.to_string())?;
             let parent_dir = old_path.parent().unwrap_or_else(|| std::path::Path::new(""));
             let safe_file_stem = clean_name.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
-            let target_file_name = format!("{}.afsn", safe_file_stem);
+            let ext = old_path.extension().and_then(|s| s.to_str()).unwrap_or("opensmartalbum");
+            let target_file_name = format!("{}.{}", safe_file_stem, ext);
             let target_path = parent_dir.join(&target_file_name);
 
             if target_path != old_path {
@@ -280,7 +285,7 @@ pub fn update_project_name(
                 }
 
                 log::info!(
-                    "Renaming .afsn file on disk from {:?} to {:?}",
+                    "Renaming project file on disk from {:?} to {:?}",
                     old_path,
                     target_path
                 );
@@ -296,10 +301,10 @@ pub fn update_project_name(
     db.update_project_name_and_path(&id, clean_name, new_file_path.as_deref())
         .map_err(|e| e.to_string())?;
 
-    // If an associated .afsn file exists, rewrite its internal JSON package with the updated project name!
+    // If an associated project file exists, rewrite its internal JSON package with the updated project name!
     if let Some(ref path_str) = new_file_path {
         if std::path::Path::new(path_str).exists() {
-            if std::path::Path::new(path_str).extension().and_then(|s| s.to_str()).is_some_and(|s| s.eq_ignore_ascii_case("afsn")) {
+            if std::path::Path::new(path_str).extension().and_then(|s| s.to_str()).is_some_and(is_project_extension) {
                 db.export_project_package(&id, path_str).map_err(|e| e.to_string())?;
             }
         }
@@ -383,7 +388,7 @@ pub fn load_carousel_structure(
 }
 
 #[tauri::command]
-pub fn export_afsn_package(
+pub fn export_project_package(
     db: State<'_, Database>,
     project_id: String,
     target_path: String,
@@ -391,30 +396,30 @@ pub fn export_afsn_package(
     let _file_job = project_file_job()?;
     // Normal Save must never recreate a missing file or reclaim a replaced file.
     db.validate_project_file(&project_id, &target_path).map_err(|e| e.to_string())?;
-    log::info!("export_afsn_package: project_id={}, target_path={}", project_id, target_path);
+    log::info!("export_project_package: project_id={}, target_path={}", project_id, target_path);
     db.export_project_package(&project_id, &target_path)
         .map_err(|e| {
-            log::error!("Failed to export .afsn package: {:?}", e);
+            log::error!("Failed to export project package: {:?}", e);
             e.to_string()
         })
 }
 
 #[tauri::command]
-pub fn import_afsn_package(
+pub fn import_project_package(
     db: State<'_, Database>,
     source_path: String,
 ) -> Result<ProjectPackagePayload, String> {
     let _file_job = project_file_job()?;
-    log::info!("import_afsn_package: source_path={}", source_path);
+    log::info!("import_project_package: source_path={}", source_path);
     db.import_project_package(&source_path)
         .map_err(|e| {
-            log::error!("Failed to import .afsn package: {:?}", e);
+            log::error!("Failed to import project package: {:?}", e);
             e.to_string()
         })
 }
 
 #[tauri::command]
-pub async fn export_afsn_with_dialog(
+pub async fn export_project_with_dialog(
     db: State<'_, Database>,
     project_id: String,
     suggested_name: Option<String>,
@@ -422,9 +427,9 @@ pub async fn export_afsn_with_dialog(
     let default_name = suggested_name.unwrap_or_else(|| "Album-Project".to_string());
     let file_path = tauri::async_runtime::spawn_blocking(move || {
         rfd::FileDialog::new()
-            .set_title("Save OpenSmartAlbum Project (.afsn)")
-            .set_file_name(&format!("{}.afsn", default_name))
-            .add_filter("OpenSmartAlbum Package (*.afsn)", &["afsn"])
+            .set_title("Save OpenSmartAlbum Project")
+            .set_file_name(&format!("{}.opensmartalbum", default_name))
+            .add_filter("OpenSmartAlbum Project (*.opensmartalbum, *.osa)", &["opensmartalbum", "osa", "afsn"])
             .save_file()
             .and_then(normalize_save_destination)
     })
@@ -433,7 +438,7 @@ pub async fn export_afsn_with_dialog(
 
     if let Some(mut path) = file_path {
         if path.extension().is_none() {
-            path.set_extension("afsn");
+            path.set_extension("opensmartalbum");
         }
         let path_str = path.to_string_lossy().to_string();
         // The writer assigns the path only after the new file is fully written.
@@ -458,9 +463,9 @@ pub async fn save_project_as_with_dialog(
     let default_name = suggested_name.unwrap_or_else(|| "Album-Project".to_string());
     let file_path = tauri::async_runtime::spawn_blocking(move || {
         rfd::FileDialog::new()
-            .set_title("Save OpenSmartAlbum Project As (.afsn)")
-            .set_file_name(&format!("{}.afsn", default_name))
-            .add_filter("OpenSmartAlbum Package (*.afsn)", &["afsn"])
+            .set_title("Save OpenSmartAlbum Project As")
+            .set_file_name(&format!("{}.opensmartalbum", default_name))
+            .add_filter("OpenSmartAlbum Project (*.opensmartalbum, *.osa)", &["opensmartalbum", "osa", "afsn"])
             .save_file()
             .and_then(normalize_save_destination)
     })
@@ -469,7 +474,7 @@ pub async fn save_project_as_with_dialog(
 
     if let Some(mut path) = file_path {
         if path.extension().is_none() {
-            path.set_extension("afsn");
+            path.set_extension("opensmartalbum");
         }
         let path_str = path.to_string_lossy().to_string();
         let _file_job = project_file_job()?;
@@ -608,13 +613,13 @@ pub async fn export_bundled_package_with_dialog(
 }
 
 #[tauri::command]
-pub async fn import_afsn_with_dialog(
+pub async fn import_project_with_dialog(
     db: State<'_, Database>,
 ) -> Result<Option<ProjectPackagePayload>, String> {
     let file_path = tauri::async_runtime::spawn_blocking(move || {
         rfd::FileDialog::new()
-            .set_title("Open OpenSmartAlbum Project (.afsn)")
-            .add_filter("OpenSmartAlbum Project (*.afsn)", &["afsn"])
+            .set_title("Open OpenSmartAlbum Project")
+            .add_filter("OpenSmartAlbum Project (*.opensmartalbum, *.osa)", &["opensmartalbum", "osa", "afsn"])
             .pick_file()
     })
     .await

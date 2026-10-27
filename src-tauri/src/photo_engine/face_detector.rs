@@ -604,7 +604,7 @@ mod tests {
 
     #[test]
     fn test_inference_latency_benchmark() {
-        let temp_dir = std::env::temp_dir().join("afsn_test_yunet");
+        let temp_dir = std::env::temp_dir().join("osa_test_yunet");
         let _ = std::fs::create_dir_all(&temp_dir);
         let test_path = temp_dir.join("test_portrait.jpg");
 
@@ -633,7 +633,7 @@ mod tests {
 
     #[test]
     fn test_batch_detection_rayon() {
-        let temp_dir = std::env::temp_dir().join("afsn_test_yunet_batch");
+        let temp_dir = std::env::temp_dir().join("osa_test_yunet_batch");
         let _ = std::fs::create_dir_all(&temp_dir);
 
         let mut paths = Vec::new();

@@ -1,7 +1,7 @@
 export const APP_CONFIG = {
   name: 'OpenSmartAlbum',
   description: '100% Free & Open-Source Professional Desktop Photo Album Layout & Social Studio',
-  projectExtension: '.afsn',
+  projectExtension: '.opensmartalbum',
   website: 'https://github.com/opensmartalbum/opensmartalbum',
   license: 'Open Source — MIT / GPLv3 (100% Free & Open-Source, Zero DRM)',
   credits: [

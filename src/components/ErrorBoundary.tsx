@@ -24,10 +24,10 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('[AFSN Fatal Error Boundary Caught]:', error, errorInfo);
+    console.error('[OpenSmartAlbum Fatal Error Boundary Caught]:', error, errorInfo);
     try {
       localStorage.setItem(
-        'afsn_last_error',
+        'osa_last_error',
         JSON.stringify({
           message: error.message,
           stack: error.stack,

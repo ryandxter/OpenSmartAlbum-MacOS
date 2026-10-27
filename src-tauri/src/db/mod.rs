@@ -4195,29 +4195,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_inspect_actual_db() {
-        if let Ok(app_data_str) = std::env::var("APPDATA") {
-            let app_data = PathBuf::from(app_data_str).join("com.afsn.smartalbum").join("afsn_smart_album.db");
-            if app_data.exists() {
-                let conn = rusqlite::Connection::open(&app_data).unwrap();
-                let mut stmt = conn.prepare("PRAGMA table_info(projects)").unwrap();
-                let cols = stmt.query_map([], |row| {
-                    let name: String = row.get(1)?;
-                    let col_type: String = row.get(2)?;
-                    Ok(format!("{}: {}", name, col_type))
-                }).unwrap();
-                println!("=== ACTUAL DB PRAGMA table_info(projects) ===");
-                for c in cols {
-                    println!("COL: {}", c.unwrap());
-                }
-                println!("=============================================");
-            }
-        }
-    }
-
-    #[test]
     fn test_project_crud() {
-        let temp_dir = std::env::temp_dir().join("afsn_test_db_v6");
+        let temp_dir = std::env::temp_dir().join("osa_test_db_v6");
         let _ = std::fs::remove_dir_all(&temp_dir);
         let db = Database::init(temp_dir.join("test.db")).expect("Failed to init DB");
 
@@ -4572,7 +4551,7 @@ mod tests {
 
     #[test]
     fn test_batch_photo_insertion() {
-        let temp_dir = std::env::temp_dir().join("afsn_test_db_batch");
+        let temp_dir = std::env::temp_dir().join("osa_test_db_batch");
         let _ = std::fs::remove_dir_all(&temp_dir);
         let db = Database::init(temp_dir.join("test_batch.db")).expect("Failed to init DB");
 
@@ -4631,7 +4610,7 @@ mod tests {
 
     #[test]
     fn test_duplicate_project() {
-        let temp_dir = std::env::temp_dir().join(format!("afsn_test_dup_{}", uuid::Uuid::new_v4()));
+        let temp_dir = std::env::temp_dir().join(format!("osa_test_dup_{}", uuid::Uuid::new_v4()));
         let _ = std::fs::create_dir_all(&temp_dir);
         let db_path = temp_dir.join("test.db");
         let db = Database::init(db_path).expect("Failed to init db");
@@ -4702,7 +4681,7 @@ mod tests {
         assert_eq!(elem_fields.corner_radii(), (8.0, 0.0, 8.0, 0.0));
 
         // 4. Test database persistence of non-uniform corner radii
-        let temp_dir = std::env::temp_dir().join("afsn_test_db_corners");
+        let temp_dir = std::env::temp_dir().join("osa_test_db_corners");
         let _ = std::fs::remove_dir_all(&temp_dir);
         let db = Database::init(temp_dir.join("test_corners.db")).expect("Failed to init db");
 
@@ -4757,7 +4736,7 @@ mod tests {
 
     #[test]
     fn test_migrate_v16_and_schema_version() {
-        let temp_dir = std::env::temp_dir().join(format!("afsn_test_v16_{}", uuid::Uuid::new_v4()));
+        let temp_dir = std::env::temp_dir().join(format!("osa_test_v16_{}", uuid::Uuid::new_v4()));
         let _ = std::fs::remove_dir_all(&temp_dir);
         let db = Database::init(temp_dir.join("test.db")).expect("Failed to init DB");
 
@@ -4800,7 +4779,7 @@ mod tests {
 
     #[test]
     fn test_carousel_save_and_load_roundtrip() {
-        let temp_dir = std::env::temp_dir().join(format!("afsn_test_carousel_{}", uuid::Uuid::new_v4()));
+        let temp_dir = std::env::temp_dir().join(format!("osa_test_carousel_{}", uuid::Uuid::new_v4()));
         let _ = std::fs::remove_dir_all(&temp_dir);
         let db = Database::init(temp_dir.join("test.db")).expect("Failed to init DB");
 
@@ -4971,7 +4950,7 @@ mod tests {
 
     #[test]
     fn test_carousel_cascading_delete() {
-        let temp_dir = std::env::temp_dir().join(format!("afsn_test_cascade_{}", uuid::Uuid::new_v4()));
+        let temp_dir = std::env::temp_dir().join(format!("osa_test_cascade_{}", uuid::Uuid::new_v4()));
         let _ = std::fs::remove_dir_all(&temp_dir);
         let db = Database::init(temp_dir.join("test.db")).expect("Failed to init DB");
 
@@ -5047,7 +5026,7 @@ mod tests {
 
     #[test]
     fn test_migration_idempotency_and_35_plus_column_roundtrip() {
-        let temp_dir = std::env::temp_dir().join(format!("afsn_test_v30_idempotent_{}", uuid::Uuid::new_v4()));
+        let temp_dir = std::env::temp_dir().join(format!("osa_test_v30_idempotent_{}", uuid::Uuid::new_v4()));
         let _ = std::fs::remove_dir_all(&temp_dir);
         let db_path = temp_dir.join("test.db");
 
@@ -5419,7 +5398,7 @@ mod tests {
 
     #[test]
     fn test_photo_ai_analysis_crud_and_cascade() {
-        let temp_dir = std::env::temp_dir().join(format!("afsn_test_ai_analysis_{}", uuid::Uuid::new_v4()));
+        let temp_dir = std::env::temp_dir().join(format!("osa_test_ai_analysis_{}", uuid::Uuid::new_v4()));
         let _ = std::fs::remove_dir_all(&temp_dir);
         let db_path = temp_dir.join("test.db");
         let db = Database::init(db_path).expect("Database::init failed");

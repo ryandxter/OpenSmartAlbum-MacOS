@@ -2659,7 +2659,7 @@ mod tests {
 
     #[test]
     fn pasteboard_photos_stay_outside_export_with_bleed() {
-        let path = std::env::temp_dir().join(format!("afsn-pasteboard-{}.png", uuid::Uuid::new_v4()));
+        let path = std::env::temp_dir().join(format!("osa-pasteboard-{}.png", uuid::Uuid::new_v4()));
         let red = Rgba([255, 0, 0, 255]);
         let white = Rgba([255, 255, 255, 255]);
         RgbaImage::from_pixel(20, 20, red).save(&path).unwrap();
@@ -2688,7 +2688,7 @@ mod tests {
 
     #[test]
     fn photo_and_border_share_object_opacity() {
-        let path = std::env::temp_dir().join(format!("afsn-opacity-{}.png", uuid::Uuid::new_v4()));
+        let path = std::env::temp_dir().join(format!("osa-opacity-{}.png", uuid::Uuid::new_v4()));
         RgbaImage::from_pixel(20, 20, Rgba([255, 0, 0, 255])).save(&path).unwrap();
         let white = Rgba([255, 255, 255, 255]);
         let mut element: ElementPayload = serde_json::from_value(serde_json::json!({
@@ -2726,7 +2726,7 @@ mod tests {
 
     #[test]
     fn test_split_spread_into_pages_zero_overlap() {
-        let temp_dir = std::env::temp_dir().join(format!("afsn-test-split-{}", uuid::Uuid::new_v4()));
+        let temp_dir = std::env::temp_dir().join(format!("osa-test-split-{}", uuid::Uuid::new_v4()));
         let _ = fs::create_dir_all(&temp_dir);
 
         let red_path = temp_dir.join("red.png");
@@ -2877,7 +2877,7 @@ mod tests {
     #[test]
     fn native_export_preserves_uniform_configured_gaps_across_units_and_dpi() {
         let photo_path = std::env::temp_dir().join(format!(
-            "afsn-export-gap-{}.png",
+            "osa-export-gap-{}.png",
             uuid::Uuid::new_v4()
         ));
         let red = Rgba([255, 0, 0, 255]);
@@ -3162,7 +3162,7 @@ mod tests {
         assert!(img.height() > 800);
 
         // Test PDF Assembly
-        let temp_dir = std::env::temp_dir().join("afsn_test_pdf");
+        let temp_dir = std::env::temp_dir().join("osa_test_pdf");
         let _ = fs::create_dir_all(&temp_dir);
 
         let jpg_path = temp_dir.join("test_spread.jpg");

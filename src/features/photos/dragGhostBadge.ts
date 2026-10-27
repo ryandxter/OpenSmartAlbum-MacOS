@@ -10,10 +10,10 @@ import { usePhotoStore } from '../../stores/photoStore';
  */
 export function setInBoundsDragGhostBadge(label: string, e: React.DragEvent): void {
   try {
-    let badge = document.getElementById('afsn-drag-ghost-badge');
+    let badge = document.getElementById('osa-drag-ghost-badge');
     if (!badge) {
       badge = document.createElement('div');
-      badge.id = 'afsn-drag-ghost-badge';
+      badge.id = 'osa-drag-ghost-badge';
       badge.style.position = 'fixed';
       badge.style.top = '0px';
       badge.style.left = '0px';
@@ -37,7 +37,7 @@ export function setInBoundsDragGhostBadge(label: string, e: React.DragEvent): vo
     e.dataTransfer.setDragImage(badge, 20, 16);
 
     requestAnimationFrame(() => {
-      const activeBadge = document.getElementById('afsn-drag-ghost-badge');
+      const activeBadge = document.getElementById('osa-drag-ghost-badge');
       if (activeBadge) {
         activeBadge.style.opacity = '0.01';
         activeBadge.style.pointerEvents = 'none';
@@ -51,7 +51,7 @@ export function setInBoundsDragGhostBadge(label: string, e: React.DragEvent): vo
  */
 export function cleanupDragGhostBadge(): void {
   try {
-    const badge = document.getElementById('afsn-drag-ghost-badge');
+    const badge = document.getElementById('osa-drag-ghost-badge');
     if (badge) {
       badge.style.display = 'none';
     }

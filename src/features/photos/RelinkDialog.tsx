@@ -32,6 +32,22 @@ export function RelinkDialog() {
       title={isSinglePhoto ? 'Relink Photo' : 'Relink Missing Photos'}
       width={580}
       closeOnOverlayClick={false}
+      footer={
+        <>
+          <Button variant="secondary" onClick={closeRelink} disabled={isRelinking}>
+            {summary ? 'Close' : 'Cancel'}
+          </Button>
+          {!isSinglePhoto && (
+            <Button
+              variant="primary"
+              disabled={isRelinking || missingPhotos.length === 0}
+              onClick={() => relinkFolder(currentProject.id)}
+            >
+              Locate Folder...
+            </Button>
+          )}
+        </>
+      }
     >
       <div className={styles.container}>
         <div className={styles.description}>
@@ -82,18 +98,6 @@ export function RelinkDialog() {
             </div>
           </div>
         )}
-        <div className={styles.footer}>
-          <Button variant="secondary" onClick={closeRelink} disabled={isRelinking}>
-            {summary ? 'Close' : 'Cancel'}
-          </Button>
-          {!isSinglePhoto && <Button
-            variant="primary"
-            disabled={isRelinking || missingPhotos.length === 0}
-            onClick={() => relinkFolder(currentProject.id)}
-          >
-            Locate Folder...
-          </Button>}
-        </div>
       </div>
     </Dialog>
   );

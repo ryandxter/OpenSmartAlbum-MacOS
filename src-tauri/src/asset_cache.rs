@@ -193,7 +193,7 @@ mod tests {
 
     #[test]
     fn removes_only_orphaned_generated_photo_assets() {
-        let temp_dir = std::env::temp_dir().join("afsn_asset_cache_cleanup_test");
+        let temp_dir = std::env::temp_dir().join("osa_asset_cache_cleanup_test");
         let _ = fs::remove_dir_all(&temp_dir);
         let thumbnails = temp_dir.join("thumbnails");
         let previews = temp_dir.join("previews");
@@ -221,7 +221,7 @@ mod tests {
 
     #[test]
     fn measures_only_generated_photo_cache_assets() {
-        let temp_dir = std::env::temp_dir().join("afsn_asset_cache_stats_test");
+        let temp_dir = std::env::temp_dir().join("osa_asset_cache_stats_test");
         let _ = fs::remove_dir_all(&temp_dir);
         let thumbnails = temp_dir.join("thumbnails");
         let previews = temp_dir.join("previews");

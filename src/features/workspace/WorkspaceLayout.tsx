@@ -77,8 +77,8 @@ export function WorkspaceLayout() {
   const currentProject = useProjectStore((s) => s.currentProject);
   const openNewProject = useProjectStore((s) => s.openNewProject);
   const saveProject = useProjectStore((s) => s.saveProject);
-  const exportProjectAsAfsn = useProjectStore((s) => s.exportProjectAsAfsn);
-  const importProjectFromAfsn = useProjectStore((s) => s.importProjectFromAfsn);
+  const exportProjectPackage = useProjectStore((s) => s.exportProjectPackage);
+  const importProjectPackage = useProjectStore((s) => s.importProjectPackage);
 
   const currentAlbum = useAlbumStore((s) => s.currentAlbum);
   const activeSpreadId = useAlbumStore((s) => s.activeSpreadId);
@@ -607,9 +607,13 @@ export function WorkspaceLayout() {
     clientX: number,
     clientY: number
   ) => {
-    // Check for Custom Layout Template packages (.afsnt / .afsnp)
+    // Check for Custom Layout Template packages (.osat / .osatp / .afsnt / .afsnp)
     const templatePaths = (paths || []).filter(
-      (p) => p.toLowerCase().endsWith('.afsnt') || p.toLowerCase().endsWith('.afsnp')
+      (p) =>
+        p.toLowerCase().endsWith('.osat') ||
+        p.toLowerCase().endsWith('.osatp') ||
+        p.toLowerCase().endsWith('.afsnt') ||
+        p.toLowerCase().endsWith('.afsnp')
     );
     if (templatePaths.length > 0) {
       const firstTpl = templatePaths[0]!;
@@ -687,10 +691,10 @@ export function WorkspaceLayout() {
             else unlisten = fn;
           })
           .catch((err) => {
-            console.warn('[AFSN] Error attaching onDragDropEvent listener:', err);
+            console.warn('[OpenSmartAlbum] Error attaching onDragDropEvent listener:', err);
           });
       } catch (err) {
-        console.warn('[AFSN] Error initializing getCurrentWebview:', err);
+        console.warn('[OpenSmartAlbum] Error initializing getCurrentWebview:', err);
       }
     } else {
       // Browser fallback (Vite dev mode in standard browser)
@@ -998,8 +1002,8 @@ export function WorkspaceLayout() {
       } else if (e.key === 's' || e.key === 'S') {
         e.preventDefault();
         if (e.shiftKey) {
-          // Save As (.afsn)
-          exportProjectAsAfsn().then((path) => {
+          // Save As (.opensmartalbum)
+          exportProjectPackage().then((path) => {
             if (path) showToast(`✓ Project saved to: ${path.split(/[\\/]/).pop() || path}`);
           });
         } else {
@@ -1049,7 +1053,7 @@ export function WorkspaceLayout() {
       } else if (e.key === 'o' || e.key === 'O') {
         e.preventDefault();
         confirmSafeAction(async () => {
-          await importProjectFromAfsn();
+          await importProjectPackage();
         });
       } else if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
@@ -1065,7 +1069,7 @@ export function WorkspaceLayout() {
         setZoomLevel((z) => Math.max(5, z - 15));
       }
     },
-    [activeMode, undo, redo, saveProject, exportProjectAsAfsn, importProjectFromAfsn, openNewProject, confirmSafeAction, showToast, activeSpreadId, activeSpread, selectedFrameIds, toggleLockSelectedFrames, addTextToSpread, setEditingTextElementId, currentProject, handleFitToScreen, setZoomLevel]
+    [activeMode, undo, redo, saveProject, exportProjectPackage, importProjectPackage, openNewProject, confirmSafeAction, showToast, activeSpreadId, activeSpread, selectedFrameIds, toggleLockSelectedFrames, addTextToSpread, setEditingTextElementId, currentProject, handleFitToScreen, setZoomLevel]
   );
 
   useEffect(() => {

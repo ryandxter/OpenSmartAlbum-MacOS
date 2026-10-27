@@ -8,10 +8,12 @@ export interface DialogProps {
   onClose: () => void;
   title: string;
   children: ReactNode;
+  footer?: ReactNode;
   width?: number;
   height?: number;
   className?: string;
   bodyClassName?: string;
+  footerClassName?: string;
   noPadding?: boolean;
   closeOnOverlayClick?: boolean;
   closeOnEscape?: boolean;
@@ -22,10 +24,12 @@ export const Dialog: React.FC<DialogProps> = ({
   onClose,
   title,
   children,
+  footer,
   width = 480,
   height,
   className = '',
   bodyClassName = '',
+  footerClassName = '',
   noPadding = false,
   closeOnOverlayClick = false, // Default false: user must explicitly click the close button
   closeOnEscape = true,
@@ -82,6 +86,11 @@ export const Dialog: React.FC<DialogProps> = ({
         >
           {children}
         </div>
+        {footer && (
+          <div className={`${styles.footer} ${footerClassName}`.trim()}>
+            {footer}
+          </div>
+        )}
       </div>
     </div>,
     document.body

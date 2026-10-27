@@ -171,7 +171,7 @@ pub async fn preflight_check_export(
     }
 
     if destination_writable {
-        let probe_file = out_dir.join(".afsn_write_test.tmp");
+        let probe_file = out_dir.join(".osa_write_test.tmp");
         match fs::File::create(&probe_file) {
             Ok(_) => {
                 let _ = fs::remove_file(&probe_file);

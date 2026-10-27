@@ -180,8 +180,8 @@ pub fn execute_staged_template_export(
 pub async fn pick_template_import_file_dialog() -> Result<Option<String>, String> {
     let picked = tauri::async_runtime::spawn_blocking(|| {
         rfd::FileDialog::new()
-            .set_title("Import Layout Template or Package (.afsnt, .afsnp)")
-            .add_filter("Layout Templates (*.afsnt, *.afsnp)", &["afsnt", "afsnp", "json"])
+            .set_title("Import Layout Template or Package")
+            .add_filter("Layout Templates (*.osat, *.osatp)", &["osat", "osatp", "afsnt", "afsnp", "json"])
             .pick_file()
             .map(|p| p.to_string_lossy().to_string())
     })
@@ -197,11 +197,11 @@ pub async fn pick_template_export_save_dialog(
     is_package: Option<bool>,
 ) -> Result<Option<String>, String> {
     let is_pkg = is_package.unwrap_or(false);
-    let ext = if is_pkg { "afsnp" } else { "afsnt" };
+    let ext = if is_pkg { "osatp" } else { "osat" };
     let desc = if is_pkg {
-        "AFSN Template Package (*.afsnp)"
+        "OpenSmartAlbum Template Package (*.osatp)"
     } else {
-        "AFSN Layout Template (*.afsnt)"
+        "OpenSmartAlbum Layout Template (*.osat)"
     };
     let default_name = suggested_name.unwrap_or_else(|| "custom_template".to_string());
     let filename = format!("{default_name}.{ext}");

@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    afsn_smart_album_lib::run();
+    opensmartalbum_lib::run();
 }

@@ -57,7 +57,7 @@ interface ExportAlbumDialogProps {
   activeMode?: 'print' | 'carousel';
 }
 
-const LAST_EXPORT_DIR_KEY = 'afsn_last_export_dir';
+const LAST_EXPORT_DIR_KEY = 'osa_last_export_dir';
 
 export function ExportAlbumDialog({ isOpen, onClose, onStartExport, activeMode = 'print' }: ExportAlbumDialogProps) {
   const currentProject = useProjectStore((s) => s.currentProject);

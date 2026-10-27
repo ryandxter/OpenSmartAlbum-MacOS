@@ -10,13 +10,13 @@ use db::Database;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // ZIP archives are transport packages; open the extracted .afsn project.
+    // Open project files (.opensmartalbum, .osa, or legacy .afsn).
     let mut initial_open_file: Option<String> = None;
     for arg in std::env::args().skip(1) {
         let path = std::path::Path::new(&arg);
         if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
             let lower = ext.to_lowercase();
-            if lower == "afsn" && path.exists() {
+            if (lower == "opensmartalbum" || lower == "osa" || lower == "afsn") && path.exists() {
                 log::info!("Initial launch with project file: {}", arg);
                 initial_open_file = Some(arg);
                 break;
@@ -42,7 +42,7 @@ pub fn run() {
                 let path = std::path::Path::new(&arg);
                 if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
                     let lower = ext.to_lowercase();
-                    if lower == "afsn" && path.exists() {
+                    if (lower == "opensmartalbum" || lower == "osa" || lower == "afsn") && path.exists() {
                         log::info!("Emitting open-project-file event for: {}", arg);
                         let _ = app.emit("open-project-file", &arg);
                         break;
@@ -79,7 +79,12 @@ pub fn run() {
                 .app_data_dir()
                 .expect("Failed to resolve app data directory");
 
-            let db_path = app_data_dir.join("afsn_smart_album.db");
+            let db_path = app_data_dir.join("opensmartalbum.db");
+            // Transparent migration from legacy DB file if present
+            let legacy_db_path = app_data_dir.join("afsn_smart_album.db");
+            if legacy_db_path.exists() && !db_path.exists() {
+                let _ = std::fs::rename(&legacy_db_path, &db_path);
+            }
 
             let database = Database::init(db_path)
                 .expect("Failed to initialize database");
@@ -131,13 +136,13 @@ pub fn run() {
             commands::project_commands::load_album_structure,
             commands::project_commands::save_carousel_structure,
             commands::project_commands::load_carousel_structure,
-            commands::project_commands::export_afsn_package,
-            commands::project_commands::import_afsn_package,
-            commands::project_commands::export_afsn_with_dialog,
+            commands::project_commands::export_project_package,
+            commands::project_commands::import_project_package,
+            commands::project_commands::export_project_with_dialog,
             commands::project_commands::save_project_as_with_dialog,
             commands::project_commands::export_bundled_package_with_dialog,
             commands::project_commands::cancel_export_bundled_package,
-            commands::project_commands::import_afsn_with_dialog,
+            commands::project_commands::import_project_with_dialog,
             commands::project_commands::duplicate_project,
             commands::project_commands::check_path_exists,
             commands::project_commands::save_project_thumbnail,

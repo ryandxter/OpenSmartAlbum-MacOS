@@ -1389,7 +1389,7 @@ export function CarouselCanvas({
     // Extract photo IDs from drag payload with WebKit pasteboard fallbacks
     let photoIds: string[] = [];
     try {
-      const raw = e.dataTransfer.getData('application/x-afsn-photo-ids') || e.dataTransfer.getData('application/json');
+      const raw = e.dataTransfer.getData('application/x-osa-photo-ids') || e.dataTransfer.getData('application/json');
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) photoIds = parsed.filter((id): id is string => typeof id === 'string');

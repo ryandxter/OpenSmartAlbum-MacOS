@@ -390,7 +390,7 @@ mod tests {
 
     #[test]
     fn test_photo_processing() {
-        let temp_dir = std::env::temp_dir().join("afsn_test_photo_engine_stable");
+        let temp_dir = std::env::temp_dir().join("osa_test_photo_engine_stable");
         let _ = fs::remove_dir_all(&temp_dir);
         fs::create_dir_all(&temp_dir).unwrap();
 
@@ -419,7 +419,7 @@ mod tests {
     fn test_png_transparency_preservation() {
         use image::{Rgba, RgbaImage};
 
-        let temp_dir = std::env::temp_dir().join("afsn_test_png_transparency");
+        let temp_dir = std::env::temp_dir().join("osa_test_png_transparency");
         let _ = fs::remove_dir_all(&temp_dir);
         fs::create_dir_all(&temp_dir).unwrap();
 
@@ -449,7 +449,7 @@ mod tests {
 
     #[test]
     fn test_extract_metadata_and_cancelable_preview() {
-        let temp_dir = std::env::temp_dir().join("afsn_test_meta_cancel");
+        let temp_dir = std::env::temp_dir().join("osa_test_meta_cancel");
         let _ = fs::remove_dir_all(&temp_dir);
         fs::create_dir_all(&temp_dir).unwrap();
 

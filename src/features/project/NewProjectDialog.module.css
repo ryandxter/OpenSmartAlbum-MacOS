@@ -2,8 +2,8 @@
 
 .dialogContainer {
   display: grid;
-  grid-template-columns: 1fr 310px;
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 16px;
   align-items: start;
 }
 
@@ -391,6 +391,9 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   padding: 12px;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
 }
 
 .previewHeader {
@@ -520,7 +523,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   font-size: 11px;
+  min-width: 0;
 }
 
 .specLabel {
@@ -528,12 +533,17 @@
   display: flex;
   align-items: center;
   gap: 5px;
+  flex-shrink: 0;
 }
 
 .specValue {
   color: #f1f5f9;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
 }
 
 .specValueHighlight {
@@ -566,9 +576,7 @@
   justify-content: flex-end;
   align-items: center;
   gap: 10px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  width: 100%;
 }
 
 /* ——— Project Mode Switcher ——— */
@@ -611,59 +619,145 @@
   color: var(--color-text-primary, #e4e4e7);
 }
 
-/* ——— Carousel Ratio Grid ——— */
-.carouselRatioGrid {
-  display: flex;
-  gap: 10px;
-  padding-top: 6px;
+/* ——— Primary Instagram Ratios (Top Hero Row) ——— */
+.carouselHeroGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding-top: 4px;
 }
 
-.carouselRatioTile {
-  flex: 1;
+.carouselHeroTile {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 12px 8px;
+  gap: 5px;
+  padding: 10px 8px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  position: relative;
+  transition: all 0.15s ease;
+  user-select: none;
 }
 
-.carouselRatioTile:hover {
-  background: rgba(255, 255, 255, 0.07);
+.carouselHeroTile:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
-.carouselRatioTileActive {
-  background: rgba(228, 228, 231, 0.08);
+.carouselHeroTileActive {
+  background: rgba(228, 228, 231, 0.09);
   border-color: var(--color-primary, #e4e4e7);
+  box-shadow: 0 0 0 1px var(--color-primary, #e4e4e7);
 }
 
-.carouselRatioIcon {
-  background: rgba(228, 228, 231, 0.25);
-  border: 1px solid rgba(228, 228, 231, 0.4);
+.carouselHeroBadge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 8.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
   border-radius: 3px;
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.carouselHeroIcon {
+  background: rgba(228, 228, 231, 0.2);
+  border: 1.5px solid rgba(228, 228, 231, 0.5);
+  border-radius: 3px;
+  margin: 2px 0;
   flex-shrink: 0;
 }
 
-.carouselRatioLabel {
-  font-size: 13px;
+.carouselHeroLabel {
+  font-size: 12px;
   font-weight: 600;
   color: var(--color-text-primary, #e4e4e7);
+  white-space: nowrap;
 }
 
-.carouselRatioDesc {
+.carouselHeroDesc {
   font-size: 10px;
   color: var(--color-text-secondary, #a1a1aa);
-  text-align: center;
+  white-space: nowrap;
 }
 
-.carouselRatioSize {
+.carouselHeroSize {
   font-size: 10px;
   color: var(--color-text-tertiary, #71717a);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ——— Other Social Platform Presets (Secondary 3-col Grid) ——— */
+.carouselSecondaryHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  margin-bottom: 6px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.carouselSecondaryTitle {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-secondary, #a1a1aa);
+}
+
+.carouselPlatformGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.carouselPlatformTile {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  min-height: 42px;
+}
+
+.carouselPlatformTile:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.carouselPlatformTileActive {
+  background: rgba(228, 228, 231, 0.08);
+  border-color: var(--color-primary, #e4e4e7);
+  box-shadow: 0 0 0 1px var(--color-primary, #e4e4e7);
+}
+
+.carouselPlatformName {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--color-text-primary, #e4e4e7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.carouselPlatformDim {
+  font-size: 9.5px;
+  color: var(--color-text-muted, #71717a);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 /* ——— Carousel Slide Count Stepper ——— */

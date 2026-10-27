@@ -454,7 +454,7 @@ export function MyTemplatesView({ onApplyToast, activeMode = 'print' }: MyTempla
                     }}
                   >
                     <Download size={12} />
-                    <span>Export (.afsnt)</span>
+                    <span>Export Template (.osat)</span>
                   </button>
 
                   <button
@@ -485,7 +485,7 @@ export function MyTemplatesView({ onApplyToast, activeMode = 'print' }: MyTempla
             <p style={{ margin: 0 }}>
               {searchQuery
                 ? 'Try a different search keyword.'
-                : 'Save your current spread or slide layout using the button above, or drop .afsnt / .afsnp files into Albumaker to import.'}
+                : 'Save your current spread or slide layout using the button above, or drop template files (.osat, .osatp) into OpenSmartAlbum to import.'}
             </p>
           </div>
         )}

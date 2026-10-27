@@ -39,7 +39,6 @@ interface AppState {
   // Dialog states
   isAboutOpen: boolean;
   isSettingsOpen: boolean;
-  isSupportModalOpen: boolean;
   isUpdateModalOpen: boolean;
   updateAvailableVersion: string | null;
   settingsActiveTab: string;
@@ -57,8 +56,6 @@ interface AppState {
   closeAbout: () => void;
   openSettings: (tab?: string) => void;
   closeSettings: () => void;
-  openSupportModal: () => void;
-  closeSupportModal: () => void;
   openUpdateModal: () => void;
   closeUpdateModal: () => void;
   setUpdateAvailableVersion: (version: string | null) => void;
@@ -113,7 +110,6 @@ export const useAppStore = create<AppState>((set) => ({
   isAppInfoLoaded: false,
   isAboutOpen: false,
   isSettingsOpen: false,
-  isSupportModalOpen: false,
   isUpdateModalOpen: false,
   updateAvailableVersion: null,
   settingsActiveTab: 'general',
@@ -157,8 +153,6 @@ export const useAppStore = create<AppState>((set) => ({
   closeAbout: () => set({ isAboutOpen: false }),
   openSettings: (tab = 'general') => set({ isSettingsOpen: true, settingsActiveTab: tab }),
   closeSettings: () => set({ isSettingsOpen: false }),
-  openSupportModal: () => set({ isSupportModalOpen: true }),
-  closeSupportModal: () => set({ isSupportModalOpen: false }),
   openUpdateModal: () => set({ isUpdateModalOpen: true }),
   closeUpdateModal: () => set({ isUpdateModalOpen: false }),
   setUpdateAvailableVersion: (version) => set({ updateAvailableVersion: version }),

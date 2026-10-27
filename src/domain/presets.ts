@@ -147,7 +147,7 @@ export const ALBUM_PRESETS: AlbumPreset[] = BUILTIN_ALBUM_PRESETS;
 
 export const CUSTOM_PRESET_ID = 'custom';
 
-const CUSTOM_PRESETS_STORAGE_KEY = 'afsn_custom_album_presets';
+const CUSTOM_PRESETS_STORAGE_KEY = 'osa_custom_album_presets';
 
 let memoryCustomPresets: AlbumPreset[] = [];
 
@@ -161,7 +161,7 @@ export function loadCustomPresets(): AlbumPreset[] {
     }
     return memoryCustomPresets;
   } catch (err) {
-    console.warn('[AFSN] Failed to load custom presets:', err);
+    console.warn('[OpenSmartAlbum] Failed to load custom presets:', err);
     return memoryCustomPresets;
   }
 }
@@ -176,7 +176,7 @@ export function saveCustomPreset(preset: AlbumPreset): AlbumPreset[] {
     }
     memoryCustomPresets = updated;
   } catch (err) {
-    console.warn('[AFSN] Failed to save custom preset:', err);
+    console.warn('[OpenSmartAlbum] Failed to save custom preset:', err);
   }
   return getAllPresets();
 }
@@ -190,7 +190,7 @@ export function deleteCustomPreset(id: string): AlbumPreset[] {
     }
     memoryCustomPresets = updated;
   } catch (err) {
-    console.warn('[AFSN] Failed to delete custom preset:', err);
+    console.warn('[OpenSmartAlbum] Failed to delete custom preset:', err);
   }
   return getAllPresets();
 }

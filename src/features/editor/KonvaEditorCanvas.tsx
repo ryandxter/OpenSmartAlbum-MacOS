@@ -2603,7 +2603,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool: propActiv
         '',
       );
 
-      const isAlt = Boolean(e.altKey) && !transferTypes.includes('application/x-afsn-multi-photo');
+      const isAlt = Boolean(e.altKey) && !transferTypes.includes('application/x-osa-multi-photo');
       setHoveredDropFrameId(targetFrame ? targetFrame.id : null);
       setIsHoveredDropAlt(isAlt);
       setIsHoveredDropSwap(false);
@@ -2633,7 +2633,7 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool: propActiv
     const byId = new Map(libraryPhotos.map((photo) => [photo.id, photo]));
     let photoIds: string[] = [];
     try {
-      const rawData = e.dataTransfer.getData('application/x-afsn-photo-ids') || e.dataTransfer.getData('application/json');
+      const rawData = e.dataTransfer.getData('application/x-osa-photo-ids') || e.dataTransfer.getData('application/json');
       if (rawData) {
         const parsed = JSON.parse(rawData);
         if (Array.isArray(parsed)) photoIds = parsed.filter((id): id is string => typeof id === 'string');

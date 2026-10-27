@@ -14,7 +14,7 @@ export interface AppPreferences {
   aiSpineGutterAvoidance: boolean;
 }
 
-export const APP_PREFERENCES_STORAGE_KEY = 'afsn_app_preferences_v1';
+export const APP_PREFERENCES_STORAGE_KEY = 'osa_app_preferences_v1';
 
 export const DEFAULT_APP_PREFERENCES: AppPreferences = {
   startupBehavior: 'welcome',

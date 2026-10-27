@@ -39,10 +39,10 @@ export default function App() {
   // Catch any unhandled window errors and store them for diagnostics
   useEffect(() => {
     const handleGlobalError = (event: ErrorEvent) => {
-      console.error('[AFSN Window Error]', event.error || event.message);
+      console.error('[OpenSmartAlbum Window Error]', event.error || event.message);
       try {
         localStorage.setItem(
-          'afsn_last_window_error',
+          'osa_last_window_error',
           JSON.stringify({
             message: event.message,
             filename: event.filename,
@@ -55,7 +55,7 @@ export default function App() {
     };
 
     const handleRejection = (event: PromiseRejectionEvent) => {
-      console.error('[AFSN Unhandled Rejection]', event.reason);
+      console.error('[OpenSmartAlbum Unhandled Rejection]', event.reason);
     };
 
     window.addEventListener('error', handleGlobalError);
@@ -115,7 +115,7 @@ export default function App() {
         .then(async (initialPath) => {
           if (initialLaunchCancelled) return;
           if (initialPath) {
-            console.log('[AFSN] Initial project path from CLI:', initialPath);
+            console.log('[OpenSmartAlbum] Initial project path from CLI:', initialPath);
             requestOpenFile(initialPath);
             return;
           }
@@ -128,7 +128,7 @@ export default function App() {
           }
         })
         .catch((err) => {
-          console.warn('[AFSN] get_initial_open_path error:', err);
+          console.warn('[OpenSmartAlbum] get_initial_open_path error:', err);
         });
     });
 
@@ -137,7 +137,7 @@ export default function App() {
     import('@tauri-apps/api/event').then(({ listen }) => {
       listen<string>('open-project-file', (event) => {
         if (event.payload) {
-          console.log('[AFSN] Received open-project-file event:', event.payload);
+          console.log('[OpenSmartAlbum] Received open-project-file event:', event.payload);
           requestOpenFile(event.payload);
         }
       }).then((unlisten) => {

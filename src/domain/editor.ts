@@ -776,7 +776,7 @@ export const DEFAULT_SNAPPING_CONFIG: SnappingConfig = {
   snapToEqualGaps: true,
 };
 
-export const SNAPPING_CONFIG_STORAGE_KEY = 'afsn_snapping_config';
+export const SNAPPING_CONFIG_STORAGE_KEY = 'osa_snapping_config';
 
 let memorySnappingConfig: SnappingConfig = { ...DEFAULT_SNAPPING_CONFIG };
 
@@ -798,7 +798,7 @@ export function loadSavedSnappingConfig(): SnappingConfig {
     }
     return memorySnappingConfig;
   } catch (err) {
-    console.warn('[AFSN] Failed to load snapping config:', err);
+    console.warn('[OpenSmartAlbum] Failed to load snapping config:', err);
     return memorySnappingConfig;
   }
 }
@@ -810,7 +810,7 @@ export function saveSnappingConfig(config: SnappingConfig): void {
       localStorage.setItem(SNAPPING_CONFIG_STORAGE_KEY, JSON.stringify(config));
     }
   } catch (err) {
-    console.warn('[AFSN] Failed to save snapping config to localStorage:', err);
+    console.warn('[OpenSmartAlbum] Failed to save snapping config to localStorage:', err);
   }
 }
 

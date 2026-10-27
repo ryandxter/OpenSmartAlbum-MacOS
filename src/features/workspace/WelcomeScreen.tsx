@@ -28,7 +28,7 @@ export function WelcomeScreen() {
     const map: Record<string, string> = {};
     for (const proj of recentProjects) {
       try {
-        const cached = localStorage.getItem(`afsn_thumb_${proj.id}`);
+        const cached = localStorage.getItem(`osa_thumb_${proj.id}`);
         if (cached) map[proj.id] = cached;
       } catch { /* localStorage unavailable */ }
     }
@@ -148,9 +148,9 @@ export function WelcomeScreen() {
               size="md"
               className={styles.secondaryActionButton}
               onClick={async () => {
-                await useProjectStore.getState().importProjectFromAfsn();
+                await useProjectStore.getState().importProjectPackage();
               }}
-              title="Open an .afsn project. Extract ZIP packages first, then open project.afsn."
+              title="Open an OpenSmartAlbum project file."
             >
               <FolderOpen size={16} strokeWidth={1.5} />
               <span>Open Project</span>
@@ -213,7 +213,7 @@ export function WelcomeScreen() {
                         </span>
                       )}
                       {missingProjectIds.has(proj.id) && (
-                        <span className={styles.missingBadge} title="Original .afsn file was not found on disk">
+                        <span className={styles.missingBadge} title="Original project file was not found on disk">
                           Missing File
                         </span>
                       )}
@@ -256,7 +256,7 @@ export function WelcomeScreen() {
         isOpen={isClearAllDialogOpen}
         title="Clear Recent Projects"
         message="Are you sure you want to clear all projects from the recent list?"
-        detail="This will remove the projects from the internal database. Your original photo files and any exported .afsn files on your computer remain completely safe."
+        detail="This will remove the projects from the internal database. Your original photo files and any exported project files on your computer remain completely safe."
         confirmText="Clear History"
         cancelText="Cancel"
         variant="danger"
@@ -272,7 +272,7 @@ export function WelcomeScreen() {
         isOpen={projectToDelete !== null}
         title="Remove From Recent List"
         message={`Remove "${projectToDelete?.name}" from your recent projects?`}
-        detail="This will remove this project from the internal database. Your original photo files and any exported .afsn files on disk remain safe."
+        detail="This will remove this project from the internal database. Your original photo files and any exported project files on disk remain safe."
         confirmText="Remove"
         cancelText="Cancel"
         variant="danger"
@@ -285,7 +285,7 @@ export function WelcomeScreen() {
         onCancel={() => setProjectToDelete(null)}
       />
 
-      {/* Modern Recovery Dialog: Missing .afsn File */}
+      {/* Modern Recovery Dialog: Missing Project File */}
       <ConfirmDialog
         isOpen={missingFileProject !== null}
         title="Project File Not Found"

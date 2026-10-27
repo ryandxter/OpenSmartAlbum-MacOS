@@ -541,7 +541,7 @@ export function EffectsShadowsSection({
     e.preventDefault();
     setIsDragOver(false);
     const rawData =
-      e.dataTransfer.getData('application/x-afsn-photo-ids') ||
+      e.dataTransfer.getData('application/x-osa-photo-ids') ||
       e.dataTransfer.getData('application/json');
     if (!rawData) return;
     try {

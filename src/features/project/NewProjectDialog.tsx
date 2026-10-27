@@ -42,6 +42,51 @@ import { useCarouselStore } from '../../stores/carouselStore';
 import { CarouselRatio, CAROUSEL_RATIO_PRESETS } from '../../domain/carousel';
 import styles from './NewProjectDialog.module.css';
 
+const PRIMARY_INSTAGRAM_RATIOS: Array<{
+  id: CarouselRatio;
+  name: string;
+  badge?: string;
+  desc: string;
+  width: number;
+  height: number;
+  iconW: number;
+  iconH: number;
+}> = [
+  { id: '4:5', name: '4:5 Portrait', badge: 'Recommended', desc: 'Standard Carousel', width: 1080, height: 1350, iconW: 24, iconH: 30 },
+  { id: '1:1', name: '1:1 Square', desc: 'Square Feed', width: 1080, height: 1080, iconW: 28, iconH: 28 },
+  { id: '9:16', name: '9:16 Story', desc: 'Story & Reel', width: 1080, height: 1920, iconW: 18, iconH: 32 },
+];
+
+const OTHER_PLATFORM_RATIOS: Array<{
+  id: CarouselRatio;
+  name: string;
+  desc: string;
+  width: number;
+  height: number;
+}> = [
+  { id: 'fb-post', name: 'Facebook', desc: '1200 × 630 px', width: 1200, height: 630 },
+  { id: 'pinterest-pin', name: 'Pinterest', desc: '1000 × 1500 px', width: 1000, height: 1500 },
+  { id: 'yt-thumb', name: 'YouTube', desc: '1280 × 720 px', width: 1280, height: 720 },
+  { id: 'x-post', name: 'X / Twitter', desc: '1600 × 900 px', width: 1600, height: 900 },
+  { id: 'linkedin-post', name: 'LinkedIn', desc: '1200 × 627 px', width: 1200, height: 627 },
+  { id: 'custom', name: 'Custom Size', desc: 'Freeform px', width: 1080, height: 1080 },
+];
+
+const getRatioDisplayName = (r: CarouselRatio): string => {
+  switch (r) {
+    case '4:5': return '4:5 Portrait (Feed)';
+    case '1:1': return '1:1 Square (Feed)';
+    case '9:16': return '9:16 Story / Reel';
+    case 'fb-post': return 'Facebook (1200 × 630)';
+    case 'pinterest-pin': return 'Pinterest (1000 × 1500)';
+    case 'yt-thumb': return 'YouTube (1280 × 720)';
+    case 'x-post': return 'X / Twitter (1600 × 900)';
+    case 'linkedin-post': return 'LinkedIn (1200 × 627)';
+    case 'custom': return 'Custom Dimensions';
+    default: return r;
+  }
+};
+
 export function NewProjectDialog() {
   const isOpen = useProjectStore((s) => s.isNewProjectOpen);
   const closeNewProject = useProjectStore((s) => s.closeNewProject);
@@ -383,7 +428,7 @@ export function NewProjectDialog() {
         const projectId = (project as { id?: string })?.id ?? `carousel-${Date.now()}`;
         initializeCarousel(projectId, carouselRatio, carouselSlideCount);
       } catch (err) {
-        console.error('[AFSN] Error creating carousel project:', err);
+        console.error('[OpenSmartAlbum] Error creating carousel project:', err);
         setErrorMessage(`Failed to create project: ${err}`);
       } finally {
         setIsSubmitting(false);
@@ -435,7 +480,7 @@ export function NewProjectDialog() {
       setIsSubmitting(true);
       await createNewProject(settings);
     } catch (err) {
-      console.error('[AFSN] Error creating project:', err);
+      console.error('[OpenSmartAlbum] Error creating project:', err);
       setErrorMessage(`Failed to create project: ${err}`);
     } finally {
       setIsSubmitting(false);
@@ -448,11 +493,35 @@ export function NewProjectDialog() {
       isOpen={isOpen}
       onClose={closeNewProject}
       title={projectMode === 'carousel' ? 'New Instagram Carousel Project' : 'New Album Project'}
-      width={840}
+      width={860}
       closeOnOverlayClick={false}
       closeOnEscape={false}
+      footer={
+        <div className={styles.dialogFooter}>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={closeNewProject}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            form="new-project-form"
+            disabled={isSubmitting}
+          >
+            {isSubmitting
+              ? 'Creating Project...'
+              : projectMode === 'carousel'
+              ? 'Create Carousel Project'
+              : 'Create Album Project'}
+          </Button>
+        </div>
+      }
     >
-      <form onSubmit={handleSubmit} onContextMenu={(e) => e.preventDefault()}>
+      <form id="new-project-form" onSubmit={handleSubmit} onContextMenu={(e) => e.preventDefault()}>
         {/* Project Type Mode Selector */}
         <div className={styles.modeSwitcher}>
           <button
@@ -507,26 +576,44 @@ export function NewProjectDialog() {
                     <Grid2x2 size={14} strokeWidth={1.5} />
                     Slide Aspect Ratio
                   </span>
-                  <span className={styles.cardSubtitle}>Instagram feed format</span>
+                  <span className={styles.cardSubtitle}>Instagram & Social Formats</span>
                 </div>
-                <div className={styles.carouselRatioGrid}>
-                  {(Object.entries(CAROUSEL_RATIO_PRESETS) as [CarouselRatio, typeof CAROUSEL_RATIO_PRESETS[CarouselRatio]][]).map(([key, preset]) => (
+
+                {/* Primary Instagram Formats (Top Hero Row) */}
+                <div className={styles.carouselHeroGrid}>
+                  {PRIMARY_INSTAGRAM_RATIOS.map((item) => (
                     <button
-                      key={key}
+                      key={item.id}
                       type="button"
-                      className={`${styles.carouselRatioTile} ${carouselRatio === key ? styles.carouselRatioTileActive : ''}`}
-                      onClick={() => setCarouselRatio(key)}
+                      className={`${styles.carouselHeroTile} ${carouselRatio === item.id ? styles.carouselHeroTileActive : ''}`}
+                      onClick={() => setCarouselRatio(item.id)}
                     >
+                      {item.badge && <span className={styles.carouselHeroBadge}>{item.badge}</span>}
                       <div
-                        className={styles.carouselRatioIcon}
-                        style={{
-                          width: key === '1:1' ? 36 : key === '4:5' ? 29 : 20,
-                          height: key === '1:1' ? 36 : key === '4:5' ? 36 : 36,
-                        }}
+                        className={styles.carouselHeroIcon}
+                        style={{ width: item.iconW, height: item.iconH }}
                       />
-                      <span className={styles.carouselRatioLabel}>{key}</span>
-                      <span className={styles.carouselRatioDesc}>{key === '1:1' ? 'Square Feed' : key === '4:5' ? 'Portrait Feed' : 'Story / Reel'}</span>
-                      <span className={styles.carouselRatioSize}>{preset.width} × {preset.height}</span>
+                      <span className={styles.carouselHeroLabel}>{item.name}</span>
+                      <span className={styles.carouselHeroDesc}>{item.desc}</span>
+                      <span className={styles.carouselHeroSize}>{item.width} × {item.height}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Other Platforms Header & Grid */}
+                <div className={styles.carouselSecondaryHeader}>
+                  <span className={styles.carouselSecondaryTitle}>Other Social Formats</span>
+                </div>
+                <div className={styles.carouselPlatformGrid}>
+                  {OTHER_PLATFORM_RATIOS.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`${styles.carouselPlatformTile} ${carouselRatio === item.id ? styles.carouselPlatformTileActive : ''}`}
+                      onClick={() => setCarouselRatio(item.id)}
+                    >
+                      <span className={styles.carouselPlatformName}>{item.name}</span>
+                      <span className={styles.carouselPlatformDim}>{item.desc}</span>
                     </button>
                   ))}
                 </div>
@@ -592,29 +679,35 @@ export function NewProjectDialog() {
               {/* Single Slide Mockup */}
               <div className={styles.mockupStage}>
                 {(() => {
-                  const preset = CAROUSEL_RATIO_PRESETS[carouselRatio];
+                  const preset = CAROUSEL_RATIO_PRESETS[carouselRatio] || CAROUSEL_RATIO_PRESETS['4:5'];
                   const ratio = preset.width / preset.height;
-                  let w = 160;
-                  let h = Math.round(160 / ratio);
-                  if (h > 220) { h = 220; w = Math.round(220 * ratio); }
+                  const maxW = 160;
+                  const maxH = 140;
+                  let w = maxW;
+                  let h = Math.round(w / ratio);
+                  if (h > maxH) {
+                    h = maxH;
+                    w = Math.round(h * ratio);
+                  }
                   return (
                     <div
                       style={{
                         width: `${w}px`,
                         height: `${h}px`,
                         backgroundColor: carouselBgColor,
-                        borderRadius: '8px',
-                        border: '1px solid rgba(255,255,255,0.15)',
+                        borderRadius: '6px',
+                        border: '1px solid rgba(255,255,255,0.18)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         position: 'relative',
                         overflow: 'hidden',
-                        boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                        transition: 'all 0.2s ease',
                       }}
                     >
-                      <Smartphone size={28} strokeWidth={1} style={{ opacity: 0.15 }} />
-                      <span style={{ position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)', fontSize: 10, color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap' }}>
+                      <Smartphone size={24} strokeWidth={1.2} style={{ opacity: 0.18 }} />
+                      <span style={{ position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)', fontSize: 10, color: 'rgba(255,255,255,0.5)', whiteSpace: 'nowrap' }}>
                         Slide 1 of {carouselSlideCount}
                       </span>
                     </div>
@@ -630,12 +723,16 @@ export function NewProjectDialog() {
                 </div>
                 <div className={styles.specRow}>
                   <span className={styles.specLabel}>Ratio:</span>
-                  <span className={styles.specValue}>{carouselRatio} — {CAROUSEL_RATIO_PRESETS[carouselRatio].label.split('—')[1]?.trim()}</span>
+                  <span className={styles.specValue} title={CAROUSEL_RATIO_PRESETS[carouselRatio]?.label}>
+                    {getRatioDisplayName(carouselRatio)}
+                  </span>
                 </div>
                 <div className={styles.specDivider} />
                 <div className={styles.specRow}>
                   <span className={styles.specLabel}>Slide Canvas:</span>
-                  <span className={styles.specValueHighlight}>{CAROUSEL_RATIO_PRESETS[carouselRatio].width} × {CAROUSEL_RATIO_PRESETS[carouselRatio].height} px</span>
+                  <span className={styles.specValueHighlight}>
+                    {CAROUSEL_RATIO_PRESETS[carouselRatio]?.width} × {CAROUSEL_RATIO_PRESETS[carouselRatio]?.height} px
+                  </span>
                 </div>
                 <div className={styles.specRow}>
                   <span className={styles.specLabel}>Total Slides:</span>
@@ -644,7 +741,7 @@ export function NewProjectDialog() {
                 <div className={styles.specDivider} />
                 <div className={styles.specRow}>
                   <span className={styles.specLabel}>Auto-Crop:</span>
-                  <span className={styles.specValue}>Enabled ({carouselRatio})</span>
+                  <span className={styles.specValue}>Enabled</span>
                 </div>
                 <div className={styles.specRow}>
                   <span className={styles.specLabel}>Resolution:</span>
@@ -1284,29 +1381,6 @@ export function NewProjectDialog() {
           </div>
         </div>
         )} {/* end album conditional */}
-
-        {/* Dialog Footer Actions */}
-        <div className={styles.dialogFooter}>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={closeNewProject}
-            disabled={isSubmitting}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={isSubmitting}
-          >
-            {isSubmitting
-              ? 'Creating Project...'
-              : projectMode === 'carousel'
-              ? 'Create Carousel Project'
-              : 'Create Album Project'}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

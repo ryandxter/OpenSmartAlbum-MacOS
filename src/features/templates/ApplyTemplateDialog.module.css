@@ -1,98 +1,49 @@
-.backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 16px;
-}
-
-.dialog {
-  background: #18181b;
-  border: 1px solid #3f3f46;
-  border-radius: 8px;
-  width: 100%;
-  max-width: 440px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  animation: fadeIn 0.15s ease-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.header {
-  padding: 14px 16px;
-  border-bottom: 1px solid #27272a;
+.headerPreviewRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #121214;
+  padding: var(--space-3);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-3);
 }
 
-.titleArea {
+.templateInfo {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #f4f4f5;
-  margin: 0;
+.templateName {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
 }
 
-.subtitle {
-  font-size: 11px;
-  color: #a1a1aa;
-  margin: 0;
+.templateMeta {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
 }
 
-.closeBtn {
-  background: transparent;
-  border: none;
-  color: #71717a;
-  cursor: pointer;
-  padding: 4px;
+.svgWrapper {
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--color-border);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: all 0.12s ease;
-}
-
-.closeBtn:hover {
-  color: #f4f4f5;
-  background: #27272a;
+  background: var(--color-bg-secondary);
 }
 
 .body {
-  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  max-height: 70vh;
-  overflow-y: auto;
+  gap: var(--space-3);
 }
 
 .section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .sectionHeader {
@@ -102,16 +53,18 @@
 }
 
 .sectionLabel {
-  font-size: 12px;
-  font-weight: 600;
-  color: #d4d4d8;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .segmentedControl {
   display: flex;
-  background: #121214;
-  border: 1px solid #27272a;
-  border-radius: 6px;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   padding: 2px;
   gap: 2px;
 }
@@ -120,50 +73,51 @@
   flex: 1;
   background: transparent;
   border: none;
-  color: #a1a1aa;
+  color: var(--color-text-secondary);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   padding: 6px 10px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 0.12s ease;
+  transition: all var(--transition-fast);
   text-align: center;
 }
 
 .segmentBtn:hover {
-  color: #ffffff;
+  color: var(--color-text-primary);
 }
 
 .segmentBtnActive {
-  background: #27272a;
-  color: #38bdf8;
-  font-weight: 600;
+  background: var(--color-surface);
+  color: var(--color-accent);
+  font-weight: var(--font-weight-semibold);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
 }
 
 .geometryToggle {
   background: transparent;
-  border: 1px solid #3f3f46;
-  color: #38bdf8;
+  border: 1px solid var(--color-border);
+  color: var(--color-accent);
   font-size: 10px;
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
+  transition: all var(--transition-fast);
 }
 
 .geometryToggleActive {
   background: rgba(56, 189, 248, 0.15);
-  border-color: #38bdf8;
-  color: #38bdf8;
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .checkboxGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  background: #121214;
-  border: 1px solid #27272a;
-  border-radius: 6px;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   padding: 10px;
 }
 
@@ -172,67 +126,22 @@
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  color: #d4d4d8;
+  color: var(--color-text-secondary);
   cursor: pointer;
   user-select: none;
 }
 
 .checkbox {
-  accent-color: #3b82f6;
+  accent-color: var(--color-accent);
   cursor: pointer;
 }
 
 .quickApplyHintBox {
-  background: rgba(59, 130, 246, 0.08);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: 6px;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: var(--radius-md);
   padding: 8px 10px;
-  font-size: 10px;
-  color: #93c5fd;
+  font-size: 11px;
+  color: var(--color-text-secondary);
   line-height: 1.4;
-}
-
-.footer {
-  padding: 12px 16px;
-  border-top: 1px solid #27272a;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #121214;
-}
-
-.footerActions {
-  display: flex;
-  gap: 8px;
-}
-
-.cancelBtn {
-  background: transparent;
-  border: 1px solid #3f3f46;
-  color: #d4d4d8;
-  padding: 6px 14px;
-  border-radius: 4px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.cancelBtn:hover {
-  background: #27272a;
-  color: #ffffff;
-}
-
-.applyBtn {
-  background: #3b82f6;
-  border: none;
-  color: #ffffff;
-  padding: 6px 18px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.applyBtn:hover {
-  background: #2563eb;
 }

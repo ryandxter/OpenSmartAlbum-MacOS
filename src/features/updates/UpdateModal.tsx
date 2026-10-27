@@ -7,7 +7,7 @@ import {
   startUpdateDownload,
 } from '../../services/updateService';
 import { useAppStore } from '../../stores/appStore';
-import { isTauri } from '../../utils/platform';
+import { isTauri, isMac } from '../../utils/platform';
 import styles from './UpdateModal.module.css';
 
 export function UpdateModal() {
@@ -92,6 +92,7 @@ export function UpdateModal() {
   const result = updateCheckResult;
   const errorDetails = updateError;
   const { downloadedBytes, totalBytes, percent } = updateProgress;
+  const installerExt = isMac() ? '.dmg' : '.exe';
 
   return (
     <div className={styles.overlay} onClick={handleBackgroundClickOrClose}>
@@ -310,9 +311,9 @@ export function UpdateModal() {
                     type="button"
                     className={styles.btnLink}
                     onClick={() => handleOpenUrl(result.downloadUrl)}
-                    title="Download standalone installer via browser"
+                    title={`Download standalone installer (${installerExt}) via browser`}
                   >
-                    📥 Manual Download (.exe)
+                    📥 Manual Download ({installerExt})
                   </button>
                 )}
               </div>
@@ -335,9 +336,9 @@ export function UpdateModal() {
                     type="button"
                     className={styles.btnLink}
                     onClick={() => handleOpenUrl(result.downloadUrl)}
-                    title="Download the standalone .exe installer in browser"
+                    title={`Download the standalone ${installerExt} installer in browser`}
                   >
-                    📥 Manual Download (.exe)
+                    📥 Manual Download ({installerExt})
                   </button>
                 ) : (
                   <button
@@ -363,7 +364,7 @@ export function UpdateModal() {
                       : () => handleOpenUrl(result.downloadUrl)
                   }
                 >
-                  {result.isAutoUpdateSupported ? '⚡ Update Now' : 'Download Installer (.exe)'}
+                  {result.isAutoUpdateSupported ? '⚡ Update Now' : `Download Installer (${installerExt})`}
                 </button>
               </div>
             </>

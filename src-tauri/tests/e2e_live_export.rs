@@ -1,10 +1,10 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use afsn_smart_album_lib::export_engine::{
+use opensmartalbum_lib::export_engine::{
     encode_jpeg_with_dpi, render_spread_base_to_image_with_progress,
     carousel_slicer::{export_carousel_slices_worker, CarouselExportOptions, CarouselElementPayload, CarouselPayload, CarouselSlidePayload},
 };
-use afsn_smart_album_lib::db::{ElementPayload, ProjectRow, SpreadPayload};
+use opensmartalbum_lib::db::{ElementPayload, ProjectRow, SpreadPayload};
 
 const TEST_PHOTOS: &[&str] = &[
     "/Users/chiio/Downloads/RVMR9845.JPG",

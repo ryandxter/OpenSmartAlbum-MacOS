@@ -4,8 +4,8 @@ import { useCarouselStore } from '../../stores/carouselStore';
 import { useAppStore } from '../../stores/appStore';
 import { useProjectStore } from '../../stores/projectStore';
 
-const SNAPSHOT_STORAGE_KEY_PREFIX = 'afsn_snapshot_';
-const CAROUSEL_SNAPSHOT_STORAGE_KEY_PREFIX = 'afsn_carousel_snapshot_';
+const SNAPSHOT_STORAGE_KEY_PREFIX = 'osa_snapshot_';
+const CAROUSEL_SNAPSHOT_STORAGE_KEY_PREFIX = 'osa_carousel_snapshot_';
 
 export function useAutoSave() {
   const currentAlbum = useAlbumStore((s) => s.currentAlbum);
@@ -62,7 +62,7 @@ export function useAutoSave() {
   useEffect(() => {
     if (!currentProject) return;
     try {
-      const key = `afsn_dirty_${currentProject.id}`;
+      const key = `osa_dirty_${currentProject.id}`;
       if (activeSaveStatus === 'saved') {
         localStorage.removeItem(key);
       } else {

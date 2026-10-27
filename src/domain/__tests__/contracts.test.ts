@@ -72,7 +72,7 @@ describe('TypeScript Domain Contracts (DB-04)', () => {
         locked: false,
         name: 'Heart Sticker',
         graphicId: 'asset-sticker-101',
-        fileUrl: 'afsn://assets/stickers/heart.png',
+        fileUrl: 'asset://assets/stickers/heart.png',
         filePath: '/tmp/stickers/heart.png',
         fileName: 'heart.png',
         flipHorizontal: true,

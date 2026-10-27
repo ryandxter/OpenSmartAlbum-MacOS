@@ -539,10 +539,10 @@ const SHORTCUTS: ShortcutDef[] = [
   {
     id: 'file-save-as',
     category: 'File & Project',
-    action: 'Save Project As (.afsn)',
+    action: 'Save Project As',
     combos: [['Ctrl', 'Shift', 'S']],
     scope: 'Project',
-    keywords: 'save as afsn new file copy backup',
+    keywords: 'save as project new file copy backup',
   },
   {
     id: 'file-open',
@@ -550,7 +550,7 @@ const SHORTCUTS: ShortcutDef[] = [
     action: 'Open Project',
     combos: [['Ctrl', 'O']],
     scope: 'Project',
-    keywords: 'open file load project afsn browse',
+    keywords: 'open file load project browse',
   },
   {
     id: 'file-new',
@@ -974,7 +974,7 @@ export function SettingsDialog() {
                   <div className={styles.controlLabelRow}>
                     <div>
                       <div className={styles.infoLabelStrong}>Auto-Save After Inactivity</div>
-                      <div className={styles.infoHint}>Applies after the project has been saved as an .afsn file.</div>
+                      <div className={styles.infoHint}>Applies after the project has been saved to a project file.</div>
                     </div>
                   </div>
                   <div

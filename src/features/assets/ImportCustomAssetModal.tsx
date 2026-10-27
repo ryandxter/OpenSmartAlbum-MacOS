@@ -148,6 +148,39 @@ export function ImportCustomAssetModal({
       onClose={handleClose}
       title="Import Decorative Asset"
       width={600}
+      footer={
+        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+          {previewUrl ? (
+            <button
+              type="button"
+              className={styles.btnSecondary}
+              onClick={handlePickFile}
+              disabled={isSubmitting}
+            >
+              Change File…
+            </button>
+          ) : <div />}
+
+          <div className={styles.actionsRight}>
+            <button
+              type="button"
+              className={styles.btnSecondary}
+              onClick={handleClose}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={styles.btnPrimary}
+              onClick={handleImport}
+              disabled={!filePath || isSubmitting}
+            >
+              {isSubmitting ? 'Importing…' : 'Import Asset'}
+            </button>
+          </div>
+        </div>
+      }
     >
       <div className={styles.modalContent}>
         <input
@@ -317,38 +350,6 @@ export function ImportCustomAssetModal({
             </div>
           </div>
         )}
-
-        <div className={styles.modalFooter}>
-          {previewUrl ? (
-            <button
-              type="button"
-              className={styles.btnSecondary}
-              onClick={handlePickFile}
-              disabled={isSubmitting}
-            >
-              Change File…
-            </button>
-          ) : <div />}
-
-          <div className={styles.actionsRight}>
-            <button
-              type="button"
-              className={styles.btnSecondary}
-              onClick={handleClose}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              className={styles.btnPrimary}
-              onClick={handleImport}
-              disabled={!filePath || isSubmitting}
-            >
-              {isSubmitting ? 'Importing…' : 'Import Asset'}
-            </button>
-          </div>
-        </div>
       </div>
     </Dialog>
   );

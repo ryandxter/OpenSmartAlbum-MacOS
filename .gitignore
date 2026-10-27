@@ -38,6 +38,7 @@ cache/
 *.key
 *.cert
 *.pfx
+rea/
 
 # IDEs & Editors
 .vscode/

@@ -67,8 +67,22 @@ export function FolderDialog() {
       title={title}
       width={420}
       closeOnOverlayClick={false}
+      footer={
+        <>
+          <Button type="button" variant="ghost" onClick={closeFolderDialog} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          <Button type="submit" form="folder-dialog-form" variant="primary" disabled={isSubmitting || !folderName.trim()}>
+            {isSubmitting
+              ? 'Saving...'
+              : folderDialogMode === 'create'
+              ? 'Create Folder'
+              : 'Save Changes'}
+          </Button>
+        </>
+      }
     >
-      <form onSubmit={handleSubmit} className={styles.form}>
+      <form id="folder-dialog-form" onSubmit={handleSubmit} className={styles.form}>
         <label className={styles.label}>
           Folder Name
           <input
@@ -85,19 +99,6 @@ export function FolderDialog() {
           />
         </label>
         {error && <span className={styles.errorText}>{error}</span>}
-
-        <div className={styles.footerBtns}>
-          <Button type="button" variant="ghost" onClick={closeFolderDialog} disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="primary" disabled={isSubmitting || !folderName.trim()}>
-            {isSubmitting
-              ? 'Saving...'
-              : folderDialogMode === 'create'
-              ? 'Create Folder'
-              : 'Save Changes'}
-          </Button>
-        </div>
       </form>
     </Dialog>
   );

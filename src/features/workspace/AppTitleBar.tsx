@@ -59,9 +59,9 @@ export function AppTitleBar({
   const closeProject = useProjectStore((s) => s.closeProject);
   const updateProjectName = useProjectStore((s) => s.updateProjectName);
   const saveProject = useProjectStore((s) => s.saveProject);
-  const exportProjectAsAfsn = useProjectStore((s) => s.exportProjectAsAfsn);
+  const exportProjectPackage = useProjectStore((s) => s.exportProjectPackage);
   const exportCompleteProjectPackageWithPhotos = useProjectStore((s) => s.exportCompleteProjectPackageWithPhotos);
-  const importProjectFromAfsn = useProjectStore((s) => s.importProjectFromAfsn);
+  const importProjectPackage = useProjectStore((s) => s.importProjectPackage);
 
   const isCarousel = activeMode === 'carousel' || currentProject?.canvasUnit === 'px' || currentProject?.projectType === 'carousel';
 
@@ -175,7 +175,7 @@ export function AppTitleBar({
                 onClick={() => {
                   setIsFileMenuOpen(false);
                   confirmSafeAction(async () => {
-                    const ok = await importProjectFromAfsn();
+                    const ok = await importProjectPackage();
                     if (ok) showToast('✓ Project opened successfully');
                   });
                 }}
@@ -245,13 +245,13 @@ export function AppTitleBar({
                     className={styles.menuItem}
                     onClick={async () => {
                       setIsFileMenuOpen(false);
-                      const path = await exportProjectAsAfsn();
+                      const path = await exportProjectPackage();
                       if (path) showToast(`✓ Project saved as: ${path.split(/[\\/]/).pop() || path}`);
                     }}
                   >
                     <span className={styles.menuItemLeft}>
                       <Save size={14} strokeWidth={1.5} />
-                      <span>Save As (.afsn)...</span>
+                      <span>Save Project As...</span>
                     </span>
                     <span className={styles.shortcutText}>⌘⇧S</span>
                   </button>

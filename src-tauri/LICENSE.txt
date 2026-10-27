@@ -1,50 +1,21 @@
-====================================================================
-           AFSNSmartAlbum (v1.0.80)
-    Professional Photo Album Layout Desktop Software
-====================================================================
+MIT License
 
-End User License Agreement (EULA) & Terms of Use
+Copyright (c) 2026 OpenSmartAlbum Contributors
 
-Copyright (c) 2026 Afsunmedia - Asrofims.
-All rights reserved.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-1. LICENSE GRANT
-AFSNSmartAlbum ("Software") is proprietary commercial software developed 
-by Afsunmedia. You are granted a personal, non-exclusive, non-transferable 
-license to install and use this software for professional and personal 
-photo album designing, layout composition, and high-resolution exporting.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-2. 100% OFFLINE & PRIVACY GUARANTEE
-AFSNSmartAlbum is designed as an uncompromisingly offline desktop application. 
-All photos, album metadata, layouts, client databases, and exported files 
-remain strictly on your local computer storage. The software does not transmit, 
-upload, collect, or monitor your photos, albums, or personal data to any 
-external servers or cloud services.
-
-3. INTELLECTUAL PROPERTY & CREDITS
-The software, including its user interface, algorithms, graphic assets, 
-and documentation, is the intellectual property of Afsunmedia - Asrofims.
-- Lead Architect & Developer: Asrofims
-- Production Studio: Afsunmedia
-
-Open-source libraries and components utilized in this build:
-- React & Vite (MIT)
-- Tauri Desktop Runtime (MIT / Apache-2.0)
-- Konva.js Canvas Engine (MIT)
-- SQLite Database Engine (Public Domain)
-- Rayon Parallel Processing (MIT / Apache-2.0)
-- Rust image crate (MIT/Apache-2.0)
-
-4. RESTRICTIONS
-You may not reverse-engineer, decompile, disassemble, or distribute 
-unauthorized modified copies of this software without explicit written 
-permission from Afsunmedia.
-
-5. DISCLAIMER OF WARRANTY
-This software is provided "AS IS" without warranties of any kind. 
-Always maintain local backup copies of your original high-resolution photos.
-
-====================================================================
-By clicking "I Agree" or proceeding with the installation, you accept 
-and agree to be bound by the terms and conditions above.
-====================================================================
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

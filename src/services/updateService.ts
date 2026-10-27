@@ -5,7 +5,7 @@
  * 2. Fallback: Direct GitHub Releases REST API check with manual .dmg download link.
  */
 
-import { isTauri } from '../utils/platform';
+import { isTauri, isMac } from '../utils/platform';
 import { invoke } from '@tauri-apps/api/core';
 import type { Update } from '@tauri-apps/plugin-updater';
 import { useAppStore } from '../stores/appStore';
@@ -226,14 +226,29 @@ function processRelease(release: GitHubRelease, currentVersion: string): UpdateC
   const latestTag = release.tag_name || '';
   const isNewer = compareVersions(latestTag, currentVersion) > 0;
 
-  // Find Windows installer (.exe) in release assets
+  // Find appropriate installer in release assets (.dmg/.app.tar.gz on macOS, .exe on Windows)
   let downloadUrl = release.html_url;
   if (Array.isArray(release.assets) && release.assets.length > 0) {
-    const exeAsset = release.assets.find(
-      (a) => a.name.toLowerCase().endsWith('.exe') && !a.name.toLowerCase().includes('blockmap')
-    );
-    if (exeAsset) {
-      downloadUrl = exeAsset.browser_download_url;
+    const isApple = isMac();
+    const matchedAsset = release.assets.find((a) => {
+      const lower = a.name.toLowerCase();
+      if (lower.includes('blockmap')) return false;
+      if (isApple) {
+        return lower.endsWith('.dmg') || lower.endsWith('.app.tar.gz') || (lower.endsWith('.zip') && lower.includes('mac'));
+      } else {
+        return lower.endsWith('.exe') || lower.endsWith('.msi');
+      }
+    });
+    if (matchedAsset) {
+      downloadUrl = matchedAsset.browser_download_url;
+    } else {
+      const anyInstaller = release.assets.find((a) => {
+        const lower = a.name.toLowerCase();
+        return !lower.includes('blockmap') && (lower.endsWith('.dmg') || lower.endsWith('.exe') || lower.endsWith('.app.tar.gz'));
+      });
+      if (anyInstaller) {
+        downloadUrl = anyInstaller.browser_download_url;
+      }
     }
   }
 

@@ -56,7 +56,7 @@ console.log('--- Testing WebKit Drag Ghost Badge & Carousel Smooth Panning Math 
 
   setInBoundsDragGhostBadge('📁 3 Photos Selected', mockDragEvent);
 
-  const badge = document.getElementById('afsn-drag-ghost-badge') as HTMLElement;
+  const badge = document.getElementById('osa-drag-ghost-badge') as HTMLElement;
   assert(badge !== null, 'Ghost badge element should exist in DOM');
   assert(badge.style.position === 'fixed', 'Ghost badge should be fixed position');
   assert(badge.style.top === '0px', 'Ghost badge top should be 0px (in-bounds viewport)');

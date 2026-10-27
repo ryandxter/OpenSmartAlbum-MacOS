@@ -396,8 +396,8 @@ export function FilmstripTray({ isOpen, onToggle, activeMode }: FilmstripTrayPro
       ? sortedPhotos.filter((item) => selectedPhotoIds.includes(item.id)).map((item) => item.id)
       : [photo.id];
     usePhotoStore.setState({ draggedPhotoIds: ids });
-    e.dataTransfer.setData('application/x-afsn-photo-ids', JSON.stringify(ids));
-    if (ids.length > 1) e.dataTransfer.setData('application/x-afsn-multi-photo', String(ids.length));
+    e.dataTransfer.setData('application/x-osa-photo-ids', JSON.stringify(ids));
+    if (ids.length > 1) e.dataTransfer.setData('application/x-osa-multi-photo', String(ids.length));
     e.dataTransfer.setData('application/json', JSON.stringify(ids));
     e.dataTransfer.setData('text/plain', ids.join(','));
     e.dataTransfer.effectAllowed = 'copyMove';

@@ -10,7 +10,7 @@ interface RelinkResult { photos: Photo[]; failures: string[]; relinkedIds: strin
 
 async function markLibraryChanged(projectId: string): Promise<void> {
   // Preserve the recovery marker even if the user switched projects during the write.
-  try { localStorage.setItem(`afsn_dirty_${projectId}`, '1'); } catch {}
+  try { localStorage.setItem(`osa_dirty_${projectId}`, '1'); } catch {}
   const { useAlbumStore } = await import('./albumStore');
   const album = useAlbumStore.getState().currentAlbum;
   if (album?.projectId === projectId) {
@@ -94,7 +94,7 @@ async function syncAlbumFramePhotoAssets(photos: Photo[], persist = true): Promi
     const { useAlbumStore } = await import('./albumStore');
     await useAlbumStore.getState().syncPhotoAssets(photos, { persist });
   } catch (err) {
-    console.warn('[AFSN] sync album photo assets error:', err);
+    console.warn('[OpenSmartAlbum] sync album photo assets error:', err);
   }
 }
 
@@ -310,7 +310,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
       }
       return data;
     } catch (err) {
-      console.warn('[AFSN] Face detection failed for photo:', photoId, err);
+      console.warn('[OpenSmartAlbum] Face detection failed for photo:', photoId, err);
       return null;
     }
   },
@@ -335,7 +335,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
         });
       }
     } catch (err) {
-      console.warn('[AFSN] Batch face analysis failed:', err);
+      console.warn('[OpenSmartAlbum] Batch face analysis failed:', err);
     } finally {
       set({ isAnalyzingFaces: false });
     }
@@ -593,7 +593,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
           }
         };
       } catch (e) {
-        console.warn('[AFSN] Error setting up event listeners:', e);
+        console.warn('[OpenSmartAlbum] Error setting up event listeners:', e);
         return () => {};
       }
     })();
@@ -622,11 +622,11 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
           // Preview events merge by ID; never replace the library with a stale recovery snapshot.
           await invoke('generate_missing_previews', { projectId });
         } catch (err) {
-          console.warn('[AFSN] generate_missing_previews error:', err);
+          console.warn('[OpenSmartAlbum] generate_missing_previews error:', err);
         }
       })();
     } catch (err) {
-      console.warn('[AFSN] loadPhotos fallback or error:', err);
+      console.warn('[OpenSmartAlbum] loadPhotos fallback or error:', err);
     }
   },
 
@@ -684,7 +684,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
         await get().loadFolders(task.projectId);
       }
     } catch (err) {
-      console.error('[AFSN] executeImportTask error:', err);
+      console.error('[OpenSmartAlbum] executeImportTask error:', err);
       const { useProjectStore } = await import('./projectStore');
       if (useProjectStore.getState().currentProject?.id === task.projectId) {
         await get().loadPhotos(task.projectId);
@@ -766,7 +766,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
         );
       }
     } catch (err) {
-      console.error('[AFSN] importFiles error:', err);
+      console.error('[OpenSmartAlbum] importFiles error:', err);
       set({ error: String(err) });
     } finally {
       set({ isBrowsing: false });
@@ -794,7 +794,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
         );
       }
     } catch (err) {
-      console.error('[AFSN] importFolder error:', err);
+      console.error('[OpenSmartAlbum] importFolder error:', err);
       set({ error: String(err) });
     } finally {
       set({ isBrowsing: false });
@@ -851,7 +851,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
       }
       return updatedPhotos || [];
     } catch (err) {
-      console.error('[AFSN] importPathsAndGetPhotos error:', err);
+      console.error('[OpenSmartAlbum] importPathsAndGetPhotos error:', err);
       set({ error: String(err) });
       return [];
     } finally {
@@ -872,7 +872,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
       const { invoke } = await import('@tauri-apps/api/core');
       await invoke('cancel_photo_import');
     } catch (err) {
-      console.warn('[AFSN] cancel_photo_import error:', err);
+      console.warn('[OpenSmartAlbum] cancel_photo_import error:', err);
     }
     if (get().importQueue.length === 0) {
       set({
@@ -894,7 +894,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
       const { invoke } = await import('@tauri-apps/api/core');
       await invoke('cancel_photo_import');
     } catch (err) {
-      console.warn('[AFSN] cancelAllImports error:', err);
+      console.warn('[OpenSmartAlbum] cancelAllImports error:', err);
     }
     if (!wasImporting) {
       set({
@@ -919,7 +919,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
         set((s) => ({ photos: s.photos.map((p) => p.id === photoId ? { ...p, isFavorite: Boolean(isFavorite) } : p) }));
       });
     } catch (err) {
-      console.error('[AFSN] toggle_photo_favorite error:', err);
+      console.error('[OpenSmartAlbum] toggle_photo_favorite error:', err);
     }
   },
 
@@ -975,7 +975,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
         await syncAlbumFramePhotoAssets(get().photos);
       }
     } catch (err) {
-      console.warn('[AFSN] check_missing_photos error:', err);
+      console.warn('[OpenSmartAlbum] check_missing_photos error:', err);
     }
   },
 
@@ -998,7 +998,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
       }
       return null;
     } catch (err) {
-      console.warn(`[AFSN] healThumbnail error for ${photoId}:`, err);
+      console.warn(`[OpenSmartAlbum] healThumbnail error for ${photoId}:`, err);
       return null;
     }
     })();
@@ -1070,7 +1070,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
         set((s) => ({ photos: s.photos.map((p) => selectedPhotoIds.includes(p.id) ? { ...p, isFavorite } : p) }));
       });
     } catch (err) {
-      console.error('[AFSN] batch_toggle_favorites error:', err);
+      console.error('[OpenSmartAlbum] batch_toggle_favorites error:', err);
     }
   },
 
@@ -1093,7 +1093,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
         }
       }
     } catch (err) {
-      console.warn('[AFSN] loadFolders error:', err);
+      console.warn('[OpenSmartAlbum] loadFolders error:', err);
       const { useProjectStore } = await import('./projectStore');
       if (epoch === photoLoadEpoch && useProjectStore.getState().currentProject?.id === projectId) {
         set({ error: `Collections could not be refreshed. Reopen the project to reload them. ${String(err)}` });
@@ -1120,7 +1120,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
       }
       return null;
     } catch (err) {
-      console.error('[AFSN] create_photo_folder error:', err);
+      console.error('[OpenSmartAlbum] create_photo_folder error:', err);
       throw err;
     }
   },
@@ -1138,7 +1138,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
       }));
       await get().loadFolders(projectId);
     } catch (err) {
-      console.error('[AFSN] rename_photo_folder error:', err);
+      console.error('[OpenSmartAlbum] rename_photo_folder error:', err);
       throw err;
     }
   },
@@ -1157,7 +1157,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
       });
       await get().loadFolders(projectId);
     } catch (err) {
-      console.error('[AFSN] delete_photo_folder error:', err);
+      console.error('[OpenSmartAlbum] delete_photo_folder error:', err);
       throw err;
     }
   },
@@ -1172,7 +1172,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
       await persistLibraryChange(projectId, 'add_photos_to_folder', { folderId, photoIds: [...photoIds] });
       await get().loadFolders(projectId);
     } catch (err) {
-      console.error('[AFSN] add_photos_to_folder error:', err);
+      console.error('[OpenSmartAlbum] add_photos_to_folder error:', err);
     }
   },
 
@@ -1182,7 +1182,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
       await persistLibraryChange(projectId, 'remove_photos_from_folder', { folderId, photoIds: [...photoIds] });
       await get().loadFolders(projectId);
     } catch (err) {
-      console.error('[AFSN] remove_photos_from_folder error:', err);
+      console.error('[OpenSmartAlbum] remove_photos_from_folder error:', err);
     }
   },
 
@@ -1192,7 +1192,7 @@ export const usePhotoStore = create<PhotoState>((set, get) => ({
       await persistLibraryChange(projectId, 'move_photos_between_folders', { fromFolderId, toFolderId, photoIds: [...photoIds] });
       await get().loadFolders(projectId);
     } catch (err) {
-      console.error('[AFSN] move_photos_between_folders error:', err);
+      console.error('[OpenSmartAlbum] move_photos_between_folders error:', err);
     }
   },
 
