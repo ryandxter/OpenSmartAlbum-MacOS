@@ -5,7 +5,7 @@ use image::{GenericImageView, ImageBuffer, Rgba, RgbaImage};
 use serde::{Deserialize, Serialize};
 use tiff::encoder::{colortype, Compression, Rational, TiffEncoder};
 use tiff::tags::ResolutionUnit;
-use crate::db::{ElementPayload, ProjectRow, SpreadPayload};
+use crate::db::{ElementPayload, ProjectRow, SpreadPayload, SpreadBackgroundImagePayload};
 
 mod bundled_fonts;
 pub mod text_rasterizer;
@@ -309,6 +309,380 @@ pub fn apply_exif_orientation(mut img: image::DynamicImage, orientation: u32) ->
     }
 }
 
+/// Applies Flip H/V, Grayscale, Film-Grain Noise, and Physical Blur to an RGBA image buffer.
+pub fn apply_visual_filters(
+    img: &mut RgbaImage,
+    flip_h: bool,
+    flip_v: bool,
+    grayscale_amount: f64,
+    noise_amount: f64,
+    blur_radius: f64,
+    scale_factor: f64,
+    seed: u64,
+) {
+    if flip_h {
+        image::imageops::flip_horizontal_in_place(img);
+    }
+    if flip_v {
+        image::imageops::flip_vertical_in_place(img);
+    }
+
+    let gray = grayscale_amount.clamp(0.0, 1.0);
+    let noise = noise_amount.clamp(0.0, 1.0);
+
+    if gray > 0.0 || noise > 0.0 {
+        let (w, h) = img.dimensions();
+        for y in 0..h {
+            for x in 0..w {
+                let pixel = img.get_pixel_mut(x, y);
+                if pixel[3] == 0 {
+                    continue;
+                }
+
+                let mut r = pixel[0] as f64;
+                let mut g = pixel[1] as f64;
+                let mut b = pixel[2] as f64;
+
+                // Grayscale rec601 luma
+                if gray > 0.0 {
+                    let luma = 0.299 * r + 0.587 * g + 0.114 * b;
+                    r = r * (1.0 - gray) + luma * gray;
+                    g = g * (1.0 - gray) + luma * gray;
+                    b = b * (1.0 - gray) + luma * gray;
+                }
+
+                // Deterministic film-grain noise
+                if noise > 0.0 {
+                    let mut h_val = seed
+                        .wrapping_add(x as u64)
+                        .wrapping_mul(374761393)
+                        .wrapping_add((y as u64).wrapping_mul(668265263));
+                    h_val = (h_val ^ (h_val >> 13)).wrapping_mul(1274126177);
+                    let rand_val = ((h_val & 0xFFFF) as f64 / 65535.0) * 2.0 - 1.0;
+                    let noise_delta = rand_val * noise * 75.0;
+                    r += noise_delta;
+                    g += noise_delta;
+                    b += noise_delta;
+                }
+
+                pixel[0] = r.round().clamp(0.0, 255.0) as u8;
+                pixel[1] = g.round().clamp(0.0, 255.0) as u8;
+                pixel[2] = b.round().clamp(0.0, 255.0) as u8;
+            }
+        }
+    }
+
+    if blur_radius > 0.0 {
+        let sigma = (blur_radius * scale_factor).clamp(0.1, 50.0) as f32;
+        *img = image::imageops::blur(img, sigma);
+    }
+}
+
+/// Renders a soft blurred drop shadow on the canvas beneath a frame.
+pub fn render_element_drop_shadow(
+    canvas: &mut RgbaImage,
+    frame_x: i64,
+    frame_y: i64,
+    frame_w: u32,
+    frame_h: u32,
+    offset_x: f64,
+    offset_y: f64,
+    blur: f64,
+    opacity: f64,
+    color_hex: &str,
+    scale_factor: f64,
+) {
+    let op = opacity.clamp(0.0, 1.0);
+    if op <= 0.001 || frame_w == 0 || frame_h == 0 {
+        return;
+    }
+    let shadow_color = parse_hex_color(color_hex);
+    let off_x = (offset_x * scale_factor).round() as i64;
+    let off_y = (offset_y * scale_factor).round() as i64;
+    let blur_px = (blur * scale_factor).round().clamp(1.0, 60.0) as f32;
+    let pad = (blur_px * 2.0).ceil() as u32;
+
+    let shadow_w = frame_w + pad * 2;
+    let shadow_h = frame_h + pad * 2;
+    let mut shadow_img: RgbaImage = ImageBuffer::new(shadow_w, shadow_h);
+
+    let shadow_alpha = (op * 255.0).round().clamp(0.0, 255.0) as u8;
+    for y in pad..pad + frame_h {
+        for x in pad..pad + frame_w {
+            shadow_img.put_pixel(x, y, Rgba([shadow_color[0], shadow_color[1], shadow_color[2], shadow_alpha]));
+        }
+    }
+
+    let blurred_shadow = image::imageops::blur(&shadow_img, blur_px);
+    let start_x = frame_x + off_x - pad as i64;
+    let start_y = frame_y + off_y - pad as i64;
+    let canvas_w = canvas.width() as i64;
+    let canvas_h = canvas.height() as i64;
+
+    for sy in 0..shadow_h {
+        let cy = start_y + sy as i64;
+        if cy < 0 || cy >= canvas_h {
+            continue;
+        }
+        for sx in 0..shadow_w {
+            let cx = start_x + sx as i64;
+            if cx < 0 || cx >= canvas_w {
+                continue;
+            }
+            let sp = blurred_shadow.get_pixel(sx, sy);
+            if sp[3] == 0 {
+                continue;
+            }
+            let alpha = sp[3] as f64 / 255.0;
+            let existing = canvas.get_pixel_mut(cx as u32, cy as u32);
+            let inv_a = 1.0 - alpha;
+            existing[0] = ((sp[0] as f64 * alpha) + (existing[0] as f64 * inv_a)).round() as u8;
+            existing[1] = ((sp[1] as f64 * alpha) + (existing[1] as f64 * inv_a)).round() as u8;
+            existing[2] = ((sp[2] as f64 * alpha) + (existing[2] as f64 * inv_a)).round() as u8;
+            existing[3] = 255;
+        }
+    }
+}
+
+/// Renders a decorative frame overlay PNG onto the canvas.
+pub fn render_frame_overlay(
+    canvas: &mut RgbaImage,
+    overlay_path: &str,
+    x: i64,
+    y: i64,
+    w: u32,
+    h: u32,
+    flip_h: bool,
+    flip_v: bool,
+    opacity: f64,
+) {
+    let path = Path::new(overlay_path);
+    if !path.exists() {
+        return;
+    }
+    let Ok(overlay_img) = image::open(path) else {
+        return;
+    };
+    let mut resized = overlay_img.resize_exact(w, h, image::imageops::FilterType::Triangle).to_rgba8();
+    if flip_h {
+        image::imageops::flip_horizontal_in_place(&mut resized);
+    }
+    if flip_v {
+        image::imageops::flip_vertical_in_place(&mut resized);
+    }
+
+    let canvas_w = canvas.width() as i64;
+    let canvas_h = canvas.height() as i64;
+    let op = opacity.clamp(0.0, 1.0);
+
+    for fy in 0..h {
+        let cy = y + fy as i64;
+        if cy < 0 || cy >= canvas_h {
+            continue;
+        }
+        for fx in 0..w {
+            let cx = x + fx as i64;
+            if cx < 0 || cx >= canvas_w {
+                continue;
+            }
+            let p = resized.get_pixel(fx, fy);
+            let alpha = (p[3] as f64 / 255.0) * op;
+            if alpha < 0.001 {
+                continue;
+            }
+            let existing = canvas.get_pixel_mut(cx as u32, cy as u32);
+            let inv_a = 1.0 - alpha;
+            existing[0] = ((p[0] as f64 * alpha) + (existing[0] as f64 * inv_a)).round() as u8;
+            existing[1] = ((p[1] as f64 * alpha) + (existing[1] as f64 * inv_a)).round() as u8;
+            existing[2] = ((p[2] as f64 * alpha) + (existing[2] as f64 * inv_a)).round() as u8;
+            existing[3] = 255;
+        }
+    }
+}
+
+/// Renders spread background image with cropping, scaling, opacity, and filters.
+pub fn render_spread_background_image(
+    canvas: &mut RgbaImage,
+    bg: &SpreadBackgroundImagePayload,
+    scale_factor: f64,
+    canvas_w: u32,
+    canvas_h: u32,
+) {
+    let dynamic_img = image::open(Path::new(&bg.file_path)).or_else(|_| {
+        if let Some(ref prev) = bg.preview_path {
+            image::open(Path::new(prev))
+        } else {
+            Err(image::ImageError::IoError(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "not found",
+            )))
+        }
+    });
+    let Ok(dynamic_img) = dynamic_img else {
+        return;
+    };
+
+    let mut resized = dynamic_img.resize_exact(canvas_w, canvas_h, image::imageops::FilterType::Triangle).to_rgba8();
+
+    apply_visual_filters(
+        &mut resized,
+        bg.flip_horizontal.unwrap_or(false),
+        bg.flip_vertical.unwrap_or(false),
+        bg.grayscale_amount.unwrap_or(0.0),
+        bg.noise_amount.unwrap_or(0.0),
+        bg.blur_radius.unwrap_or(0.0),
+        scale_factor,
+        9999,
+    );
+
+    let opacity = if bg.opacity > 1.0 { bg.opacity / 100.0 } else { bg.opacity }.clamp(0.0, 1.0);
+    if opacity < 0.001 {
+        return;
+    }
+
+    for y in 0..canvas_h {
+        for x in 0..canvas_w {
+            let p = resized.get_pixel(x, y);
+            let alpha = (p[3] as f64 / 255.0) * opacity;
+            if alpha < 0.001 {
+                continue;
+            }
+            let existing = canvas.get_pixel_mut(x, y);
+            let inv_a = 1.0 - alpha;
+            existing[0] = ((p[0] as f64 * alpha) + (existing[0] as f64 * inv_a)).round() as u8;
+            existing[1] = ((p[1] as f64 * alpha) + (existing[1] as f64 * inv_a)).round() as u8;
+            existing[2] = ((p[2] as f64 * alpha) + (existing[2] as f64 * inv_a)).round() as u8;
+            existing[3] = 255;
+        }
+    }
+}
+
+/// Applies film-grain noise to a background canvas.
+pub fn apply_background_noise(canvas: &mut RgbaImage, noise_amount: f64, seed: u64) {
+    let noise = noise_amount.clamp(0.0, 1.0);
+    if noise <= 0.0 {
+        return;
+    }
+    let (w, h) = canvas.dimensions();
+    for y in 0..h {
+        for x in 0..w {
+            let p = canvas.get_pixel_mut(x, y);
+            let mut h_val = seed
+                .wrapping_add(x as u64)
+                .wrapping_mul(374761393)
+                .wrapping_add((y as u64).wrapping_mul(668265263));
+            h_val = (h_val ^ (h_val >> 13)).wrapping_mul(1274126177);
+            let rand_val = ((h_val & 0xFFFF) as f64 / 65535.0) * 2.0 - 1.0;
+            let noise_delta = rand_val * noise * 70.0;
+
+            p[0] = (p[0] as f64 + noise_delta).round().clamp(0.0, 255.0) as u8;
+            p[1] = (p[1] as f64 + noise_delta).round().clamp(0.0, 255.0) as u8;
+            p[2] = (p[2] as f64 + noise_delta).round().clamp(0.0, 255.0) as u8;
+        }
+    }
+}
+
+/// Renders inner spread / page borders at safe margins.
+pub fn render_spread_page_borders(
+    canvas: &mut RgbaImage,
+    project: &ProjectRow,
+    spread: &SpreadPayload,
+    scale_factor: f64,
+    offset_x_px: f64,
+    offset_y_px: f64,
+) {
+    let border_active = spread.border_enabled.unwrap_or(false)
+        || spread.left_page_border_enabled.unwrap_or(false)
+        || spread.right_page_border_enabled.unwrap_or(false);
+    if !border_active {
+        return;
+    }
+
+    let border_width_pt = spread.border_width
+        .or(spread.left_page_border_width)
+        .or(spread.right_page_border_width)
+        .unwrap_or(1.0);
+    let border_px = (border_width_pt * scale_factor).max(1.0) as u32;
+    let border_color = parse_hex_color(
+        spread.border_color.as_deref()
+            .or(spread.left_page_border_color.as_deref())
+            .or(spread.right_page_border_color.as_deref())
+            .unwrap_or("#000000"),
+    );
+
+    let is_cover = spread.r#type == "cover" || spread.r#type == "back";
+    let single_page_w = project.canvas_width;
+    let single_page_h = project.canvas_height;
+    let total_spread_w = if is_cover { single_page_w } else { single_page_w * 2.0 };
+    let total_spread_h = single_page_h;
+
+    let safe_t = spread.safe_area_top.unwrap_or(spread.safe_area);
+    let safe_b = spread.safe_area_bottom.unwrap_or(spread.safe_area);
+    let safe_out = spread.safe_area_outside.unwrap_or(spread.safe_area);
+    let safe_spine = spread.safe_area_spine.unwrap_or(spread.safe_area);
+
+    let mut rects: Vec<(i64, i64, u32, u32)> = Vec::new();
+
+    if is_cover {
+        let l = ((safe_out * scale_factor) + offset_x_px).round() as i64;
+        let t = ((safe_t * scale_factor) + offset_y_px).round() as i64;
+        let r = (((total_spread_w - safe_out) * scale_factor) + offset_x_px).round() as i64;
+        let b = (((total_spread_h - safe_b) * scale_factor) + offset_y_px).round() as i64;
+        if r > l && b > t {
+            rects.push((l, t, (r - l) as u32, (b - t) as u32));
+        }
+    } else {
+        let draw_left = spread.left_page_border_enabled.unwrap_or(false)
+            || (spread.border_enabled.unwrap_or(false) && !spread.right_page_border_enabled.unwrap_or(false));
+        let draw_right = spread.right_page_border_enabled.unwrap_or(false)
+            || (spread.border_enabled.unwrap_or(false) && !spread.left_page_border_enabled.unwrap_or(false));
+
+        if draw_left {
+            let l = ((safe_out * scale_factor) + offset_x_px).round() as i64;
+            let t = ((safe_t * scale_factor) + offset_y_px).round() as i64;
+            let r = (((single_page_w - safe_spine) * scale_factor) + offset_x_px).round() as i64;
+            let b = (((total_spread_h - safe_b) * scale_factor) + offset_y_px).round() as i64;
+            if r > l && b > t {
+                rects.push((l, t, (r - l) as u32, (b - t) as u32));
+            }
+        }
+        if draw_right {
+            let l = (((single_page_w + safe_spine) * scale_factor) + offset_x_px).round() as i64;
+            let t = ((safe_t * scale_factor) + offset_y_px).round() as i64;
+            let r = (((total_spread_w - safe_out) * scale_factor) + offset_x_px).round() as i64;
+            let b = (((total_spread_h - safe_b) * scale_factor) + offset_y_px).round() as i64;
+            if r > l && b > t {
+                rects.push((l, t, (r - l) as u32, (b - t) as u32));
+            }
+        }
+    }
+
+    let canvas_w = canvas.width() as i64;
+    let canvas_h = canvas.height() as i64;
+
+    for (left, top, w, h) in rects {
+        for y in 0..h {
+            let cy = top + y as i64;
+            if cy < 0 || cy >= canvas_h {
+                continue;
+            }
+            for x in 0..w {
+                let cx = left + x as i64;
+                if cx < 0 || cx >= canvas_w {
+                    continue;
+                }
+                let is_border = x < border_px
+                    || x >= w.saturating_sub(border_px)
+                    || y < border_px
+                    || y >= h.saturating_sub(border_px);
+                if is_border {
+                    canvas.put_pixel(cx as u32, cy as u32, border_color);
+                }
+            }
+        }
+    }
+}
+
 /// Loads, auto-orients, rotates, crops, and resizes an image to exact target pixel dimensions.
 pub fn crop_and_rotate_photo(
     file_path: &str,
@@ -501,7 +875,18 @@ fn render_photo_element(
     single_page_w: f64,
     gutter_w: f64,
 ) {
-    if elem.file_path.is_empty() {
+    let file_path = if !elem.file_path.is_empty() {
+        elem.file_path.as_str()
+    } else if let Some(ref u) = elem.file_url {
+        u.as_str()
+    } else if let Some(ref p) = elem.frame_asset_local_path {
+        p.as_str()
+    } else if let Some(ref prev) = elem.preview_path {
+        prev.as_str()
+    } else {
+        ""
+    };
+    if file_path.is_empty() {
         return;
     }
 
@@ -613,8 +998,8 @@ fn render_photo_element(
         return;
     }
 
-    let Some(resized_rgba) = crop_and_rotate_photo(
-        &elem.file_path,
+    let Some(mut resized_rgba) = crop_and_rotate_photo(
+        file_path,
         elem.preview_path.as_deref(),
         elem.width,
         elem.height,
@@ -628,6 +1013,35 @@ fn render_photo_element(
     ) else {
         return;
     };
+
+    // Apply visual filters (flip H/V, grayscale, noise, blur)
+    apply_visual_filters(
+        &mut resized_rgba,
+        elem.flip_horizontal,
+        elem.flip_vertical,
+        elem.grayscale_amount,
+        elem.noise_amount,
+        elem.blur_radius,
+        scale_factor,
+        12345,
+    );
+
+    // Render soft drop shadow beneath frame if enabled
+    if elem.shadow_enabled && elem.shadow_opacity > 0.0 {
+        render_element_drop_shadow(
+            canvas,
+            frame_px_x,
+            frame_px_y,
+            frame_px_w,
+            frame_px_h,
+            elem.shadow_offset_x,
+            elem.shadow_offset_y,
+            elem.shadow_blur,
+            elem.shadow_opacity,
+            &elem.shadow_color,
+            scale_factor,
+        );
+    }
 
     // Corner radii in physical canvas units converted to export pixels
     let raw_radii = elem.corner_radii();
@@ -796,6 +1210,23 @@ fn render_photo_element(
                 existing[3] = 255;
             }
         }
+    }
+
+    // Render decorative frame overlay if present
+    let overlay_path = elem.frame_asset_local_path.as_deref()
+        .or(elem.frame_asset_url.as_deref());
+    if let Some(path) = overlay_path {
+        render_frame_overlay(
+            canvas,
+            path,
+            frame_px_x,
+            frame_px_y,
+            frame_px_w,
+            frame_px_h,
+            elem.flip_horizontal,
+            elem.flip_vertical,
+            elem.opacity,
+        );
     }
 }
 
@@ -1076,6 +1507,21 @@ where
         }
     }
 
+    // Render spread background image if configured
+    if let Some(ref bg_img) = spread.background_image {
+        render_spread_background_image(&mut canvas, bg_img, scale, canvas_w_px, canvas_h_px);
+    }
+
+    // Apply film-grain background noise if configured
+    if let Some(noise) = spread.background_color_noise {
+        if noise > 0.0 {
+            apply_background_noise(&mut canvas, noise, 42);
+        }
+    }
+
+    // Render inner spread / page borders at safe margins beneath frames
+    render_spread_page_borders(&mut canvas, project, spread, scale, offset_x_px, offset_y_px);
+
     // Align all object bounds before z-order sorting so photo and text passes use
     // one identical export-pixel geometry.
     let aligned_bounds = align_export_element_bounds(project, spread, dpi, offset_x_px, offset_y_px);
@@ -1240,6 +1686,45 @@ pub fn render_spread_to_psd(
         None,
     ));
 
+    // Background Image Layer
+    if let Some(ref bg_img) = spread.background_image {
+        let mut bg_img_canvas: RgbaImage = ImageBuffer::new(canvas_w_px, canvas_h_px);
+        render_spread_background_image(&mut bg_img_canvas, bg_img, scale, canvas_w_px, canvas_h_px);
+        let opacity = if bg_img.opacity > 1.0 { bg_img.opacity / 100.0 } else { bg_img.opacity }.clamp(0.0, 1.0);
+        layers.push(
+            psd_writer::PsdLayer::new(
+                "Background Image",
+                0,
+                0,
+                canvas_h_px as i32,
+                canvas_w_px as i32,
+                bg_img_canvas,
+                None,
+            )
+            .with_opacity((opacity * 255.0).round().clamp(0.0, 255.0) as u8),
+        );
+    }
+
+    // Spread Borders Layer
+    let border_active = spread.border_enabled.unwrap_or(false)
+        || spread.left_page_border_enabled.unwrap_or(false)
+        || spread.right_page_border_enabled.unwrap_or(false);
+    if border_active {
+        let mut border_canvas: RgbaImage = ImageBuffer::new(canvas_w_px, canvas_h_px);
+        render_spread_page_borders(&mut border_canvas, project, spread, scale, offset_x_px, offset_y_px);
+        layers.push(
+            psd_writer::PsdLayer::new(
+                "Spread Borders",
+                0,
+                0,
+                canvas_h_px as i32,
+                canvas_w_px as i32,
+                border_canvas,
+                None,
+            ),
+        );
+    }
+
     // Sort elements by z_index
     let aligned_bounds = align_export_element_bounds(project, spread, dpi, offset_x_px, offset_y_px);
     let mut sorted_elements: Vec<_> = spread.elements.iter().enumerate().collect();
@@ -1282,10 +1767,77 @@ pub fn render_spread_to_psd(
                 psd_writer::PsdLayer::new(layer_name, top, left, bottom, right, text_img, None)
                     .with_opacity((elem.opacity * 255.0).round().clamp(0.0, 255.0) as u8),
             );
-        } else if !elem.file_path.is_empty() {
+        } else if elem.r#type == "graphic" {
+            // Graphic sticker layer
+            let file_path = if !elem.file_path.is_empty() {
+                elem.file_path.as_str()
+            } else if let Some(ref u) = elem.file_url {
+                u.as_str()
+            } else if let Some(ref p) = elem.frame_asset_local_path {
+                p.as_str()
+            } else if let Some(ref prev) = elem.preview_path {
+                prev.as_str()
+            } else {
+                ""
+            };
+            if !file_path.is_empty() {
+                if let Some(mut graphic_img) = crop_and_rotate_photo(
+                    file_path,
+                    elem.preview_path.as_deref(),
+                    elem.width,
+                    elem.height,
+                    elem.rotation,
+                    elem.crop_x,
+                    elem.crop_y,
+                    elem.crop_scale,
+                    elem.crop_rotation,
+                    bounds.width,
+                    bounds.height,
+                ) {
+                    apply_visual_filters(
+                        &mut graphic_img,
+                        elem.flip_horizontal,
+                        elem.flip_vertical,
+                        elem.grayscale_amount,
+                        elem.noise_amount,
+                        elem.blur_radius,
+                        scale,
+                        12345,
+                    );
+                    let top = bounds.y as i32;
+                    let left = bounds.x as i32;
+                    let bottom = top + bounds.height as i32;
+                    let right = left + bounds.width as i32;
+                    let name = if !elem.file_name.is_empty() {
+                        elem.file_name.clone()
+                    } else {
+                        elem.name.clone().unwrap_or_else(|| format!("Graphic {}", elem_idx + 1))
+                    };
+                    layers.push(
+                        psd_writer::PsdLayer::new(name, top, left, bottom, right, graphic_img, None)
+                            .with_opacity((elem.opacity * 255.0).round().clamp(0.0, 255.0) as u8),
+                    );
+                }
+            }
+        } else {
             // Photo element layer
+            let file_path = if !elem.file_path.is_empty() {
+                elem.file_path.as_str()
+            } else if let Some(ref u) = elem.file_url {
+                u.as_str()
+            } else if let Some(ref p) = elem.frame_asset_local_path {
+                p.as_str()
+            } else if let Some(ref prev) = elem.preview_path {
+                prev.as_str()
+            } else {
+                ""
+            };
+            if file_path.is_empty() {
+                continue;
+            }
+
             let photo_opt = crop_and_rotate_photo(
-                &elem.file_path,
+                file_path,
                 elem.preview_path.as_deref(),
                 elem.width,
                 elem.height,
@@ -1298,9 +1850,20 @@ pub fn render_spread_to_psd(
                 bounds.height,
             );
 
-            let Some(photo_img) = photo_opt else {
+            let Some(mut photo_img) = photo_opt else {
                 continue;
             };
+
+            apply_visual_filters(
+                &mut photo_img,
+                elem.flip_horizontal,
+                elem.flip_vertical,
+                elem.grayscale_amount,
+                elem.noise_amount,
+                elem.blur_radius,
+                scale,
+                12345,
+            );
 
             // Compute non-destructive grayscale shape mask (Channel -2)
             let raw_radii = elem.corner_radii();
@@ -1333,6 +1896,28 @@ pub fn render_spread_to_psd(
                 psd_writer::PsdLayer::new(name, top, left, bottom, right, photo_img, mask)
                     .with_opacity((elem.opacity * 255.0).round().clamp(0.0, 255.0) as u8),
             );
+
+            // Decorative Frame Overlay Layer directly above the photo
+            let overlay_path = elem.frame_asset_local_path.as_deref().or(elem.frame_asset_url.as_deref());
+            if let Some(path) = overlay_path {
+                let p = Path::new(path);
+                if p.exists() {
+                    if let Ok(overlay_img) = image::open(p) {
+                        let mut resized = overlay_img.resize_exact(bounds.width, bounds.height, image::imageops::FilterType::Triangle).to_rgba8();
+                        if elem.flip_horizontal {
+                            image::imageops::flip_horizontal_in_place(&mut resized);
+                        }
+                        if elem.flip_vertical {
+                            image::imageops::flip_vertical_in_place(&mut resized);
+                        }
+                        let overlay_name = elem.frame_asset_title.clone().unwrap_or_else(|| format!("Frame Overlay {}", elem_idx + 1));
+                        layers.push(
+                            psd_writer::PsdLayer::new(overlay_name, top, left, bottom, right, resized, None)
+                                .with_opacity((elem.opacity * 255.0).round().clamp(0.0, 255.0) as u8),
+                        );
+                    }
+                }
+            }
         }
     }
 
@@ -1399,6 +1984,63 @@ pub fn render_spread_page_to_psd(
         psd_writer::PsdLayer::new("Background", 0, 0, page_h as i32, page_w as i32, bg_canvas, None),
     ];
 
+    // Background Image Layer (clipped/shifted for this page)
+    if let Some(ref bg_img) = spread.background_image {
+        let mut full_bg_canvas: RgbaImage = ImageBuffer::new(canvas_w_px, page_h);
+        render_spread_background_image(&mut full_bg_canvas, bg_img, scale, canvas_w_px, page_h);
+        let mut page_bg_canvas: RgbaImage = ImageBuffer::new(page_w, page_h);
+        for y in 0..page_h {
+            for x in 0..page_w {
+                let src_x = (x as f64 + shift_x).round() as u32;
+                if src_x < canvas_w_px {
+                    page_bg_canvas.put_pixel(x, y, *full_bg_canvas.get_pixel(src_x, y));
+                }
+            }
+        }
+        let opacity = if bg_img.opacity > 1.0 { bg_img.opacity / 100.0 } else { bg_img.opacity }.clamp(0.0, 1.0);
+        layers.push(
+            psd_writer::PsdLayer::new(
+                "Background Image",
+                0,
+                0,
+                page_h as i32,
+                page_w as i32,
+                page_bg_canvas,
+                None,
+            )
+            .with_opacity((opacity * 255.0).round().clamp(0.0, 255.0) as u8),
+        );
+    }
+
+    // Spread / Page Borders Layer
+    let border_active = spread.border_enabled.unwrap_or(false)
+        || spread.left_page_border_enabled.unwrap_or(false)
+        || spread.right_page_border_enabled.unwrap_or(false);
+    if border_active {
+        let mut full_border_canvas: RgbaImage = ImageBuffer::new(canvas_w_px, page_h);
+        render_spread_page_borders(&mut full_border_canvas, project, spread, scale, offset_x_px, offset_y_px);
+        let mut page_border_canvas: RgbaImage = ImageBuffer::new(page_w, page_h);
+        for y in 0..page_h {
+            for x in 0..page_w {
+                let src_x = (x as f64 + shift_x).round() as u32;
+                if src_x < canvas_w_px {
+                    page_border_canvas.put_pixel(x, y, *full_border_canvas.get_pixel(src_x, y));
+                }
+            }
+        }
+        layers.push(
+            psd_writer::PsdLayer::new(
+                "Page Borders",
+                0,
+                0,
+                page_h as i32,
+                page_w as i32,
+                page_border_canvas,
+                None,
+            ),
+        );
+    }
+
     let aligned_bounds = align_export_element_bounds(project, spread, dpi, offset_x_px, offset_y_px);
     let mut sorted_elements: Vec<_> = spread.elements.iter().enumerate().collect();
     sorted_elements.sort_by_key(|(_, elem)| elem.z_index);
@@ -1446,9 +2088,71 @@ pub fn render_spread_page_to_psd(
                 psd_writer::PsdLayer::new(layer_name, top, left, bottom, right, text_img, None)
                     .with_opacity((elem.opacity * 255.0).round().clamp(0.0, 255.0) as u8),
             );
-        } else if !elem.file_path.is_empty() {
+        } else if elem.r#type == "graphic" {
+            let file_path = if !elem.file_path.is_empty() {
+                elem.file_path.as_str()
+            } else if let Some(ref u) = elem.file_url {
+                u.as_str()
+            } else if let Some(ref p) = elem.frame_asset_local_path {
+                p.as_str()
+            } else if let Some(ref prev) = elem.preview_path {
+                prev.as_str()
+            } else {
+                ""
+            };
+            if !file_path.is_empty() {
+                if let Some(mut graphic_img) = crop_and_rotate_photo(
+                    file_path,
+                    elem.preview_path.as_deref(),
+                    elem.width,
+                    elem.height,
+                    elem.rotation,
+                    elem.crop_x,
+                    elem.crop_y,
+                    elem.crop_scale,
+                    elem.crop_rotation,
+                    b.width,
+                    b.height,
+                ) {
+                    apply_visual_filters(
+                        &mut graphic_img,
+                        elem.flip_horizontal,
+                        elem.flip_vertical,
+                        elem.grayscale_amount,
+                        elem.noise_amount,
+                        elem.blur_radius,
+                        scale,
+                        12345,
+                    );
+                    let name = if !elem.file_name.is_empty() {
+                        elem.file_name.clone()
+                    } else {
+                        elem.name.clone().unwrap_or_else(|| format!("Graphic {}", elem_idx + 1))
+                    };
+                    layers.push(
+                        psd_writer::PsdLayer::new(name, top, left, bottom, right, graphic_img, None)
+                            .with_opacity((elem.opacity * 255.0).round().clamp(0.0, 255.0) as u8),
+                    );
+                }
+            }
+        } else {
+            let file_path = if !elem.file_path.is_empty() {
+                elem.file_path.as_str()
+            } else if let Some(ref u) = elem.file_url {
+                u.as_str()
+            } else if let Some(ref p) = elem.frame_asset_local_path {
+                p.as_str()
+            } else if let Some(ref prev) = elem.preview_path {
+                prev.as_str()
+            } else {
+                ""
+            };
+            if file_path.is_empty() {
+                continue;
+            }
+
             let photo_opt = crop_and_rotate_photo(
-                &elem.file_path,
+                file_path,
                 elem.preview_path.as_deref(),
                 elem.width,
                 elem.height,
@@ -1461,9 +2165,20 @@ pub fn render_spread_page_to_psd(
                 b.height,
             );
 
-            let Some(photo_img) = photo_opt else {
+            let Some(mut photo_img) = photo_opt else {
                 continue;
             };
+
+            apply_visual_filters(
+                &mut photo_img,
+                elem.flip_horizontal,
+                elem.flip_vertical,
+                elem.grayscale_amount,
+                elem.noise_amount,
+                elem.blur_radius,
+                scale,
+                12345,
+            );
 
             let raw_radii = elem.corner_radii();
             let radii = (
@@ -1490,6 +2205,28 @@ pub fn render_spread_page_to_psd(
                 psd_writer::PsdLayer::new(name, top, left, bottom, right, photo_img, mask)
                     .with_opacity((elem.opacity * 255.0).round().clamp(0.0, 255.0) as u8),
             );
+
+            // Frame overlay directly above photo
+            let overlay_path = elem.frame_asset_local_path.as_deref().or(elem.frame_asset_url.as_deref());
+            if let Some(path) = overlay_path {
+                let p = Path::new(path);
+                if p.exists() {
+                    if let Ok(overlay_img) = image::open(p) {
+                        let mut resized = overlay_img.resize_exact(b.width, b.height, image::imageops::FilterType::Triangle).to_rgba8();
+                        if elem.flip_horizontal {
+                            image::imageops::flip_horizontal_in_place(&mut resized);
+                        }
+                        if elem.flip_vertical {
+                            image::imageops::flip_vertical_in_place(&mut resized);
+                        }
+                        let overlay_name = elem.frame_asset_title.clone().unwrap_or_else(|| format!("Frame Overlay {}", elem_idx + 1));
+                        layers.push(
+                            psd_writer::PsdLayer::new(overlay_name, top, left, bottom, right, resized, None)
+                                .with_opacity((elem.opacity * 255.0).round().clamp(0.0, 255.0) as u8),
+                        );
+                    }
+                }
+            }
         }
     }
 

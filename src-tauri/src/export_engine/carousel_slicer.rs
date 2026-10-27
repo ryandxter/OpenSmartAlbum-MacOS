@@ -24,6 +24,10 @@ pub struct CarouselSlidePayload {
     pub id: String,
     pub slide_index: usize,
     pub background_color: String,
+    #[serde(default)]
+    pub background_image: Option<crate::db::SpreadBackgroundImagePayload>,
+    #[serde(default)]
+    pub background_color_noise: Option<f64>,
     pub elements: Vec<CarouselElementPayload>,
 }
 
@@ -60,6 +64,34 @@ pub struct CarouselElementPayload {
     pub border_style: Option<String>,
     #[serde(default)]
     pub opacity: Option<f64>,
+    #[serde(default)]
+    pub r#type: Option<String>,
+    #[serde(default)]
+    pub file_url: Option<String>,
+    #[serde(default)]
+    pub flip_horizontal: Option<bool>,
+    #[serde(default)]
+    pub flip_vertical: Option<bool>,
+    #[serde(default)]
+    pub grayscale_amount: Option<f64>,
+    #[serde(default)]
+    pub noise_amount: Option<f64>,
+    #[serde(default)]
+    pub blur_radius: Option<f64>,
+    #[serde(default)]
+    pub shadow_enabled: Option<bool>,
+    #[serde(default)]
+    pub shadow_blur: Option<f64>,
+    #[serde(default)]
+    pub shadow_offset_x: Option<f64>,
+    #[serde(default)]
+    pub shadow_offset_y: Option<f64>,
+    #[serde(default)]
+    pub shadow_opacity: Option<f64>,
+    pub shadow_color: Option<String>,
+    pub frame_asset_id: Option<String>,
+    pub frame_asset_url: Option<String>,
+    pub frame_asset_local_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -134,6 +166,45 @@ pub fn render_carousel_panorama(payload: &CarouselPayload) -> RgbaImage {
                 canvas.put_pixel(x, y, bg);
             }
         }
+
+        if let Some(ref bg_img) = slide.background_image {
+            let mut slide_canvas = ImageBuffer::new(slide_w, slide_h);
+            super::render_spread_background_image(&mut slide_canvas, bg_img, 1.0, slide_w, slide_h);
+            for y in 0..slide_h {
+                for x in 0..slide_w {
+                    let dest_x = start_x + x;
+                    if dest_x < total_w {
+                        let p = slide_canvas.get_pixel(x, y);
+                        if p[3] > 0 {
+                            canvas.put_pixel(dest_x, y, *p);
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Some(noise) = slide.background_color_noise {
+            if noise > 0.0 {
+                let mut slide_sub = ImageBuffer::new(slide_w, slide_h);
+                for y in 0..slide_h {
+                    for x in 0..slide_w {
+                        let dest_x = start_x + x;
+                        if dest_x < total_w {
+                            slide_sub.put_pixel(x, y, *canvas.get_pixel(dest_x, y));
+                        }
+                    }
+                }
+                super::apply_background_noise(&mut slide_sub, noise, 42 + i as u64);
+                for y in 0..slide_h {
+                    for x in 0..slide_w {
+                        let dest_x = start_x + x;
+                        if dest_x < total_w {
+                            canvas.put_pixel(dest_x, y, *slide_sub.get_pixel(x, y));
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // 2. Collect and composite all elements across slides
@@ -148,7 +219,11 @@ pub fn render_carousel_panorama(payload: &CarouselPayload) -> RgbaImage {
         if elem.hidden.unwrap_or(false) {
             continue;
         }
-        let Some(ref raw_path) = elem.file_path else {
+        let raw_path = elem.file_path.as_deref()
+            .or(elem.file_url.as_deref())
+            .or(elem.frame_asset_local_path.as_deref())
+            .or(elem.preview_path.as_deref());
+        let Some(raw_path) = raw_path else {
             continue;
         };
         if raw_path.trim().is_empty() {
@@ -172,9 +247,39 @@ pub fn render_carousel_panorama(payload: &CarouselPayload) -> RgbaImage {
             target_h,
         );
 
-        let Some(rendered_photo) = photo_img else {
+        let Some(mut rendered_photo) = photo_img else {
             continue;
         };
+
+        super::apply_visual_filters(
+            &mut rendered_photo,
+            elem.flip_horizontal.unwrap_or(false),
+            elem.flip_vertical.unwrap_or(false),
+            elem.grayscale_amount.unwrap_or(0.0),
+            elem.noise_amount.unwrap_or(0.0),
+            elem.blur_radius.unwrap_or(0.0),
+            1.0,
+            12345,
+        );
+
+        let dest_base_x = elem.x.round() as i64;
+        let dest_base_y = elem.y.round() as i64;
+
+        if elem.shadow_enabled.unwrap_or(false) && elem.shadow_opacity.unwrap_or(0.0) > 0.0 {
+            super::render_element_drop_shadow(
+                &mut canvas,
+                dest_base_x,
+                dest_base_y,
+                target_w,
+                target_h,
+                elem.shadow_offset_x.unwrap_or(0.0),
+                elem.shadow_offset_y.unwrap_or(0.0),
+                elem.shadow_blur.unwrap_or(10.0),
+                elem.shadow_opacity.unwrap_or(0.5),
+                elem.shadow_color.as_deref().unwrap_or("#000000"),
+                1.0,
+            );
+        }
 
         let r_tl = elem.corner_radius_tl.or(elem.corner_radius).unwrap_or(0.0).max(0.0);
         let r_tr = elem.corner_radius_tr.or(elem.corner_radius).unwrap_or(0.0).max(0.0);
@@ -311,6 +416,21 @@ pub fn render_carousel_panorama(payload: &CarouselPayload) -> RgbaImage {
                     dst[3] = 255;
                 }
             }
+        }
+
+        let overlay_path = elem.frame_asset_local_path.as_deref().or(elem.frame_asset_url.as_deref());
+        if let Some(path) = overlay_path {
+            super::render_frame_overlay(
+                &mut canvas,
+                path,
+                dest_base_x,
+                dest_base_y,
+                target_w,
+                target_h,
+                elem.flip_horizontal.unwrap_or(false),
+                elem.flip_vertical.unwrap_or(false),
+                elem_opacity,
+            );
         }
     }
 
