@@ -52,6 +52,14 @@ export const canvaService = {
     await invoke('disconnect_canva');
   },
 
+  async saveCredentials(clientId?: string, clientSecret?: string): Promise<void> {
+    if (!isTauri()) return;
+    await invoke('save_canva_credentials', {
+      clientId: clientId || null,
+      clientSecret: clientSecret || null,
+    });
+  },
+
   async listAssets(folderId?: string): Promise<FrameAssetMeta[]> {
     if (!isTauri()) return [];
     try {

@@ -33,6 +33,8 @@ cache/
 # Environment & Secrets
 .env
 .env.*
+canva.env
+*.env
 !.env.example
 *.pem
 *.key

@@ -43,13 +43,19 @@ fn resolve_canva_redirect_uri(passed_uri: Option<String>) -> String {
             return trimmed;
         }
     }
-    let candidate_paths = [
+    let mut candidate_paths = vec![
         PathBuf::from(".env"),
         PathBuf::from("canva.env"),
         PathBuf::from(".env.canva"),
         PathBuf::from("../.env"),
         PathBuf::from("../canva.env"),
     ];
+    if let Ok(home) = std::env::var("HOME") {
+        let home_path = PathBuf::from(home);
+        candidate_paths.push(home_path.join("Downloads").join("canva.env"));
+        candidate_paths.push(home_path.join(".config").join("opensmartalbum").join("canva.env"));
+        candidate_paths.push(home_path.join("canva.env"));
+    }
     for p in &candidate_paths {
         if let Ok(content) = fs::read_to_string(p) {
             for line in content.lines() {
@@ -78,13 +84,22 @@ fn resolve_canva_client_secret(passed_secret: Option<String>) -> Result<String, 
             return Ok(trimmed);
         }
     }
-    let candidate_paths = [
+    let mut candidate_paths = vec![
         PathBuf::from("canva.env"),
         PathBuf::from(".env"),
         PathBuf::from(".env.canva"),
         PathBuf::from("../canva.env"),
         PathBuf::from("../.env"),
     ];
+    if let Ok(home) = std::env::var("HOME") {
+        let home_path = PathBuf::from(home);
+        candidate_paths.push(home_path.join("Downloads").join("canva.env"));
+        candidate_paths.push(home_path.join("Downloads").join("canva.env.txt"));
+        candidate_paths.push(home_path.join("Library").join("Application Support").join("com.opensmartalbum.app").join("canva.env"));
+        candidate_paths.push(home_path.join(".config").join("opensmartalbum").join("canva.env"));
+        candidate_paths.push(home_path.join("canva.env"));
+        candidate_paths.push(home_path.join(".env"));
+    }
     for p in &candidate_paths {
         if let Ok(content) = fs::read_to_string(p) {
             for line in content.lines() {
@@ -97,7 +112,7 @@ fn resolve_canva_client_secret(passed_secret: Option<String>) -> Result<String, 
             }
         }
     }
-    Err("Missing Canva Client Secret. Please configure CANVA_CLIENT_SECRET in canva.env or environment.".to_string())
+    Err("Missing Canva Client Secret. Please configure CANVA_CLIENT_SECRET in canva.env, in ~/Downloads/canva.env, or in Preferences.".to_string())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -242,8 +257,20 @@ pub async fn start_canva_oauth(
         c_id, code_challenge, encoded_redirect_uri, encoded_scopes, state
     );
 
-    // 3. Open system browser
-    let _ = tauri_plugin_shell::ShellExt::shell(&app).open(&auth_url, None);
+    // 3. Open system browser (with native macOS open command fallback for 100% launch reliability)
+    #[cfg(target_os = "macos")]
+    {
+        let opened = std::process::Command::new("open")
+            .arg(&auth_url)
+            .status();
+        if opened.is_err() {
+            let _ = tauri_plugin_shell::ShellExt::shell(&app).open(&auth_url, None);
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = tauri_plugin_shell::ShellExt::shell(&app).open(&auth_url, None);
+    }
 
     // 4. Await authorization callback on local listener in background thread
     let session = tauri::async_runtime::spawn_blocking(move || {
@@ -526,4 +553,28 @@ pub async fn download_canva_asset(
     })
     .await
     .map_err(|e| format!("Spawn error: {}", e))?
+}
+
+#[tauri::command]
+pub fn save_canva_credentials(
+    app: AppHandle,
+    client_id: Option<String>,
+    client_secret: Option<String>,
+) -> Result<(), String> {
+    use tauri::Manager;
+    let mut lines = Vec::new();
+    if let Some(c_id) = client_id.filter(|s| !s.trim().is_empty()) {
+        lines.push(format!("CANVA_CLIENT_ID={}", c_id.trim()));
+    }
+    if let Some(c_sec) = client_secret.filter(|s| !s.trim().is_empty()) {
+        lines.push(format!("CANVA_CLIENT_SECRET={}", c_sec.trim()));
+    }
+    lines.push(format!("CANVA_REDIRECT_URI={}", DEFAULT_REDIRECT_URI));
+
+    if let Ok(app_dir) = app.path().app_data_dir() {
+        let _ = fs::create_dir_all(&app_dir);
+        let target = app_dir.join("canva.env");
+        fs::write(target, lines.join("\n")).map_err(|e| format!("Failed to write credentials: {}", e))?;
+    }
+    Ok(())
 }

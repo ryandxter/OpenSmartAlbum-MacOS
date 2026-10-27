@@ -215,6 +215,7 @@ pub fn run() {
             commands::canva_commands::disconnect_canva,
             commands::canva_commands::list_canva_assets,
             commands::canva_commands::download_canva_asset,
+            commands::canva_commands::save_canva_credentials,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
