@@ -36,10 +36,36 @@ fn test_live_e2e_export_print_album_and_carousel() {
         }
     }
 
+    let temp_photos_dir = std::env::temp_dir().join(format!("test_live_e2e_photos_{}", uuid::Uuid::new_v4()));
+    if valid_photos.len() < 4 {
+        println!("  ℹ Local sample photos in ~/Downloads not found. Generating 6 synthetic high-res test photos...");
+        let _ = fs::create_dir_all(&temp_photos_dir);
+        let colors = [
+            image::Rgba([220, 50, 50, 255]),
+            image::Rgba([50, 200, 50, 255]),
+            image::Rgba([50, 100, 220, 255]),
+            image::Rgba([240, 200, 50, 255]),
+            image::Rgba([200, 50, 220, 255]),
+            image::Rgba([50, 220, 220, 255]),
+        ];
+        for (i, color) in colors.iter().enumerate() {
+            let p_path = temp_photos_dir.join(format!("synthetic_photo_{}.jpg", i));
+            let img: image::RgbaImage = image::ImageBuffer::from_pixel(800, 600, *color);
+            let _ = img.save(&p_path);
+            valid_photos.push(p_path.to_string_lossy().to_string());
+        }
+    }
+
     assert!(valid_photos.len() >= 4, "Need at least 4 test photos to execute comprehensive E2E test");
 
-    let base_out = PathBuf::from(EXPORT_BASE_DIR);
-    fs::create_dir_all(&base_out).expect("Must be able to create export base dir");
+    let base_out = match fs::create_dir_all(EXPORT_BASE_DIR) {
+        Ok(_) => PathBuf::from(EXPORT_BASE_DIR),
+        Err(_) => {
+            let fallback = std::env::temp_dir().join("album_test_app");
+            let _ = fs::create_dir_all(&fallback);
+            fallback
+        }
+    };
 
     // ========================================================================
     // Part 1: Print Album High-Res (300 DPI) 5-Spread Live Export
@@ -306,6 +332,7 @@ fn test_live_e2e_export_print_album_and_carousel() {
                         ..Default::default()
                     }
                 ],
+                ..Default::default()
             },
             // Slide 2: 2-Stack Split
             CarouselSlidePayload {
@@ -350,6 +377,7 @@ fn test_live_e2e_export_print_album_and_carousel() {
                         ..Default::default()
                     },
                 ],
+                ..Default::default()
             },
             // Slide 3 & 4: Seamless Panorama spanning across slide 3 into slide 4!
             CarouselSlidePayload {
@@ -377,6 +405,7 @@ fn test_live_e2e_export_print_album_and_carousel() {
                         ..Default::default()
                     }
                 ],
+                ..Default::default()
             },
             // Slide 4: Continues panorama + companion shape photo
             CarouselSlidePayload {
@@ -384,6 +413,7 @@ fn test_live_e2e_export_print_album_and_carousel() {
                 slide_index: 3,
                 background_color: "#0F172A".to_string(),
                 elements: vec![],
+                ..Default::default()
             },
             // Slide 5: Reshuffle with Vector Shape Masks
             CarouselSlidePayload {
@@ -428,6 +458,7 @@ fn test_live_e2e_export_print_album_and_carousel() {
                         ..Default::default()
                     },
                 ],
+                ..Default::default()
             },
         ];
 
@@ -476,6 +507,8 @@ fn test_live_e2e_export_print_album_and_carousel() {
 
         println!("  ✔ Ratio {} 5-Slide Package exported successfully!\n", ratio_str);
     }
+
+    let _ = fs::remove_dir_all(&temp_photos_dir);
 
     println!("================================================================");
     println!("🎉 LIVE E2E EXPORT VERIFICATION SUCCEEDED 100%!");

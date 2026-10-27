@@ -18,7 +18,7 @@ pub struct CarouselPayload {
     pub slides: Vec<CarouselSlidePayload>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CarouselSlidePayload {
     pub id: String,
@@ -535,18 +535,21 @@ mod tests {
                     slide_index: 0,
                     background_color: "#FF0000".to_string(),
                     elements: vec![],
+                    ..Default::default()
                 },
                 CarouselSlidePayload {
                     id: "s2".to_string(),
                     slide_index: 1,
                     background_color: "#00FF00".to_string(),
                     elements: vec![],
+                    ..Default::default()
                 },
                 CarouselSlidePayload {
                     id: "s3".to_string(),
                     slide_index: 2,
                     background_color: "#0000FF".to_string(),
                     elements: vec![],
+                    ..Default::default()
                 },
             ],
         };
@@ -581,12 +584,14 @@ mod tests {
                     slide_index: 0,
                     background_color: "#FFFFFF".to_string(),
                     elements: vec![],
+                    ..Default::default()
                 },
                 CarouselSlidePayload {
                     id: "s2".to_string(),
                     slide_index: 1,
                     background_color: "#EEEEEE".to_string(),
                     elements: vec![],
+                    ..Default::default()
                 },
             ],
         };
@@ -644,31 +649,19 @@ mod tests {
                         CarouselElementPayload {
                             id: "frame-1".to_string(),
                             file_path: Some(photo_path.to_string_lossy().to_string()),
-                            preview_path: None,
-                            name: None,
-                            hidden: Some(false),
                             x: 20.0,
                             y: 20.0,
                             width: 100.0,
                             height: 100.0,
-                            crop_x: None,
-                            crop_y: None,
-                            crop_scale: None,
-                            rotation: None,
-                            corner_radius: None,
-                            corner_radius_tl: None,
-                            corner_radius_tr: None,
-                            corner_radius_br: None,
-                            corner_radius_bl: None,
-                            shape_type: None,
-                            custom_svg_path: None,
                             border_enabled: Some(true),
                             border_width: Some(4.0),
                             border_color: Some("#FF0000".to_string()), // Red border
                             border_style: Some("solid".to_string()),
                             opacity: Some(1.0),
+                            ..Default::default()
                         }
                     ],
+                    ..Default::default()
                 }
             ],
         };
