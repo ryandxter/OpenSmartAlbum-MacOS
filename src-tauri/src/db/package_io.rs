@@ -676,6 +676,9 @@ impl Database {
             let mut paths = HashMap::new();
 
             for (index, photo) in package.photos.iter_mut().enumerate() {
+                if crate::commands::project_commands::ZIP_EXPORT_CANCELLED.load(std::sync::atomic::Ordering::SeqCst) {
+                    return Err(package_error("Package export cancelled by user".to_string()));
+                }
                 let safe_name = photo
                     .file_name
                     .replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
@@ -708,6 +711,9 @@ impl Database {
                         }
                         // A placed frame can outlive its photo library entry.
                         if !paths.contains_key(&element.file_path) {
+                            if crate::commands::project_commands::ZIP_EXPORT_CANCELLED.load(std::sync::atomic::Ordering::SeqCst) {
+                                return Err(package_error("Package export cancelled by user".to_string()));
+                            }
                             let safe_name = Path::new(&element.file_path)
                                 .file_name()
                                 .map(|s| s.to_string_lossy().to_string())
@@ -746,6 +752,9 @@ impl Database {
                             continue;
                         }
                         if !paths.contains_key(&element.file_path) {
+                            if crate::commands::project_commands::ZIP_EXPORT_CANCELLED.load(std::sync::atomic::Ordering::SeqCst) {
+                                return Err(package_error("Package export cancelled by user".to_string()));
+                            }
                             let safe_name = Path::new(&element.file_path)
                                 .file_name()
                                 .map(|s| s.to_string_lossy().to_string())

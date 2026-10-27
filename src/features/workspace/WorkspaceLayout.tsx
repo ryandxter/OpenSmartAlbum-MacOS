@@ -1257,6 +1257,23 @@ export function WorkspaceLayout() {
             </div>
 
             <div className={styles.exportZipHeaderRight}>
+              {!exportZipProgress.isFinished && !exportZipProgress.error && (
+                <button
+                  type="button"
+                  className={styles.exportZipCancelBtn}
+                  onClick={async () => {
+                    try {
+                      await invoke('cancel_export_bundled_package');
+                    } catch (e) {
+                      console.error('Failed to cancel zip export:', e);
+                    }
+                  }}
+                  title="Cancel Export"
+                  aria-label="Cancel export"
+                >
+                  Cancel
+                </button>
+              )}
               {!exportZipProgress.error && (
                 <span className={styles.exportZipPercentBadge}>
                   {exportZipProgress.percent}%

@@ -26,12 +26,20 @@ export interface MissingPhotoInfo {
   hasPreview: boolean;
 }
 
+export interface ModifiedPhotoInfo {
+  photoId?: string | null;
+  filePath: string;
+  fileName: string;
+}
+
 export interface PreflightReport {
   totalPhotos: number;
   missingPhotos: MissingPhotoInfo[];
   existingFiles: string[];
   destinationWritable: boolean;
   destinationError: string | null;
+  sourceConflicts?: string[];
+  modifiedPhotos?: ModifiedPhotoInfo[];
 }
 
 /**

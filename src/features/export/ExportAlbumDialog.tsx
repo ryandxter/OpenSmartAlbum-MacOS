@@ -290,6 +290,13 @@ export function ExportAlbumDialog({ isOpen, onClose, onStartExport, activeMode =
         return;
       }
 
+      if (report.sourceConflicts && report.sourceConflicts.length > 0) {
+        setErrorMsg(
+          `Export blocked to protect original photos: destination file "${report.sourceConflicts[0]}" matches a source photo path. Please select a different destination folder.`
+        );
+        return;
+      }
+
       if (report.missingPhotos && report.missingPhotos.length > 0) {
         // Pre-Flight found missing photos -> open dedicated Missing Photos modal popup!
         setPreflightReport(report);

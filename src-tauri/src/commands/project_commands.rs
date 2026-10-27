@@ -1,3 +1,4 @@
+use std::sync::atomic::{AtomicBool, Ordering};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, State, Manager};
 use uuid::Uuid;
@@ -492,6 +493,15 @@ pub struct ExportZipProgressPayload {
     pub error: Option<String>,
 }
 
+pub static ZIP_EXPORT_CANCELLED: AtomicBool = AtomicBool::new(false);
+
+#[tauri::command]
+pub fn cancel_export_bundled_package() -> Result<(), String> {
+    log::info!("cancel_export_bundled_package: cancellation requested");
+    ZIP_EXPORT_CANCELLED.store(true, Ordering::SeqCst);
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn export_bundled_package_with_dialog(
     app: AppHandle,
@@ -499,6 +509,7 @@ pub async fn export_bundled_package_with_dialog(
     project_id: String,
     suggested_name: Option<String>,
 ) -> Result<Option<String>, String> {
+    ZIP_EXPORT_CANCELLED.store(false, Ordering::SeqCst);
     let default_name = suggested_name.unwrap_or_else(|| "Album-Complete-Package".to_string());
     let file_path = tauri::async_runtime::spawn_blocking(move || {
         rfd::FileDialog::new()
@@ -557,20 +568,38 @@ pub async fn export_bundled_package_with_dialog(
         match result {
             Ok(()) => Ok(Some(path_str)),
             Err(e) => {
-                log::error!("Failed export_bundled_project_package: {:?}", e);
-                let _ = app.emit(
-                    "export-zip-progress",
-                    ExportZipProgressPayload {
-                        current: 0,
-                        total: 1,
-                        percent: 0,
-                        status: format!("Export failed: {}", e),
-                        is_finished: true,
-                        target_path: Some(path_str),
-                        error: Some(e.to_string()),
-                    },
-                );
-                Err(e.to_string())
+                let is_cancelled = ZIP_EXPORT_CANCELLED.load(Ordering::SeqCst);
+                if is_cancelled {
+                    log::info!("export_bundled_package_with_dialog cancelled by user");
+                    let _ = app.emit(
+                        "export-zip-progress",
+                        ExportZipProgressPayload {
+                            current: 0,
+                            total: 1,
+                            percent: 0,
+                            status: "Package export cancelled.".to_string(),
+                            is_finished: true,
+                            target_path: Some(path_str),
+                            error: None,
+                        },
+                    );
+                    Ok(None)
+                } else {
+                    log::error!("Failed export_bundled_project_package: {:?}", e);
+                    let _ = app.emit(
+                        "export-zip-progress",
+                        ExportZipProgressPayload {
+                            current: 0,
+                            total: 1,
+                            percent: 0,
+                            status: format!("Export failed: {}", e),
+                            is_finished: true,
+                            target_path: Some(path_str),
+                            error: Some(e.to_string()),
+                        },
+                    );
+                    Err(e.to_string())
+                }
             }
         }
     } else {

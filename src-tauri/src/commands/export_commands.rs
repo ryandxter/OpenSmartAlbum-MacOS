@@ -37,6 +37,18 @@ pub struct PreflightReport {
     pub existing_files: Vec<String>,
     pub destination_writable: bool,
     pub destination_error: Option<String>,
+    #[serde(default)]
+    pub source_conflicts: Vec<String>,
+    #[serde(default)]
+    pub modified_photos: Vec<ModifiedPhotoInfo>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModifiedPhotoInfo {
+    pub photo_id: Option<String>,
+    pub file_path: String,
+    pub file_name: String,
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -171,8 +183,8 @@ pub async fn preflight_check_export(
         }
     }
 
-    // Check if any output files already exist in destination directory
-    let mut existing_files = Vec::new();
+    // Check if any output files already exist in destination directory or conflict with source photos
+    let mut planned_files = Vec::new();
     let ext = if options.format == "png" {
         "png"
     } else if options.format == "psd" {
@@ -197,17 +209,12 @@ pub async fn preflight_check_export(
             let safe_name = project_name.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|', ' '], "_");
             format!("{}_Print_Ready.pdf", safe_name)
         };
-
-        if out_dir.join(&pdf_filename).exists() {
-            existing_files.push(pdf_filename);
-        }
+        planned_files.push(pdf_filename);
     } else if options.split_pages {
         for spread in &spreads {
             if spread.r#type == "cover" {
                 let filename = resolve_export_filename(prefix, "cover", 0, None, ext);
-                if out_dir.join(&filename).exists() {
-                    existing_files.push(filename);
-                }
+                planned_files.push(filename);
             } else {
                 let left_num = (spread.spread_index - 1) * 2 + 1;
                 let right_num = left_num + 1;
@@ -221,19 +228,76 @@ pub async fn preflight_check_export(
                     .map(|nums| nums.contains(&right_num))
                     .unwrap_or(true);
 
-                if should_check_left && out_dir.join(&left_filename).exists() {
-                    existing_files.push(left_filename);
+                if should_check_left {
+                    planned_files.push(left_filename);
                 }
-                if should_check_right && out_dir.join(&right_filename).exists() {
-                    existing_files.push(right_filename);
+                if should_check_right {
+                    planned_files.push(right_filename);
                 }
             }
         }
     } else {
         for spread in &spreads {
             let filename = resolve_export_filename(prefix, &spread.r#type, spread.spread_index, None, ext);
-            if out_dir.join(&filename).exists() {
-                existing_files.push(filename);
+            planned_files.push(filename);
+        }
+    }
+
+    let mut existing_files = Vec::new();
+    let mut source_conflicts = Vec::new();
+
+    // Collect all canonical source photo paths
+    let mut source_photo_paths = std::collections::HashSet::new();
+    for spread in &spreads {
+        for elem in &spread.elements {
+            if !elem.file_path.is_empty() {
+                if let Ok(canon) = fs::canonicalize(&elem.file_path) {
+                    source_photo_paths.insert(canon);
+                }
+                source_photo_paths.insert(PathBuf::from(&elem.file_path));
+            }
+        }
+    }
+
+    for filename in planned_files {
+        let dest_file = out_dir.join(&filename);
+        if dest_file.exists() {
+            existing_files.push(filename.clone());
+            if let Ok(canon_dest) = fs::canonicalize(&dest_file) {
+                if source_photo_paths.contains(&canon_dest) {
+                    source_conflicts.push(filename.clone());
+                }
+            } else if source_photo_paths.contains(&dest_file) {
+                source_conflicts.push(filename.clone());
+            }
+        }
+    }
+
+    // Detect externally modified source photos
+    let mut modified_photos = Vec::new();
+    let mut checked_paths = std::collections::HashSet::new();
+    for spread in &spreads {
+        for elem in &spread.elements {
+            if elem.file_path.is_empty() || checked_paths.contains(&elem.file_path) {
+                continue;
+            }
+            checked_paths.insert(elem.file_path.clone());
+            let path = std::path::Path::new(&elem.file_path);
+            if path.exists() {
+                if let Ok(meta) = path.metadata() {
+                    if let Ok(mod_time) = meta.modified() {
+                        if let Ok(elapsed) = mod_time.elapsed() {
+                            // Photos modified recently outside app
+                            if elapsed.as_secs() < 600 {
+                                modified_photos.push(ModifiedPhotoInfo {
+                                    photo_id: elem.photo_id.clone(),
+                                    file_path: elem.file_path.clone(),
+                                    file_name: path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| elem.file_path.clone()),
+                                });
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -244,6 +308,8 @@ pub async fn preflight_check_export(
         existing_files,
         destination_writable,
         destination_error,
+        source_conflicts,
+        modified_photos,
     })
 }
 

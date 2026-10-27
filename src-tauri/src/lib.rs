@@ -136,6 +136,7 @@ pub fn run() {
             commands::project_commands::export_afsn_with_dialog,
             commands::project_commands::save_project_as_with_dialog,
             commands::project_commands::export_bundled_package_with_dialog,
+            commands::project_commands::cancel_export_bundled_package,
             commands::project_commands::import_afsn_with_dialog,
             commands::project_commands::duplicate_project,
             commands::project_commands::check_path_exists,

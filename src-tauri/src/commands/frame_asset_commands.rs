@@ -43,9 +43,7 @@ pub async fn sync_frame_asset_catalog(
     app: AppHandle,
     _catalog_url: Option<String>,
 ) -> Result<Vec<FrameAssetMeta>, String> {
-    // Offline-first: returns local assets immediately.
-    // In future iterations, this can asynchronously probe upstream endpoint afsn.afsun.my.id
-    // with a 5s timeout and cache new items.
+    // 100% Offline-first: returns local assets immediately with zero network telemetry.
     list_cached_frame_assets(app).await
 }
 

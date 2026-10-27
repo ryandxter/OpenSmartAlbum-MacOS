@@ -76,22 +76,26 @@ export function AboutDialog() {
           <div className={styles.specRow}>
             <span className={styles.specLabel}>Website</span>
             <a
-              href={APP_CONFIG.website || 'https://app.afsun.my.id'}
+              href={APP_CONFIG.website}
               className={styles.linkValue}
-              onClick={handleLinkClick(APP_CONFIG.website || 'https://app.afsun.my.id')}
+              onClick={handleLinkClick(APP_CONFIG.website)}
               target="_blank"
               rel="noopener noreferrer"
-              title="Visit official website"
+              title="Visit open-source project repository"
             >
-              <span>{APP_CONFIG.website ? APP_CONFIG.website.replace('https://', '') : 'app.afsun.my.id'}</span>
+              <span>{APP_CONFIG.website.replace('https://', '')}</span>
               <ExternalLink size={12} strokeWidth={1.5} />
             </a>
+          </div>
+          <div className={styles.specRow}>
+            <span className={styles.specLabel}>License</span>
+            <span className={styles.specValue}>100% Free & Open-Source (MIT / GPLv3)</span>
           </div>
         </div>
 
         {/* 3. Footer */}
         <div className={styles.footer}>
-          <span>OpenSmartAlbum · Professional Offline Studio. All rights reserved.</span>
+          <span>OpenSmartAlbum · 100% Free & Open-Source Studio for macOS · Zero DRM</span>
         </div>
       </div>
     </Dialog>
