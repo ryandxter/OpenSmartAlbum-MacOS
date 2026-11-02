@@ -9,6 +9,17 @@ export interface CanvaAuthStatus {
   display_name: string | null;
 }
 
+export interface CanvaFolderInfo {
+  id: string;
+  name: string;
+}
+
+export interface CanvaAssetListResult {
+  current_folder: string;
+  folders: CanvaFolderInfo[];
+  assets: FrameAssetMeta[];
+}
+
 export const canvaService = {
   async getAuthStatus(): Promise<CanvaAuthStatus> {
     if (!isTauri()) {
@@ -69,15 +80,25 @@ export const canvaService = {
     });
   },
 
-  async listAssets(folderId?: string): Promise<FrameAssetMeta[]> {
-    if (!isTauri()) return [];
+  async listAssets(folderId?: string): Promise<CanvaAssetListResult> {
+    if (!isTauri()) {
+      return {
+        current_folder: folderId || 'uploads',
+        folders: [],
+        assets: [],
+      };
+    }
     try {
-      return await invoke<FrameAssetMeta[]>('list_canva_assets', {
+      return await invoke<CanvaAssetListResult>('list_canva_assets', {
         folderId: folderId || null,
       });
     } catch (err) {
       console.error('[canvaService] Failed to list Canva assets:', err);
-      return [];
+      return {
+        current_folder: folderId || 'uploads',
+        folders: [],
+        assets: [],
+      };
     }
   },
 

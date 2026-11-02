@@ -9,6 +9,26 @@ Format adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 ---
 
+### [v1.5.2] — 2026-11-02
+#### 🎨 Canva Pure Graphic Asset Pipeline, Multi-Folder Navigation & Photo Tray Quick-Import
+
+Rilis ini menuntaskan kesalahpahaman pada integrasi Canva, mengubah fokus dari pemuatan dokumen/desain template ke pemuatan **Aset Grafis Murni** (stiker, PNG transparan, ornamen, bingkai dekoratif, dan media foto). Dilengkapi navigasi multi-folder dan tombol impor cepat ke baki foto album.
+
+#### Perbaikan & Penyempurnaan (Key Enhancements & Fixes)
+* **Canva Pure Asset Pipeline**:
+  * Mengeliminasi item bertipe `design` agar dokumen/proyek desain utuh Canva tidak lagi terimpor sebagai stiker satu lapis (*flattened*).
+  * Mengarahkan folder target default ke sistem folder `uploads` (`item_types=image,folder`) tempat aset visual dan foto pengguna tersimpan.
+* **Navigasi Multi-Folder Aset Canva**:
+  * Menghadirkan penjelajah folder aset Canva dengan indikator breadcrumbs dan tombol chip folder (*Uploads*, *Stickers*, *Flowers*, *Wedding*, dll.).
+  * Pengguna dapat dengan mudah berpindah antar-folder aset Canva secara langsung dari panel editor.
+* **Quick Action Import ke Baki Foto (`+ Foto`)**:
+  * Menambahkan tombol cepat `+ Foto` pada kartu aset Canva untuk langsung mengunduh dan memasukkan foto/aset ke dalam *Filmstrip Tray* proyek album.
+* **Stabilitas Otorisasi & Registrasi Skema Deep-Link**:
+  * Mendaftarkan custom URL scheme `opensmartalbum://` pada `Info.plist` macOS untuk penanganan callback browser yang mulus.
+  * Menangani pelepasan dan penggunaan ulang port local loopback `3001` secara bersih.
+
+---
+
 ### [v1.5.1] — 2026-10-27
 #### 🛠️ Rilis Perbaikan: Resolusi React Error #310, Tab Canva di Preferences & Penyelarasan UI Storage
 
@@ -60,6 +80,26 @@ Pembaruan besar ini menghadirkan perombakan total pada panel aset elemen dan bin
 
 <a name="-english"></a>
 ## 🇬🇧 English
+
+---
+
+### [v1.5.2] — 2026-11-02
+#### 🎨 Canva Pure Graphic Asset Pipeline, Multi-Folder Navigation & Photo Tray Quick-Import
+
+This release addresses the core conceptual misalignment in Canva account binding by shifting the pipeline from importing whole template documents to fetching **pure visual assets** (stickers, transparent PNG cutouts, ornaments, decorative borders, and media photos). It also introduces multi-folder asset browsing and quick photo tray ingestion.
+
+#### Added & Improved
+* **Pure Visual Asset Pipeline**:
+  * Stripped out all `design` document imports to prevent flattened template poster imports from corrupting album spreads.
+  * Defaulted asset querying to Canva's user `uploads` system folder (`item_types=image,folder`) with graceful root fallback.
+* **Canva Asset Folder Navigation**:
+  * Added breadcrumb-backed folder navigation with quick-jump folder chips (*Uploads*, *Stickers*, *Flowers*, *Wedding*, etc.).
+  * Enables seamless browsing across user-curated Canva asset folders directly from the Assets panel.
+* **Quick Photo Tray Ingestion (`+ Foto`)**:
+  * Added a dedicated `+ Foto` button on Canva asset cards to immediately download and register cloud photos/assets directly into the project's *Filmstrip Tray*.
+* **Deep-Link Protocol & Port Hygiene**:
+  * Registered macOS custom URL scheme `opensmartalbum://` in `Info.plist` for instant browser OAuth callback handling.
+  * Robust unblocking and reuse of port `3001` during repeated OAuth attempts.
 
 ---
 

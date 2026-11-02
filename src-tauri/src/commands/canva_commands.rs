@@ -499,83 +499,166 @@ pub async fn start_canva_oauth(
     })
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CanvaFolderInfo {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CanvaAssetListResult {
+    pub current_folder: String,
+    pub folders: Vec<CanvaFolderInfo>,
+    pub assets: Vec<FrameAssetMeta>,
+}
+
 #[tauri::command]
 pub async fn list_canva_assets(
     app: AppHandle,
     folder_id: Option<String>,
-) -> Result<Vec<FrameAssetMeta>, String> {
+) -> Result<CanvaAssetListResult, String> {
     let session = load_canva_session(&app).ok_or("Canva account is not connected")?;
-    let target_folder = folder_id.unwrap_or_else(|| "root".to_string());
-    let url = format!("https://api.canva.com/rest/v1/folders/{}/items", target_folder);
+    // Default to "uploads" where user media assets, transparent PNGs, stickers, and cutouts reside.
+    let target_folder = folder_id
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or_else(|| "uploads".to_string());
+
+    let token = session.access_token.clone();
+    let current_folder_clone = target_folder.clone();
 
     let res = tauri::async_runtime::spawn_blocking(move || {
-        let resp = ureq::get(&url)
-            .set("Authorization", &format!("Bearer {}", session.access_token))
-            .timeout(Duration::from_secs(10))
-            .call()
-            .map_err(|e| format!("Failed to list Canva items: {}", e))?;
-
-        let json: serde_json::Value = serde_json::from_reader(resp.into_reader())
-            .map_err(|e| format!("Failed to parse Canva items JSON: {}", e))?;
+        // 1. Fetch items with item_types=image,folder (explicitly omitting 'design' to prevent importing flattened designs)
+        let url = format!(
+            "https://api.canva.com/rest/v1/folders/{}/items?item_types=image,folder",
+            current_folder_clone
+        );
 
         let mut assets = Vec::new();
-        if let Some(items) = json.get("items").and_then(|v| v.as_array()) {
-            for item in items {
-                let item_type = item.get("type").and_then(|v| v.as_str()).unwrap_or("");
-                let (id, title, thumb_url, width, height) = match item_type {
-                    "image" => {
-                        let img = item.get("image");
-                        let id = img.and_then(|i| i.get("id")).and_then(|v| v.as_str()).unwrap_or("");
-                        let name = img.and_then(|i| i.get("name")).and_then(|v| v.as_str()).unwrap_or("Canva Image");
-                        let thumb = img.and_then(|i| i.get("thumbnail")).and_then(|t| t.get("url")).and_then(|v| v.as_str());
-                        let w = img.and_then(|i| i.get("thumbnail")).and_then(|t| t.get("width")).and_then(|v| v.as_u64());
-                        let h = img.and_then(|i| i.get("thumbnail")).and_then(|t| t.get("height")).and_then(|v| v.as_u64());
-                        (id, name, thumb, w, h)
-                    }
-                    "design" => {
-                        let des = item.get("design");
-                        let id = des.and_then(|d| d.get("id")).and_then(|v| v.as_str()).unwrap_or("");
-                        let title = des.and_then(|d| d.get("title")).and_then(|v| v.as_str()).unwrap_or("Canva Design");
-                        let thumb = des.and_then(|d| d.get("thumbnail")).and_then(|t| t.get("url")).and_then(|v| v.as_str());
-                        let w = des.and_then(|d| d.get("thumbnail")).and_then(|t| t.get("width")).and_then(|v| v.as_u64());
-                        let h = des.and_then(|d| d.get("thumbnail")).and_then(|t| t.get("height")).and_then(|v| v.as_u64());
-                        (id, title, thumb, w, h)
-                    }
-                    _ => continue,
-                };
+        let mut folders = Vec::new();
 
-                if !id.is_empty() && thumb_url.is_some() {
-                    let asset_id = format!("canva-{}", id);
-                    let shape = if let (Some(w), Some(h)) = (width, height) {
-                        let ratio = w as f64 / h.max(1) as f64;
-                        if (ratio - 1.0).abs() < 0.08 {
-                            "square".to_string()
-                        } else {
-                            "rectangle".to_string()
-                        }
+        let resp_result = ureq::get(&url)
+            .set("Authorization", &format!("Bearer {}", token))
+            .timeout(Duration::from_secs(12))
+            .call();
+
+        let json_opt: Option<serde_json::Value> = match resp_result {
+            Ok(resp) => serde_json::from_reader(resp.into_reader()).ok(),
+            Err(e) => {
+                log::warn!("Could not fetch folder items for {}: {}. Attempting fallback...", current_folder_clone, e);
+                // If "uploads" failed (e.g. 404 or unsupported on certain Canva plans), fallback to root
+                if current_folder_clone == "uploads" {
+                    let fallback_url = "https://api.canva.com/rest/v1/folders/root/items?item_types=image,folder";
+                    if let Ok(f_resp) = ureq::get(fallback_url)
+                        .set("Authorization", &format!("Bearer {}", token))
+                        .timeout(Duration::from_secs(10))
+                        .call()
+                    {
+                        serde_json::from_reader(f_resp.into_reader()).ok()
                     } else {
-                        "rectangle".to_string()
-                    };
+                        None
+                    }
+                } else {
+                    None
+                }
+            }
+        };
 
-                    let meta = FrameAssetMeta {
-                        id: asset_id,
-                        title: title.to_string(),
-                        category: "element".to_string(),
-                        shape,
-                        slot: None,
-                        is_pro: false,
-                        local_path: String::new(),
-                        thumb_path: String::new(),
-                        remote_url: thumb_url.map(|s| s.to_string()),
-                        tags: vec!["canva".to_string(), item_type.to_string()],
-                        created_at: None,
-                    };
-                    assets.push(meta);
+        if let Some(json) = json_opt {
+            if let Some(items) = json.get("items").and_then(|v| v.as_array()) {
+                for item in items {
+                    let item_type = item.get("type").and_then(|v| v.as_str()).unwrap_or("");
+                    match item_type {
+                        "image" => {
+                            let img = item.get("image");
+                            let id = img.and_then(|i| i.get("id")).and_then(|v| v.as_str()).unwrap_or("");
+                            let name = img.and_then(|i| i.get("name")).and_then(|v| v.as_str()).unwrap_or("Canva Asset");
+                            let thumb = img.and_then(|i| i.get("thumbnail")).and_then(|t| t.get("url")).and_then(|v| v.as_str());
+                            let w = img.and_then(|i| i.get("thumbnail")).and_then(|t| t.get("width")).and_then(|v| v.as_u64());
+                            let h = img.and_then(|i| i.get("thumbnail")).and_then(|t| t.get("height")).and_then(|v| v.as_u64());
+
+                            if !id.is_empty() && thumb.is_some() {
+                                let asset_id = format!("canva-{}", id);
+                                let shape = if let (Some(width_val), Some(height_val)) = (w, h) {
+                                    let ratio = width_val as f64 / height_val.max(1) as f64;
+                                    if (ratio - 1.0).abs() < 0.08 {
+                                        "square".to_string()
+                                    } else {
+                                        "rectangle".to_string()
+                                    }
+                                } else {
+                                    "rectangle".to_string()
+                                };
+
+                                let meta = FrameAssetMeta {
+                                    id: asset_id,
+                                    title: name.to_string(),
+                                    category: "element".to_string(),
+                                    shape,
+                                    slot: None,
+                                    is_pro: false,
+                                    local_path: String::new(),
+                                    thumb_path: String::new(),
+                                    remote_url: thumb.map(|s| s.to_string()),
+                                    tags: vec!["canva".to_string(), "asset".to_string(), "element".to_string()],
+                                    created_at: None,
+                                };
+                                assets.push(meta);
+                            }
+                        }
+                        "folder" => {
+                            let fld = item.get("folder");
+                            let f_id = fld.and_then(|f| f.get("id")).and_then(|v| v.as_str()).unwrap_or("");
+                            let f_name = fld.and_then(|f| f.get("name")).and_then(|v| v.as_str()).unwrap_or("Folder");
+                            if !f_id.is_empty() {
+                                folders.push(CanvaFolderInfo {
+                                    id: f_id.to_string(),
+                                    name: f_name.to_string(),
+                                });
+                            }
+                        }
+                        // Explicitly ignore "design": Canva designs are multi-page templates/documents,
+                        // NOT graphic elements or clipart assets. We do NOT import flattened designs.
+                        _ => continue,
+                    }
                 }
             }
         }
 
-        Ok::<Vec<FrameAssetMeta>, String>(assets)
+        // 2. If we are currently in "uploads" and have no subfolders yet, also query root folders
+        // so user can quickly jump to custom asset folders they made in Canva (e.g. "Stickers", "Flowers")
+        if current_folder_clone == "uploads" && folders.is_empty() {
+            let root_url = "https://api.canva.com/rest/v1/folders/root/items?item_types=folder";
+            if let Ok(resp) = ureq::get(root_url)
+                .set("Authorization", &format!("Bearer {}", token))
+                .timeout(Duration::from_secs(6))
+                .call()
+            {
+                if let Ok(json) = serde_json::from_reader::<_, serde_json::Value>(resp.into_reader()) {
+                    if let Some(items) = json.get("items").and_then(|v| v.as_array()) {
+                        for item in items {
+                            if item.get("type").and_then(|v| v.as_str()) == Some("folder") {
+                                if let Some(fld) = item.get("folder") {
+                                    let f_id = fld.get("id").and_then(|v| v.as_str()).unwrap_or("");
+                                    let f_name = fld.get("name").and_then(|v| v.as_str()).unwrap_or("Folder");
+                                    if !f_id.is_empty() && !folders.iter().any(|f| f.id == f_id) {
+                                        folders.push(CanvaFolderInfo {
+                                            id: f_id.to_string(),
+                                            name: f_name.to_string(),
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok::<CanvaAssetListResult, String>(CanvaAssetListResult {
+            current_folder: current_folder_clone,
+            folders,
+            assets,
+        })
     })
     .await
     .map_err(|e| format!("Spawn error: {}", e))??;

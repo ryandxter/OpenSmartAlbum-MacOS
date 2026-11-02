@@ -86,10 +86,10 @@ export function CanvaSettingsTab() {
     if (!isTauri() || !authStatus.is_connected || isBusy) return;
     setIsBusy(true);
     setErrorMessage(null);
-    setNotice('Synchronizing Canva folders and visual elements…');
+    setNotice('Synchronizing Canva assets and media…');
     try {
-      const assets = await canvaService.listAssets();
-      setNotice(`Synchronized ${assets.length} Canva assets with your studio catalog.`);
+      const res = await canvaService.listAssets();
+      setNotice(`Synchronized ${res.assets.length} Canva assets across ${res.folders.length} folders.`);
     } catch (err) {
       setErrorMessage(`Asset synchronization failed: ${String(err)}`);
     } finally {
@@ -102,7 +102,7 @@ export function CanvaSettingsTab() {
       <div className={styles.sectionHeader}>
         <div className={styles.sectionTitle}>Canva &amp; Cloud Integrations</div>
         <div className={styles.sectionSubtitle}>
-          Connect your Canva account to access branded templates, cloud graphic assets, and synchronize designs directly with your album spreads.
+          Hubungkan akun Canva Anda untuk mencari dan mengimpor pustaka aset grafis, stiker, elemen transparan, dan foto media cloud langsung ke album Anda.
         </div>
       </div>
 

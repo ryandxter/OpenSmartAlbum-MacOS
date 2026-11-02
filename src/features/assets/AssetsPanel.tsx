@@ -1,11 +1,29 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Search, Plus, Sparkles, Image as ImageIcon, Box, RefreshCw, Globe, Loader2, Palette, ExternalLink, Unlink } from 'lucide-react';
+import {
+  Search,
+  Plus,
+  Sparkles,
+  Image as ImageIcon,
+  Box,
+  RefreshCw,
+  Globe,
+  Loader2,
+  Palette,
+  ExternalLink,
+  Unlink,
+  Folder,
+  FolderOpen,
+  ArrowLeft,
+  ImagePlus,
+} from 'lucide-react';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useAssetStore, AssetShapeFilter } from '../../stores/assetStore';
 import type { FrameAssetMeta } from '../../services/frameAssetService';
 import { useAlbumStore } from '../../stores/albumStore';
 import { useCarouselStore } from '../../stores/carouselStore';
 import { useEditorStore } from '../../stores/editorStore';
+import { useProjectStore } from '../../stores/projectStore';
+import { usePhotoStore } from '../../stores/photoStore';
 import { ImportCustomAssetModal } from './ImportCustomAssetModal';
 import styles from './AssetsPanel.module.css';
 
@@ -41,6 +59,9 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
     assets,
     openLibraryResults,
     canvaItems,
+    canvaFolders,
+    currentCanvaFolderId,
+    currentCanvaFolderName,
     canvaStatus,
     activeTab,
     selectedShape,
@@ -59,6 +80,7 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
     completeCanvaOAuth,
     disconnectCanva,
     loadCanvaAssets,
+    selectCanvaFolder,
     setActiveTab,
     setSelectedShape,
     setSearchQuery,
@@ -67,6 +89,10 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedLibraryTag, setSelectedLibraryTag] = useState<string>('Wedding');
   const [manualCode, setManualCode] = useState('');
+
+  // Project & Photo Store
+  const currentProjectId = useProjectStore((s) => s.currentProject?.id);
+  const importPaths = usePhotoStore((s) => s.importPaths);
 
   // Print selection
   const activeSpreadId = useAlbumStore((s) => s.activeSpreadId);
@@ -170,6 +196,30 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
     void searchOpenLibrary(tag);
   };
 
+  const handleAddToPhotoLibrary = async (e: React.MouseEvent, asset: FrameAssetMeta) => {
+    e.stopPropagation();
+    if (!currentProjectId) {
+      onApplyToast?.('ℹ Buka atau buat proyek terlebih dahulu.');
+      return;
+    }
+    let effectiveAsset = asset;
+    if (!effectiveAsset.local_path && effectiveAsset.remote_url) {
+      onApplyToast?.(`⏳ Mengunduh aset ${asset.title}...`);
+      const downloaded = await downloadAsset(asset.id, effectiveAsset.remote_url);
+      if (downloaded) {
+        effectiveAsset = downloaded;
+      }
+    }
+    if (effectiveAsset.local_path) {
+      try {
+        await importPaths(currentProjectId, [effectiveAsset.local_path]);
+        onApplyToast?.(`✓ ${effectiveAsset.title} ditambahkan ke Koleksi Foto!`);
+      } catch (err) {
+        onApplyToast?.(`❌ Gagal menambahkan foto: ${err}`);
+      }
+    }
+  };
+
   const handleCardClick = async (asset: FrameAssetMeta) => {
     let effectiveAsset = asset;
     if (!effectiveAsset.local_path && effectiveAsset.remote_url) {
@@ -263,7 +313,7 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
                 void loadCanvaAssets();
               }
             }}
-            title="Access your Canva designs and uploaded assets via Canva Connect API"
+            title="Pustaka Aset & Elemen Grafis Canva (Stiker, PNG transparan, dan Media)"
           >
             <Palette size={13} />
             <span>Canva</span>
@@ -281,7 +331,7 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
                 activeTab === 'openlibrary'
                   ? 'Search 200k+ open vectors (Press Enter)...'
                   : activeTab === 'canva'
-                  ? 'Search your Canva assets...'
+                  ? 'Cari aset gambar & stiker Canva...'
                   : `Search ${activeTab}...`
               }
               value={searchQuery}
@@ -367,9 +417,9 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
         {activeTab === 'canva' && !canvaStatus?.is_connected ? (
           <div className={styles.canvaConnectCard}>
             <div className={styles.canvaLogoCircle}>C</div>
-            <h3 className={styles.canvaTitle}>Connect with Canva</h3>
+            <h3 className={styles.canvaTitle}>Hubungkan Akun Canva</h3>
             <p className={styles.canvaSubtitle}>
-              Hubungkan akun Canva Anda secara resmi via Canva Connect API / Apps SDK untuk menarik desain dan aset elemen foto Anda langsung ke kanvas.
+              Tarik pustaka aset grafis, stiker transparan, ornamen dekoratif, dan foto media Canva langsung ke kanvas album Anda.
             </p>
             <div className={styles.canvaMetaBox}>
               <div className={styles.canvaMetaRow}>
@@ -427,25 +477,71 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
           </div>
         ) : (
           <>
-            {/* Canva Connected Header Bar */}
+            {/* Canva Connected Header Bar & Folder Navigation */}
             {activeTab === 'canva' && canvaStatus?.is_connected && (
-              <div className={styles.canvaAccountBar}>
-                <div className={styles.canvaAccountInfo}>
-                  <Palette size={14} color="#c084fc" />
-                  <span>
-                    Terhubung: <strong>{canvaStatus.display_name || 'Canva Member'}</strong>
-                  </span>
+              <>
+                <div className={styles.canvaAccountBar}>
+                  <div className={styles.canvaAccountInfo}>
+                    <Palette size={14} color="#c084fc" />
+                    <span>
+                      Terhubung: <strong>{canvaStatus.display_name || 'Canva Member'}</strong>
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.canvaDisconnectBtn}
+                    onClick={handleDisconnectCanva}
+                    title="Putus koneksi Canva"
+                  >
+                    <Unlink size={11} style={{ display: 'inline', marginRight: 4 }} />
+                    Disconnect
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className={styles.canvaDisconnectBtn}
-                  onClick={handleDisconnectCanva}
-                  title="Putus koneksi Canva"
-                >
-                  <Unlink size={11} style={{ display: 'inline', marginRight: 4 }} />
-                  Disconnect
-                </button>
-              </div>
+
+                <div className={styles.canvaFolderNav}>
+                  <div className={styles.canvaCurrentFolderRow}>
+                    <div className={styles.canvaCurrentFolderLabel}>
+                      <FolderOpen size={13} color="#a855f7" />
+                      <span>{currentCanvaFolderName}</span>
+                    </div>
+                    {currentCanvaFolderId !== 'uploads' && (
+                      <button
+                        type="button"
+                        className={styles.canvaBackBtn}
+                        onClick={() => void selectCanvaFolder('uploads', 'Uploads (Media & Aset)')}
+                        title="Kembali ke Uploads utama"
+                      >
+                        <ArrowLeft size={11} />
+                        <span>Kembali ke Uploads</span>
+                      </button>
+                    )}
+                  </div>
+                  {canvaFolders.length > 0 && (
+                    <div className={styles.canvaFolderChipsRow}>
+                      <button
+                        type="button"
+                        className={`${styles.canvaFolderChip} ${currentCanvaFolderId === 'uploads' ? styles.canvaFolderChipActive : ''}`}
+                        onClick={() => void selectCanvaFolder('uploads', 'Uploads (Media & Aset)')}
+                      >
+                        <Folder size={11} />
+                        <span>Uploads</span>
+                      </button>
+                      {canvaFolders.map((fld) => (
+                        <button
+                          key={fld.id}
+                          type="button"
+                          className={`${styles.canvaFolderChip} ${currentCanvaFolderId === fld.id ? styles.canvaFolderChipActive : ''}`}
+                          onClick={() => void selectCanvaFolder(fld.id, fld.name)}
+                          title={`Buka folder aset ${fld.name}`}
+                        >
+                          <Folder size={11} />
+                          <span>{fld.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
             )}
 
             {isLoading || isOpenSearching || isCanvaLoading ? (
@@ -466,14 +562,14 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
                   {activeTab === 'openlibrary'
                     ? 'No vectors found'
                     : activeTab === 'canva'
-                    ? 'Belum ada aset/desain ditemukan di Canva'
+                    ? 'Belum ada aset gambar atau stiker di folder ini'
                     : `No ${activeTab} found`}
                 </span>
                 <span className={styles.emptySubtext}>
                   {activeTab === 'openlibrary'
                     ? 'Try searching other keywords like wedding, heart, star, flower, or vintage'
                     : activeTab === 'canva'
-                    ? 'Aset yang Anda upload atau desain di Canva akan muncul di sini secara otomatis'
+                    ? 'Aset gambar atau stiker yang Anda upload di Canva akan muncul di sini secara otomatis'
                     : searchQuery
                     ? 'Try clearing search filters or sync online assets'
                     : 'Sync online assets or import your own PNG/SVG asset'}
@@ -491,7 +587,7 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
                     onClick={() => void handleCardClick(asset)}
                     draggable
                     onDragStart={(e) => handleDragStart(e, asset)}
-                    title={`${asset.title} • Drag onto canvas or click to apply`}
+                    title={`${asset.title} • Klik untuk pasang stiker/overlay, atau tambahkan ke foto`}
                   >
                     <div className={styles.thumbWrapper}>
                       {imgSrc ? (
@@ -510,7 +606,18 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
                         <Box size={24} color="#52525b" />
                       )}
                       {activeTab === 'canva' && (
-                        <span className={styles.badgeCanva}>Canva</span>
+                        <>
+                          <span className={styles.badgeCanva}>Aset Canva</span>
+                          <button
+                            type="button"
+                            className={styles.addToPhotoBtn}
+                            onClick={(e) => void handleAddToPhotoLibrary(e, asset)}
+                            title="Tambahkan aset ini ke Tray Foto Album"
+                          >
+                            <ImagePlus size={10} />
+                            <span>+ Foto</span>
+                          </button>
+                        </>
                       )}
                       {asset.shape && asset.category === 'frame' && (
                         <span className={styles.shapeBadge}>{asset.shape}</span>

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { listen } from '@tauri-apps/api/event';
 import { frameAssetService, FrameAssetMeta, FrameSlotPayload } from '../services/frameAssetService';
-import { canvaService, CanvaAuthStatus } from '../services/canvaService';
+import { canvaService, CanvaAuthStatus, CanvaFolderInfo } from '../services/canvaService';
 import { isTauri } from '../utils/platform';
 
 export type AssetShapeFilter = 'all' | 'rectangle' | 'square' | 'oval' | 'arch' | 'circle';
@@ -10,6 +10,9 @@ interface AssetState {
   assets: FrameAssetMeta[];
   openLibraryResults: FrameAssetMeta[];
   canvaItems: FrameAssetMeta[];
+  canvaFolders: CanvaFolderInfo[];
+  currentCanvaFolderId: string;
+  currentCanvaFolderName: string;
   canvaStatus: CanvaAuthStatus | null;
   activeTab: 'frames' | 'elements' | 'openlibrary' | 'canva';
   selectedShape: AssetShapeFilter;
@@ -28,7 +31,8 @@ interface AssetState {
   connectCanva: () => Promise<void>;
   completeCanvaOAuth: (code: string) => Promise<void>;
   disconnectCanva: () => Promise<void>;
-  loadCanvaAssets: () => Promise<void>;
+  loadCanvaAssets: (folderId?: string, folderName?: string) => Promise<void>;
+  selectCanvaFolder: (folderId: string, folderName: string) => Promise<void>;
   importAsset: (
     filePath: string,
     category: 'frame' | 'element',
@@ -57,6 +61,9 @@ export const useAssetStore = create<AssetState>((set, get) => {
   assets: [],
   openLibraryResults: [],
   canvaItems: [],
+  canvaFolders: [],
+  currentCanvaFolderId: 'uploads',
+  currentCanvaFolderName: 'Uploads (Media & Aset)',
   canvaStatus: null,
   activeTab: 'frames',
   selectedShape: 'all',
@@ -131,21 +138,36 @@ export const useAssetStore = create<AssetState>((set, get) => {
           display_name: null,
         },
         canvaItems: [],
+        canvaFolders: [],
+        currentCanvaFolderId: 'uploads',
+        currentCanvaFolderName: 'Uploads (Media & Aset)',
       });
     } catch (err) {
       console.error('[assetStore] Failed disconnecting Canva:', err);
     }
   },
 
-  loadCanvaAssets: async () => {
+  loadCanvaAssets: async (folderId?: string, folderName?: string) => {
     set({ isCanvaLoading: true });
     try {
-      const items = await canvaService.listAssets();
-      set({ canvaItems: items, isCanvaLoading: false });
+      const targetId = folderId || get().currentCanvaFolderId || 'uploads';
+      const targetName = folderName || (targetId === 'uploads' ? 'Uploads (Media & Aset)' : get().currentCanvaFolderName);
+      const res = await canvaService.listAssets(targetId);
+      set({
+        canvaItems: res.assets,
+        canvaFolders: res.folders,
+        currentCanvaFolderId: res.current_folder,
+        currentCanvaFolderName: targetName,
+        isCanvaLoading: false,
+      });
     } catch (err) {
       console.error('[assetStore] Failed loading Canva assets:', err);
       set({ isCanvaLoading: false });
     }
+  },
+
+  selectCanvaFolder: async (folderId: string, folderName: string) => {
+    await get().loadCanvaAssets(folderId, folderName);
   },
 
   syncCatalog: async (url?: string) => {
