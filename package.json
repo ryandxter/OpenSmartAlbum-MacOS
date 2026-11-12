@@ -8,7 +8,10 @@
     "build": "tsc && vite build",
     "test": "tsc --noEmit",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "version:check": "node scripts/bump-version.mjs --check",
+    "version:sync": "node scripts/bump-version.mjs",
+    "version:bump": "node scripts/bump-version.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",

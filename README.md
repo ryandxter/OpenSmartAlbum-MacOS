@@ -822,6 +822,14 @@ npm run tauri build -- --target aarch64-apple-darwin
 
 ---
 
+## 📄 License & Origin
+
+OpenSmartAlbum is released under the **MIT License** — see [`LICENSE`](LICENSE).
+For the project's origin as the independent open-source continuation of the
+v1.4.0-era codebase and its clean-room evolution policy, see [`NOTICE.md`](NOTICE.md).
+
+---
+
 ## 🤝 Credits & Acknowledgements
 
 * **Origins & Architecture:** OpenSmartAlbum evolved from an early open-source album layout proof-of-concept into a full-featured macOS/cross-platform application.

@@ -41,6 +41,8 @@ canva.env
 *.cert
 *.pfx
 rea/
+# Reverse-engineering executables & dumps (research only, never commit)
+*.exe
 
 # IDEs & Editors
 .vscode/
@@ -62,3 +64,6 @@ graphify-out/
 .continue-here.md
 
 
+
+# TypeScript incremental build info
+*.tsbuildinfo

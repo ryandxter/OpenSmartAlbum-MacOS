@@ -49,7 +49,7 @@
       "dmg",
       "nsis"
     ],
-    "createUpdaterArtifacts": false,
+    "createUpdaterArtifacts": true,
     "resources": [
       "resources/**/*"
     ],

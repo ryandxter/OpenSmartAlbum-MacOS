@@ -1,5 +1,21 @@
 name: 'Release'
 
+# OpenSmartAlbum release pipeline.
+#
+# One tag -> one GitHub Release -> the in-app OTA updater reads
+# `latest.json` from that release (see src-tauri/tauri.conf.json
+# plugins.updater.endpoints). Every platform job MUST contribute its
+# signed updater artifacts (.app.tar.gz/.sig on macOS, .exe/.sig on
+# Windows), otherwise OTA silently breaks for that platform.
+#
+# Required repository secret:
+#   TAURI_SIGNING_PRIVATE_KEY — minisign key matching the pubkey in
+#   tauri.conf.json (updater signatures). Without it, updater artifacts
+#   are unsigned and the in-app updater will refuse them.
+# Optional (macOS distribution signing/notarization) can be added later;
+# unsigned macOS builds still install via the Gatekeeper bypass steps
+# documented in README.
+
 on:
   push:
     tags:
@@ -15,7 +31,24 @@ jobs:
   release:
     permissions:
       contents: write
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      # Sequential on purpose: tauri-action merges each platform into the
+      # shared latest.json. Parallel jobs race on that file and the last
+      # finisher wipes the other platforms' updater entries.
+      max-parallel: 1
+      matrix:
+        include:
+          - platform: 'macos-latest'
+            args: '--target aarch64-apple-darwin'
+            rust-target: 'aarch64-apple-darwin'
+          - platform: 'macos-latest'
+            args: '--target x86_64-apple-darwin'
+            rust-target: 'x86_64-apple-darwin'
+          - platform: 'windows-latest'
+            args: ''
+            rust-target: 'x86_64-pc-windows-msvc'
+    runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -37,30 +70,26 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "Resolved release tag: $TAG"
 
-      - name: Check if release already exists with complete assets
-        id: check_release
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Verify version sync (single source of truth = package.json)
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.tag_info.outputs.tag }}
         run: |
-          echo "Checking if release $TAG already exists..."
-          RELEASE_JSON=$(gh release view "$TAG" --json assets 2>/dev/null || echo "")
-          if [ -n "$RELEASE_JSON" ]; then
-            HAS_EXE=$(echo "$RELEASE_JSON" | grep -i "\.exe" || echo "")
-            HAS_JSON=$(echo "$RELEASE_JSON" | grep -i "latest\.json" || echo "")
-            if [ -n "$HAS_EXE" ] && [ -n "$HAS_JSON" ]; then
-              echo "skip=true" >> $GITHUB_OUTPUT
-              echo "Release $TAG already exists with complete assets (.exe and latest.json). Skipping build."
-              exit 0
-            fi
+          node scripts/bump-version.mjs --check
+          PKG_VER=$(node -p "require('./package.json').version")
+          if [ "$TAG" != "v$PKG_VER" ]; then
+            echo "::error::Release tag $TAG does not match package.json version v$PKG_VER. Bump the version first: npm run version:bump -- $TAG"
+            exit 1
           fi
-          echo "skip=false" >> $GITHUB_OUTPUT
-          echo "Release $TAG does not exist or has incomplete assets. Proceeding with build."
 
       - name: Generate release notes from git commits
         id: release_notes
-        if: steps.check_release.outputs.skip != 'true'
         shell: bash
         env:
           TAG: ${{ steps.tag_info.outputs.tag }}
@@ -80,35 +109,23 @@ jobs:
           echo "Download the macOS/Windows installer below or update directly within OpenSmartAlbum." >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Setup Node.js
-        if: steps.check_release.outputs.skip != 'true'
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-
       - name: Setup Rust toolchain
-        if: steps.check_release.outputs.skip != 'true'
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-pc-windows-msvc
+          targets: ${{ matrix.rust-target }}
 
       - name: Rust cache
-        if: steps.check_release.outputs.skip != 'true'
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
 
       - name: Install dependencies
-        if: steps.check_release.outputs.skip != 'true'
         run: npm ci
 
       - name: Run verification tests
-        if: steps.check_release.outputs.skip != 'true'
         run: npm test
 
       - name: Build Tauri app and publish signed release
-        if: steps.check_release.outputs.skip != 'true'
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -120,3 +137,4 @@ jobs:
           includeUpdaterJson: true
           releaseDraft: false
           prerelease: false
+          args: ${{ matrix.args }}
