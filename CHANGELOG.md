@@ -9,6 +9,16 @@ Format adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 ---
 
+### [v1.5.4] — 2026-11-12
+#### 🔄 Rilis Bukti OTA: Pembaruan Dalam Aplikasi Pertama
+
+Rilis pemeliharaan — tidak ada perubahan fitur editor. Satu-satunya tujuan rilis ini adalah membuktikan pembaruan OTA ujung-ke-ujung: aplikasi v1.5.3 (rilis pertama yang tertanam kunci penandatanganan baru milik maintainer) harus menawarkan dan memasang pembaruan ke v1.5.4 ini langsung dari dalam aplikasi.
+
+#### Perbaikan & Penyempurnaan (Key Enhancements & Fixes)
+* **Verifikasi OTA**: bila kamu membaca catatan ini dari dalam aplikasi setelah memperbarui dari v1.5.3, jalur pembaruan otomatis macOS (Apple Silicon + Intel) dan Windows resmi terbukti bekerja.
+
+---
+
 ### [v1.5.3] — 2026-11-12
 #### 🚀 Fondasi Rilis: Versioning Satu Sumber & Pipeline OTA Multi-Platform
 
@@ -93,6 +103,16 @@ Pembaruan besar ini menghadirkan perombakan total pada panel aset elemen dan bin
 
 <a name="-english"></a>
 ## 🇬🇧 English
+
+---
+
+### [v1.5.4] — 2026-11-12
+#### 🔄 OTA Proof Release: First In-App Update
+
+Maintenance release — no editor feature changes. Its sole purpose is to prove end-to-end OTA updates: the v1.5.3 app (the first release embedding the maintainer's new signing key) should offer and install this v1.5.4 update from inside the app.
+
+#### Key Enhancements & Fixes
+* **OTA verification**: if you are reading these notes inside the app after updating from v1.5.3, the automatic update path on macOS (Apple Silicon + Intel) and Windows is officially proven working.
 
 ---
 
