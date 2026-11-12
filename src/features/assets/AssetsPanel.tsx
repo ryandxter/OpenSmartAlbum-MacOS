@@ -19,6 +19,7 @@ import {
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { useAssetStore, AssetShapeFilter } from '../../stores/assetStore';
 import type { FrameAssetMeta } from '../../services/frameAssetService';
+import { buildCreditsLines } from '../../services/freeAssets';
 import { useAlbumStore } from '../../stores/albumStore';
 import { useCarouselStore } from '../../stores/carouselStore';
 import { useEditorStore } from '../../stores/editorStore';
@@ -58,6 +59,8 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
   const {
     assets,
     openLibraryResults,
+    openverseResults,
+    openLibrarySource,
     canvaItems,
     canvaFolders,
     currentCanvaFolderId,
@@ -75,6 +78,8 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
     syncCatalog,
     downloadAsset,
     searchOpenLibrary,
+    searchOpenverse,
+    setOpenLibrarySource,
     loadCanvaStatus,
     connectCanva,
     completeCanvaOAuth,
@@ -151,7 +156,7 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
 
   const filteredAssets = useMemo(() => {
     if (activeTab === 'openlibrary') {
-      return openLibraryResults;
+      return openLibrarySource === 'photos' ? openverseResults : openLibraryResults;
     }
     if (activeTab === 'canva') {
       if (!searchQuery.trim()) return canvaItems;
@@ -180,21 +185,55 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
 
       return true;
     });
-  }, [assets, openLibraryResults, canvaItems, activeTab, selectedShape, searchQuery]);
+  }, [assets, openLibraryResults, openverseResults, openLibrarySource, canvaItems, activeTab, selectedShape, searchQuery]);
+
+  const runOpenLibrarySearch = (q: string) => {
+    if (openLibrarySource === 'photos') {
+      void searchOpenverse(q);
+    } else {
+      void searchOpenLibrary(q);
+    }
+  };
 
   const handleSearchSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (activeTab === 'openlibrary') {
       const q = searchQuery.trim() || selectedLibraryTag || 'wedding';
-      void searchOpenLibrary(q);
+      runOpenLibrarySearch(q);
     }
   };
 
   const handleSelectQuickTag = (tag: string) => {
     setSelectedLibraryTag(tag);
     setSearchQuery(tag);
-    void searchOpenLibrary(tag);
+    runOpenLibrarySearch(tag);
   };
+
+  const handleSelectSource = (source: 'icons' | 'photos') => {
+    setOpenLibrarySource(source);
+    const q = searchQuery.trim() || selectedLibraryTag || 'wedding';
+    if (source === 'photos') {
+      void searchOpenverse(q);
+    } else {
+      void searchOpenLibrary(q);
+    }
+  };
+
+  const currentAlbum = useAlbumStore((s) => s.currentAlbum);
+  const currentCarousel = useCarouselStore((s) => s.currentCarousel);
+  const creditsLines = useMemo(() => {
+    if (activeMode === 'carousel') {
+      const slides = currentCarousel?.slides ?? [];
+      return buildCreditsLines(slides.flatMap((s) => s.elements ?? []));
+    }
+    const elements = currentAlbum
+      ? [
+          ...(currentAlbum.coverSpread?.elements ?? []),
+          ...currentAlbum.spreads.flatMap((s) => s.elements ?? []),
+        ]
+      : [];
+    return buildCreditsLines(elements);
+  }, [activeMode, currentAlbum, currentCarousel]);
 
   const handleAddToPhotoLibrary = async (e: React.MouseEvent, asset: FrameAssetMeta) => {
     e.stopPropagation();
@@ -295,7 +334,9 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
             className={`${styles.categoryTab} ${activeTab === 'openlibrary' ? styles.categoryTabActive : ''}`}
             onClick={() => {
               setActiveTab('openlibrary');
-              if (openLibraryResults.length === 0) {
+              if (openLibrarySource === 'photos') {
+                if (openverseResults.length === 0) void searchOpenverse('wedding');
+              } else if (openLibraryResults.length === 0) {
                 void searchOpenLibrary('wedding');
               }
             }}
@@ -336,11 +377,6 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
               }
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleSearchSubmit();
-                }
-              }}
             />
           </div>
           {activeTab !== 'openlibrary' && activeTab !== 'canva' && (
@@ -391,6 +427,26 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
                 {f.label}
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Source Toggle (for Open Library): permissive icons vs CC0 photos */}
+        {activeTab === 'openlibrary' && (
+          <div className={styles.libraryChipsRow}>
+            <button
+              type="button"
+              className={`${styles.libraryChip} ${openLibrarySource === 'icons' ? styles.libraryChipActive : ''}`}
+              onClick={() => handleSelectSource('icons')}
+            >
+              Ikon (Iconify)
+            </button>
+            <button
+              type="button"
+              className={`${styles.libraryChip} ${openLibrarySource === 'photos' ? styles.libraryChipActive : ''}`}
+              onClick={() => handleSelectSource('photos')}
+            >
+              Foto CC0 (Openverse)
+            </button>
           </div>
         )}
 
@@ -549,7 +605,9 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
                 <Loader2 size={24} className={styles.spinning} />
                 <span>
                   {isOpenSearching
-                    ? 'Searching 200,000+ open-source vectors...'
+                    ? openLibrarySource === 'photos'
+                      ? 'Mencari foto CC0 di Openverse...'
+                      : 'Searching 200,000+ open-source vectors...'
                     : isCanvaLoading
                     ? 'Memuat aset Canva Anda...'
                     : 'Loading assets...'}
@@ -626,6 +684,9 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
                     <div className={styles.metaRow}>
                       <span className={styles.assetTitle}>{asset.title}</span>
                       <span className={styles.assetTag}>{asset.tags?.[0] || asset.category}</span>
+                      {asset.license && (
+                        <span className={styles.licenseBadge}>{asset.license.licenseId}</span>
+                      )}
                     </div>
                   </div>
                 );
@@ -634,6 +695,38 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
           </>
         )}
       </div>
+
+      {/* Free-asset license credits for the current album/carousel */}
+      {activeTab === 'openlibrary' && (
+        <div className={styles.creditsBox}>
+          <div className={styles.creditsHeader}>
+            <span className={styles.creditsTitle}>Kredit Lisensi Aset Bebas (di album ini)</span>
+            <button
+              type="button"
+              className={styles.creditsBtn}
+              onClick={() => {
+                if (creditsLines.length === 0) return;
+                void navigator.clipboard
+                  .writeText(creditsLines.join('\n'))
+                  .then(() => onApplyToast?.('✓ Kredit lisensi disalin'));
+              }}
+            >
+              Salin
+            </button>
+          </div>
+          {creditsLines.length === 0 ? (
+            <span className={styles.creditsLine}>
+              Belum ada aset bebas berlisensi di album ini — daftar muncul otomatis setelah aset dari tab ini dipasang.
+            </span>
+          ) : (
+            creditsLines.map((line) => (
+              <span key={line} className={styles.creditsLine}>
+                {line}
+              </span>
+            ))
+          )}
+        </div>
+      )}
 
       {/* Import Modal */}
       {isImportModalOpen && (

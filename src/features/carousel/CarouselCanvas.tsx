@@ -28,6 +28,7 @@ import { extractCanvasDividers, findPhotoSwapTarget, RectFrameInput } from '../.
 import { renderFilteredPhotoToCanvas, getSeededGrainTile } from '../../utils/imageFilters';
 import type { SpreadBackgroundImage } from '../../domain/album';
 import { frameAssetService, type FrameAssetMeta } from '../../services/frameAssetService';
+import { useAssetStore } from '../../stores/assetStore';
 import styles from './CarouselCanvas.module.css';
 
 interface CarouselCanvasProps {
@@ -1427,9 +1428,12 @@ export function CarouselCanvas({
         };
 
         if (!asset.local_path && asset.remote_url) {
-          void frameAssetService.downloadAsset(asset.id, asset.remote_url).then((downloaded) => {
-            applyAsset(downloaded || asset);
-          });
+          void useAssetStore
+            .getState()
+            .downloadAsset(asset.id, asset.remote_url)
+            .then((downloaded) => {
+              applyAsset(downloaded || asset);
+            });
         } else {
           applyAsset(asset);
         }

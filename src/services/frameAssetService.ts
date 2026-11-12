@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { isTauri } from '../utils/platform';
+import type { AssetLicenseInfo } from '../domain/editor';
 
 export interface FrameSlotPayload {
   slotX: number;
@@ -22,6 +23,10 @@ export interface FrameAssetMeta {
   remote_url?: string | null;
   tags: string[];
   created_at?: string | null;
+  /** License provenance for free-asset results (TS-side; not a Rust field) */
+  license?: AssetLicenseInfo | null;
+  /** Natural width/height ratio for raster results, when the provider reports dimensions */
+  aspect?: number | null;
 }
 
 export const frameAssetService = {

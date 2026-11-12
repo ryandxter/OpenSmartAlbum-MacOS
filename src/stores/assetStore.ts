@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { listen } from '@tauri-apps/api/event';
 import { frameAssetService, FrameAssetMeta, FrameSlotPayload } from '../services/frameAssetService';
+import { enrichIconifyResults, searchOpenversePhotos } from '../services/freeAssets';
 import { canvaService, CanvaAuthStatus, CanvaFolderInfo } from '../services/canvaService';
 import { isTauri } from '../utils/platform';
 
@@ -9,6 +10,8 @@ export type AssetShapeFilter = 'all' | 'rectangle' | 'square' | 'oval' | 'arch' 
 interface AssetState {
   assets: FrameAssetMeta[];
   openLibraryResults: FrameAssetMeta[];
+  openverseResults: FrameAssetMeta[];
+  openLibrarySource: 'icons' | 'photos';
   canvaItems: FrameAssetMeta[];
   canvaFolders: CanvaFolderInfo[];
   currentCanvaFolderId: string;
@@ -27,6 +30,8 @@ interface AssetState {
   syncCatalog: (url?: string) => Promise<void>;
   downloadAsset: (id: string, remoteUrl: string) => Promise<FrameAssetMeta | null>;
   searchOpenLibrary: (query: string) => Promise<void>;
+  searchOpenverse: (query: string) => Promise<void>;
+  setOpenLibrarySource: (source: 'icons' | 'photos') => void;
   loadCanvaStatus: () => Promise<void>;
   connectCanva: () => Promise<void>;
   completeCanvaOAuth: (code: string) => Promise<void>;
@@ -60,6 +65,8 @@ export const useAssetStore = create<AssetState>((set, get) => {
   return {
   assets: [],
   openLibraryResults: [],
+  openverseResults: [],
+  openLibrarySource: 'icons',
   canvaItems: [],
   canvaFolders: [],
   currentCanvaFolderId: 'uploads',
@@ -185,12 +192,30 @@ export const useAssetStore = create<AssetState>((set, get) => {
     try {
       const downloaded = await frameAssetService.downloadAsset(id, remoteUrl);
       if (downloaded) {
+        // The Rust download step returns a SYNTHETIC meta: title derived
+        // from the id, generic tags, and no search-time license. Merge it
+        // over the search record so the local paths land but the title,
+        // tags, aspect and license provenance survive — in state AND in
+        // the value returned to insert callers.
+        const s0 = get();
+        const existing =
+          s0.openLibraryResults.find((a) => a.id === id) ??
+          s0.openverseResults.find((a) => a.id === id) ??
+          s0.assets.find((a) => a.id === id);
+        const enriched: FrameAssetMeta = {
+          ...downloaded,
+          title: existing?.title ?? downloaded.title,
+          tags: existing?.tags?.length ? existing.tags : downloaded.tags,
+          license: downloaded.license ?? existing?.license ?? null,
+          aspect: existing?.aspect ?? null,
+        };
+        const swap = (a: FrameAssetMeta): FrameAssetMeta => (a.id === id ? enriched : a);
         set((s) => ({
-          assets: s.assets.some((a) => a.id === id)
-            ? s.assets.map((a) => (a.id === id ? downloaded : a))
-            : [downloaded, ...s.assets],
-          openLibraryResults: s.openLibraryResults.map((a) => (a.id === id ? downloaded : a)),
+          assets: s.assets.some((a) => a.id === id) ? s.assets.map(swap) : [enriched, ...s.assets],
+          openLibraryResults: s.openLibraryResults.map(swap),
+          openverseResults: s.openverseResults.map(swap),
         }));
+        return enriched;
       }
       return downloaded;
     } catch (err) {
@@ -208,11 +233,33 @@ export const useAssetStore = create<AssetState>((set, get) => {
     set({ isOpenSearching: true });
     try {
       const results = await frameAssetService.searchOpenLibrary(trimmed, 36);
-      set({ openLibraryResults: results, isOpenSearching: false });
+      // Keep only permissive-license icon sets (MIT/ISC/Apache) and
+      // attach license provenance to each surviving result.
+      set({ openLibraryResults: enrichIconifyResults(results), isOpenSearching: false });
     } catch (err) {
       console.error('[assetStore] Failed searching open library:', err);
       set({ isOpenSearching: false });
     }
+  },
+
+  searchOpenverse: async (query: string) => {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      set({ openverseResults: [] });
+      return;
+    }
+    set({ isOpenSearching: true });
+    try {
+      const results = await searchOpenversePhotos(trimmed, 24);
+      set({ openverseResults: results, isOpenSearching: false });
+    } catch (err) {
+      console.error('[assetStore] Failed searching Openverse:', err);
+      set({ isOpenSearching: false });
+    }
+  },
+
+  setOpenLibrarySource: (source: 'icons' | 'photos') => {
+    set({ openLibrarySource: source });
   },
 
   importAsset: async (filePath, category, shape, customSlot) => {

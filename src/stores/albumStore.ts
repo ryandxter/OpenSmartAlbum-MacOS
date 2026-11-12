@@ -42,6 +42,7 @@ import { convertUnit } from '../domain/units';
 import { StudioFramingPreset, FramingConfig } from '../domain/ai/faceDetection';
 import { calculateOptimalStudioCrop } from '../domain/ai/framingMath';
 import type { FrameAssetMeta } from '../services/frameAssetService';
+import { resolveAssetLicense } from '../services/freeAssets';
 import {
   canvasToUiLayers,
   uiLayersToCanvas,
@@ -3145,6 +3146,7 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
         frameAssetTitle: asset.title,
         frameAssetSlot: asset.slot || { slotX: 0, slotY: 0, slotWidth: 1, slotHeight: 1, shape: asset.shape },
         frameAssetIsPro: false,
+        licenseInfo: resolveAssetLicense(asset),
       };
     };
 
@@ -3241,7 +3243,9 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
 
     const defaultDim = convertUnit(60, 'mm', unit, dpi, 4);
     const w = position?.width ?? defaultDim;
-    const h = position?.height ?? defaultDim;
+    const h =
+      position?.height ??
+      (asset.aspect && asset.aspect > 0 ? Math.round(w / asset.aspect) : defaultDim);
     const x = position?.x ?? Math.max(0, (totalW - w) / 2);
     const y = position?.y ?? Math.max(0, (pageH - h) / 2);
 
@@ -3265,6 +3269,7 @@ export const useAlbumStore = create<AlbumState>((set, get) => ({
       frameAssetTitle: asset.title,
       frameAssetSlot: asset.slot || null,
       frameAssetIsPro: false,
+      licenseInfo: resolveAssetLicense(asset),
       filePath: asset.local_path,
       fileName: asset.title,
       fileUrl: asset.remote_url || null,

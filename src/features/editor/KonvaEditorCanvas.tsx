@@ -64,6 +64,7 @@ import { drawShapeToContext, getShapeSvgPath } from '../../domain/shapes';
 import { renderFilteredPhotoToCanvas, getSeededGrainTile } from '../../utils/imageFilters';
 import { DividerOverlayLayer } from './DividerOverlayLayer';
 import { frameAssetService, type FrameAssetMeta } from '../../services/frameAssetService';
+import { useAssetStore } from '../../stores/assetStore';
 import { extractCanvasDividers, RectFrameInput } from '../../domain/layout/dividerGraph';
 import { isMac } from '../../utils/platform';
 import { CanvasToolDock } from './CanvasToolDock';
@@ -2668,9 +2669,12 @@ export function KonvaEditorCanvas({ zoomLevel, fitTrigger, activeTool: propActiv
         };
 
         if (!asset.local_path && asset.remote_url) {
-          void frameAssetService.downloadAsset(asset.id, asset.remote_url).then((downloaded) => {
-            applyAsset(downloaded || asset);
-          });
+          void useAssetStore
+            .getState()
+            .downloadAsset(asset.id, asset.remote_url)
+            .then((downloaded) => {
+              applyAsset(downloaded || asset);
+            });
         } else {
           applyAsset(asset);
         }

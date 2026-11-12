@@ -38,6 +38,8 @@ export interface DecorativeFrameOverlayProps {
   frameAssetTitle?: string | null;
   frameAssetSlot?: FrameSlotPayload | null;
   frameAssetIsPro?: boolean;
+  /** License provenance when the overlay came from a free-asset source */
+  licenseInfo?: AssetLicenseInfo | null;
 }
 
 export interface PhotoFrameElement {
@@ -119,6 +121,8 @@ export interface PhotoFrameElement {
   frameAssetTitle?: string | null;
   frameAssetSlot?: FrameSlotPayload | null;
   frameAssetIsPro?: boolean;
+  /** License provenance when the overlay came from a free-asset source */
+  licenseInfo?: AssetLicenseInfo | null;
 
   // AI Face & Studio Framing (Phase 23)
   faceFramingPreset?: import('./ai/faceDetection').StudioFramingPreset;
@@ -127,6 +131,27 @@ export interface PhotoFrameElement {
   faceShoulderRatio?: number;
   activeFaceIndex?: number;
   showFaceReticles?: boolean;
+}
+
+/**
+ * License provenance for an asset that came from a free-asset provider.
+ * Recorded at search time and attached to the inserted element so the
+ * album can produce an attribution/credits list at export time.
+ */
+export interface AssetLicenseInfo {
+  /** Provider id: 'iconify' | 'openverse' | 'wikimedia' | 'pixabay' */
+  provider: string;
+  /** Normalized license id, e.g. 'cc0', 'pdm', 'mit', 'apache-2.0', 'isc' */
+  licenseId: string;
+  /** Human-readable license name, e.g. 'CC0 1.0', 'MIT License' */
+  licenseName: string;
+  licenseUrl?: string | null;
+  creator?: string | null;
+  /** Landing page of the asset at the provider/source */
+  sourceUrl?: string | null;
+  attributionRequired: boolean;
+  /** Ready-to-print attribution line (empty when not required) */
+  attributionText: string;
 }
 
 export interface GraphicElement {
@@ -168,6 +193,10 @@ export interface GraphicElement {
   frameAssetTitle?: string | null;
   frameAssetSlot?: FrameSlotPayload | null;
   frameAssetIsPro?: boolean;
+
+  // License provenance for free-asset sources (Iconify / Openverse).
+  // Carried on the element so exports can build a credits list.
+  licenseInfo?: AssetLicenseInfo | null;
 
   // File metadata / aliases
   graphicId?: string | null;

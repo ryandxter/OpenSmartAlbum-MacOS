@@ -10,7 +10,7 @@ import type { StyledRange } from './styledRanges';
 import type { TextStyle } from './text';
 import type { StudioFramingPreset } from './ai/faceDetection';
 import type { Unit } from './units';
-import type { FrameSlotPayload } from './editor';
+import type { AssetLicenseInfo, FrameSlotPayload } from './editor';
 import type { SpreadBackgroundImage } from './album';
 export type { StudioFramingPreset };
 
@@ -164,6 +164,8 @@ export interface CarouselPhotoFrame {
   frameAssetTitle?: string | null;
   frameAssetSlot?: FrameSlotPayload | null;
   frameAssetIsPro?: boolean;
+  /** License provenance when the overlay came from a free-asset source */
+  licenseInfo?: AssetLicenseInfo | null;
 
   // AI Face & Studio Framing (Phase 23)
   faceFramingPreset?: StudioFramingPreset;
@@ -254,6 +256,9 @@ export interface CarouselGraphicFrame {
   frameAssetTitle?: string | null;
   frameAssetSlot?: FrameSlotPayload | null;
   frameAssetIsPro?: boolean;
+
+  // License provenance for free-asset sources (Iconify / Openverse)
+  licenseInfo?: AssetLicenseInfo | null;
 
   graphicId?: string | null;
   photoId?: string;

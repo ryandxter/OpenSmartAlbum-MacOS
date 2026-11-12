@@ -31,6 +31,7 @@ import { StudioFramingPreset, FramingConfig } from '../domain/ai/faceDetection';
 import { calculateOptimalStudioCrop } from '../domain/ai/framingMath';
 import { usePhotoStore } from './photoStore';
 import type { FrameAssetMeta } from '../services/frameAssetService';
+import { resolveAssetLicense } from '../services/freeAssets';
 import {
   canvasToUiLayers,
   uiLayersToCanvas,
@@ -292,6 +293,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
           frameAssetTitle: frame.frameAssetTitle || frame.fileName || null,
           frameAssetSlot: null,
           frameAssetIsPro: false,
+          licenseInfo: frame.licenseInfo ?? null,
         };
       }
 
@@ -346,6 +348,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
         frameAssetTitle: frame.frameAssetTitle || null,
         frameAssetSlot: frame.frameAssetSlot || null,
         frameAssetIsPro: false,
+        licenseInfo: frame.licenseInfo ?? null,
       };
     };
 
@@ -2682,6 +2685,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
             frameAssetTitle: asset.title,
             frameAssetSlot: asset.slot || { slotX: 0, slotY: 0, slotWidth: 1, slotHeight: 1, shape: asset.shape },
             frameAssetIsPro: false,
+            licenseInfo: resolveAssetLicense(asset),
           };
         }
         return el;
@@ -2736,7 +2740,11 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
     const graphicId = `graphic-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
     const w = position?.width ?? Math.round(currentCarousel.slideWidthPx * 0.35);
-    const h = position?.height ?? Math.round(currentCarousel.slideWidthPx * 0.35);
+    const h =
+      position?.height ??
+      (asset.aspect && asset.aspect > 0
+        ? Math.round(w / asset.aspect)
+        : Math.round(currentCarousel.slideWidthPx * 0.35));
     const x = position?.x ?? Math.round(slideStartX + (currentCarousel.slideWidthPx - w) / 2);
     const y = position?.y ?? Math.round((currentCarousel.slideHeightPx - h) / 2);
 
@@ -2759,6 +2767,7 @@ export const useCarouselStore = create<CarouselState>((set, get) => ({
       frameAssetTitle: asset.title,
       frameAssetSlot: asset.slot || null,
       frameAssetIsPro: false,
+      licenseInfo: resolveAssetLicense(asset),
       filePath: asset.local_path,
       fileName: asset.title,
       fileUrl: asset.remote_url || null,
