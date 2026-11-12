@@ -9,6 +9,19 @@ Format adheres to [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 ---
 
+### [v1.5.3] — 2026-11-12
+#### 🚀 Fondasi Rilis: Versioning Satu Sumber & Pipeline OTA Multi-Platform
+
+Rilis pemeliharaan infrastruktur — tidak ada perubahan fitur editor. Rilis ini membuktikan jalur pembaruan OTA ujung-ke-ujung yang baru.
+
+#### Perbaikan & Penyempurnaan (Key Enhancements & Fixes)
+* **Versioning satu sumber**: versi aplikasi kini hidup di `package.json` dan disinkronkan otomatis ke seluruh tempat lain (`npm run version:bump -- 1.5.3`); drift yang ditemukan selama pengerjaan (package-lock tertinggal di 1.4.0) sudah diperbaiki.
+* **Pipeline rilis multi-platform**: GitHub Actions kini membangun macOS (Apple Silicon + Intel) dan Windows dalam satu rilis, berjalan berurutan agar `latest.json` updater tidak saling menimpa antar-platform.
+* **Artefak updater aktif**: bundle kini menghasilkan artefak pembaruan bertanda tangan (`.app.tar.gz` / `.exe` + `.sig`) sehingga pembaruan dalam aplikasi (OTA) bekerja di macOS maupun Windows.
+* **Pagar legal repositori**: menambah `LICENSE` (MIT) dan `NOTICE.md` yang mendokumentasikan asal-usul open-source era v1.4.0 serta kebijakan evolusi clean-room proyek ini.
+
+---
+
 ### [v1.5.2] — 2026-11-02
 #### 🎨 Canva Pure Graphic Asset Pipeline, Multi-Folder Navigation & Photo Tray Quick-Import
 
@@ -80,6 +93,19 @@ Pembaruan besar ini menghadirkan perombakan total pada panel aset elemen dan bin
 
 <a name="-english"></a>
 ## 🇬🇧 English
+
+---
+
+### [v1.5.3] — 2026-11-12
+#### 🚀 Release Foundations: Single-Source Versioning & Multi-Platform OTA Pipeline
+
+Infrastructure maintenance release — no editor feature changes. This release proves the new end-to-end OTA update path.
+
+#### Added & Improved
+* **Single-source versioning**: the app version now lives in `package.json` and syncs automatically everywhere else (`npm run version:bump -- 1.5.3`); drift found during the work (package-lock stuck at 1.4.0) is fixed.
+* **Multi-platform release pipeline**: GitHub Actions now builds macOS (Apple Silicon + Intel) and Windows into one release, running sequentially so the updater `latest.json` is never overwritten across platforms.
+* **Updater artifacts enabled**: bundles now produce signed updater artifacts (`.app.tar.gz` / `.exe` + `.sig`), so in-app (OTA) updates work on both macOS and Windows.
+* **Repository legal guardrails**: added `LICENSE` (MIT) and `NOTICE.md` documenting the v1.4.0-era open-source origin and this project's clean-room evolution policy.
 
 ---
 
