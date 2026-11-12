@@ -117,7 +117,7 @@
       "open": true
     },
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENFRUNEM0VDREYyQjk1NkYKUldSdmxTdmY3TlBzemltaWxGQm8wczFVa29wMVcxRGNkRGtaWTU2c3p5RURDZ1Q2YUxHdWIvaE0K",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDUwN0M2Qjc4RDQ1Mzc1NzkKUldSNWRWUFVlR3Q4VVB4VTAwMXN0TklMUEJUR3ljcitkb1VrQlIvc0VLWTZHeDZIWDJQayttcEEK",
       "endpoints": [
         "https://github.com/ryandxter/OpenSmartAlbum-MacOS/releases/latest/download/latest.json"
       ]
