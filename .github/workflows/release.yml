@@ -8,10 +8,13 @@ name: 'Release'
 # signed updater artifacts (.app.tar.gz/.sig on macOS, .exe/.sig on
 # Windows), otherwise OTA silently breaks for that platform.
 #
-# Required repository secret:
-#   TAURI_SIGNING_PRIVATE_KEY — minisign key matching the pubkey in
-#   tauri.conf.json (updater signatures). Without it, updater artifacts
-#   are unsigned and the in-app updater will refuse them.
+# Required repository secrets:
+#   TAURI_SIGNING_PRIVATE_KEY — the FULL minisign secret key file content
+#   (both lines, including the "untrusted comment:" line) matching the
+#   pubkey in tauri.conf.json. A bare base64 line or an empty value fails
+#   signing with "Missing comment in secret key".
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD — the password chosen when the key
+#   was generated; leave unset/empty if the key has no password.
 # Optional (macOS distribution signing/notarization) can be added later;
 # unsigned macOS builds still install via the Gatekeeper bypass steps
 # documented in README.
@@ -130,6 +133,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ steps.tag_info.outputs.tag }}
           releaseName: 'OpenSmartAlbum ${{ steps.tag_info.outputs.tag }}'
