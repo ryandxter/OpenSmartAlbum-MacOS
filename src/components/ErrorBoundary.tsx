@@ -114,6 +114,27 @@ export class ErrorBoundary extends Component<Props, State> {
               </pre>
             )}
 
+            {__OSA_DIAG__ && this.state.error && (
+              <pre
+                style={{
+                  backgroundColor: '#020617',
+                  border: '1px solid #7f1d1d',
+                  borderRadius: '6px',
+                  padding: '12px',
+                  fontSize: '10px',
+                  lineHeight: 1.5,
+                  color: '#fca5a5',
+                  overflow: 'auto',
+                  maxHeight: '300px',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  marginBottom: '16px',
+                }}
+              >
+                {`[DIAGNOSTIC BUILD] Salin / foto teks ini untuk laporan bug.\n\nSTACK:\n${this.state.error.stack ?? '(tidak ada)'}\n\nCOMPONENT STACK:${this.state.errorInfo?.componentStack ?? '(tidak ada)'}`}
+              </pre>
+            )}
+
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
               <button
                 type="button"

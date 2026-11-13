@@ -1,11 +1,11 @@
 {
   "name": "open-smart-album",
   "private": true,
-  "version": "1.5.5",
+  "version": "1.5.6",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && vite build --mode diag",
     "test": "tsc --noEmit",
     "preview": "vite preview",
     "tauri": "tauri",

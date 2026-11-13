@@ -23,6 +23,9 @@ interface AssetState {
   isLoading: boolean;
   isSyncing: boolean;
   isOpenSearching: boolean;
+  /** Last Open Library search failure, tagged by source, so the panel can
+   *  show it (with retry) instead of a misleading "no results" state. */
+  openSearchError: { source: 'icons' | 'photos'; message: string } | null;
   isCanvaConnecting: boolean;
   isCanvaLoading: boolean;
 
@@ -78,6 +81,7 @@ export const useAssetStore = create<AssetState>((set, get) => {
   isLoading: false,
   isSyncing: false,
   isOpenSearching: false,
+  openSearchError: null,
   isCanvaConnecting: false,
   isCanvaLoading: false,
 
@@ -230,7 +234,7 @@ export const useAssetStore = create<AssetState>((set, get) => {
       set({ openLibraryResults: [] });
       return;
     }
-    set({ isOpenSearching: true });
+    set({ isOpenSearching: true, openSearchError: null });
     try {
       const results = await frameAssetService.searchOpenLibrary(trimmed, 36);
       // Keep only permissive-license icon sets (MIT/ISC/Apache) and
@@ -238,7 +242,13 @@ export const useAssetStore = create<AssetState>((set, get) => {
       set({ openLibraryResults: enrichIconifyResults(results), isOpenSearching: false });
     } catch (err) {
       console.error('[assetStore] Failed searching open library:', err);
-      set({ isOpenSearching: false });
+      set({
+        isOpenSearching: false,
+        openSearchError: {
+          source: 'icons',
+          message: err instanceof Error ? err.message : String(err),
+        },
+      });
     }
   },
 
@@ -248,13 +258,19 @@ export const useAssetStore = create<AssetState>((set, get) => {
       set({ openverseResults: [] });
       return;
     }
-    set({ isOpenSearching: true });
+    set({ isOpenSearching: true, openSearchError: null });
     try {
       const results = await searchOpenversePhotos(trimmed, 24);
       set({ openverseResults: results, isOpenSearching: false });
     } catch (err) {
       console.error('[assetStore] Failed searching Openverse:', err);
-      set({ isOpenSearching: false });
+      set({
+        isOpenSearching: false,
+        openSearchError: {
+          source: 'photos',
+          message: err instanceof Error ? err.message : String(err),
+        },
+      });
     }
   },
 

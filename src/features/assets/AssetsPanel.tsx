@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import {
   Search,
   Plus,
@@ -61,6 +61,7 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
     openLibraryResults,
     openverseResults,
     openLibrarySource,
+    openSearchError,
     canvaItems,
     canvaFolders,
     currentCanvaFolderId,
@@ -116,6 +117,21 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
     });
     void loadCanvaStatus();
   }, [loadAssets, syncCatalog, loadCanvaStatus]);
+
+  // Surface Open Library search failures as a toast (once per error) —
+  // a failed search must never look like an empty result set.
+  const lastSearchErrorRef = useRef<string | null>(null);
+  useEffect(() => {
+    const key = openSearchError ? `${openSearchError.source}:${openSearchError.message}` : null;
+    if (key && key !== lastSearchErrorRef.current) {
+      onApplyToast?.(
+        openSearchError!.source === 'photos'
+          ? `❌ Pencarian foto Openverse gagal: ${openSearchError!.message}`
+          : `❌ Pencarian ikon gagal: ${openSearchError!.message}`,
+      );
+    }
+    lastSearchErrorRef.current = key;
+  }, [openSearchError, onApplyToast]);
 
   const handleManualSync = async () => {
     onApplyToast?.('⏳ Syncing online assets catalog...');
@@ -617,14 +633,24 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
               <div className={styles.emptyState}>
                 <Box size={28} className={styles.emptyIcon} />
                 <span className={styles.emptyText}>
-                  {activeTab === 'openlibrary'
-                    ? 'No vectors found'
+                  {activeTab === 'openlibrary' &&
+                  openSearchError &&
+                  openSearchError.source === openLibrarySource
+                    ? 'Pencarian gagal'
+                    : activeTab === 'openlibrary'
+                    ? openLibrarySource === 'photos'
+                      ? 'Tidak ada foto ditemukan'
+                      : 'No vectors found'
                     : activeTab === 'canva'
                     ? 'Belum ada aset gambar atau stiker di folder ini'
                     : `No ${activeTab} found`}
                 </span>
                 <span className={styles.emptySubtext}>
-                  {activeTab === 'openlibrary'
+                  {activeTab === 'openlibrary' &&
+                  openSearchError &&
+                  openSearchError.source === openLibrarySource
+                    ? openSearchError.message
+                    : activeTab === 'openlibrary'
                     ? 'Try searching other keywords like wedding, heart, star, flower, or vintage'
                     : activeTab === 'canva'
                     ? 'Aset gambar atau stiker yang Anda upload di Canva akan muncul di sini secara otomatis'
@@ -632,6 +658,19 @@ export function AssetsPanel({ onApplyToast, activeMode = 'print' }: AssetsPanelP
                     ? 'Try clearing search filters or sync online assets'
                     : 'Sync online assets or import your own PNG/SVG asset'}
                 </span>
+                {activeTab === 'openlibrary' &&
+                  openSearchError &&
+                  openSearchError.source === openLibrarySource && (
+                    <button
+                      type="button"
+                      className={styles.creditsBtn}
+                      onClick={() =>
+                        runOpenLibrarySearch(searchQuery.trim() || selectedLibraryTag || 'wedding')
+                      }
+                    >
+                      Coba Lagi
+                    </button>
+                  )}
               </div>
             ) : (
               filteredAssets.map((asset) => {
