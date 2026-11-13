@@ -50,10 +50,11 @@ export default defineConfig(({ mode }) => {
     build: {
       // Tauri uses Chromium on Windows and WebKit on macOS/Linux
       target: process.env.TAURI_ENV_PLATFORM === 'windows' ? 'chrome105' : 'safari14',
-      // Don't minify for debug builds
-      minify: !process.env.TAURI_ENV_DEBUG ? 'esbuild' : false,
-      // Produce sourcemaps for debug builds
-      sourcemap: !!process.env.TAURI_ENV_DEBUG,
+      // Diagnostic builds: NO minification + sourcemaps, so error stacks
+      // carry real function/component names (v1.5.6 was still minified by
+      // the release pipeline and its stack came back unreadable).
+      minify: diag ? false : !process.env.TAURI_ENV_DEBUG ? 'esbuild' : false,
+      sourcemap: diag ? true : !!process.env.TAURI_ENV_DEBUG,
     },
   };
 });
