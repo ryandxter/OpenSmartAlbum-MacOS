@@ -74,6 +74,15 @@ export function FrameToolbar() {
 
   const isCrop = Boolean(frame && editingCropFrameId === frame.id);
 
+  // Only commit a new dock position when the coordinates actually
+  // changed. Returning the previous object lets React bail out of the
+  // re-render; without this guard the dependency-free layout effect
+  // below re-fires after every render with a fresh {x, y} object and
+  // loops until React throws "Maximum update depth exceeded" (#185).
+  const setDockPosIfChanged = (next: { x: number; y: number }) => {
+    setDockPos((prev) => (prev && prev.x === next.x && prev.y === next.y ? prev : next));
+  };
+
   // Dynamic Screen-Space Dock Positioning
   const updatePosition = () => {
     if (!toolbarRef.current || !primaryFrameId) return;
@@ -104,13 +113,13 @@ export function FrameToolbar() {
           dockW,
           dockH
         );
-        setDockPos(pos);
+        setDockPosIfChanged(pos);
         return;
       }
     }
 
     // Fallback if node not found in stage
-    setDockPos({ x: 14, y: Math.max(14, Math.round(parentRect.height / 2 - 140)) });
+    setDockPosIfChanged({ x: 14, y: Math.max(14, Math.round(parentRect.height / 2 - 140)) });
   };
 
   useLayoutEffect(() => {
