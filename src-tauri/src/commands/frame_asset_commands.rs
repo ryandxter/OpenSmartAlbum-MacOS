@@ -386,3 +386,53 @@ pub async fn search_open_library_assets(
 
     Ok(res)
 }
+
+/// Openverse photo search (Fase 2 spike follow-up). Mirrors
+/// `search_open_library_assets`: the request runs on the Rust side
+/// because the webview `fetch` path failed at network level on the
+/// maintainer's Mac ("Load failed") while this ureq lane works.
+/// Returns the raw API JSON untouched — license filtering/mapping is
+/// TS-side (`searchOpenversePhotos`). Errors carry the HTTP status
+/// plus a body snippet (or the transport error) so the UI can show
+/// the real failure instead of a generic empty result.
+#[tauri::command]
+pub async fn search_openverse_photos(
+    query: String,
+    limit: Option<usize>,
+) -> Result<serde_json::Value, String> {
+    let clean_query = query.trim().to_lowercase();
+    if clean_query.is_empty() {
+        return Ok(serde_json::json!({ "results": [] }));
+    }
+
+    // The anonymous Openverse tier caps page_size at 20.
+    let page_size = limit.unwrap_or(20).clamp(1, 20);
+    let url = format!(
+        "https://api.openverse.org/v1/images/?q={}&page=1&page_size={}&license_type=commercial%2Cmodification&license=cc0%2Cpdm&filter_dead=true",
+        url_encode(&clean_query),
+        page_size
+    );
+
+    let res = tauri::async_runtime::spawn_blocking(move || {
+        let resp = ureq::get(&url)
+            .timeout(std::time::Duration::from_secs(10))
+            .set("User-Agent", "OpenSmartAlbum/1.4.14 (Macintosh; Intel Mac OS X)")
+            .call()
+            .map_err(|e| match e {
+                ureq::Error::Status(code, resp) => {
+                    let body = resp.into_string().unwrap_or_default();
+                    let snippet: String = body.chars().take(200).collect();
+                    format!("Openverse HTTP {}: {}", code, snippet.trim())
+                }
+                other => format!("Openverse request failed: {}", other),
+            })?;
+
+        let json = serde_json::from_reader::<_, serde_json::Value>(resp.into_reader())
+            .map_err(|e| format!("Failed to parse Openverse JSON response: {}", e))?;
+        Ok::<serde_json::Value, String>(json)
+    })
+    .await
+    .map_err(|e| format!("Task spawn error: {}", e))??;
+
+    Ok(res)
+}

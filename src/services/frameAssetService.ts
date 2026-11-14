@@ -29,6 +29,25 @@ export interface FrameAssetMeta {
   aspect?: number | null;
 }
 
+/** One raw Openverse image record, as returned by the API (pre-filter). */
+export interface OpenverseRawResult {
+  id: string;
+  title?: string;
+  url: string;
+  thumbnail?: string;
+  width?: number;
+  height?: number;
+  license: string;
+  license_url?: string;
+  creator?: string;
+  attribution?: string;
+  foreign_landing_url?: string;
+}
+
+export interface OpenverseSearchResponse {
+  results?: OpenverseRawResult[];
+}
+
 export const frameAssetService = {
   async listFrameAssets(): Promise<FrameAssetMeta[]> {
     if (!isTauri()) {
@@ -105,6 +124,18 @@ export const frameAssetService = {
       console.warn('[frameAssetService] Open Library search failed:', err);
       return [];
     }
+  },
+
+  /**
+   * Openverse photo search via the Rust `search_openverse_photos`
+   * command. Unlike searchOpenLibrary this deliberately does NOT
+   * swallow errors: freeAssets.searchOpenversePhotos surfaces them in
+   * the UI, and the Rust side returns precise messages (HTTP status +
+   * body snippet, or the transport error).
+   */
+  async searchOpenverse(query: string, limit = 24): Promise<OpenverseSearchResponse> {
+    if (!isTauri()) throw new Error('Openverse search requires the desktop app');
+    return await invoke<OpenverseSearchResponse>('search_openverse_photos', { query, limit });
   },
 
   resolveAssetUrl(asset: FrameAssetMeta, preferThumb = false): string {

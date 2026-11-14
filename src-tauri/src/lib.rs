@@ -229,6 +229,7 @@ pub fn run() {
             commands::frame_asset_commands::get_frame_assets_storage_stats,
             commands::frame_asset_commands::clear_frame_assets_cache,
             commands::frame_asset_commands::search_open_library_assets,
+            commands::frame_asset_commands::search_openverse_photos,
             commands::canva_commands::get_canva_auth_status,
             commands::canva_commands::start_canva_oauth,
             commands::canva_commands::complete_canva_oauth,

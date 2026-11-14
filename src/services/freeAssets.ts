@@ -6,8 +6,11 @@
 //   `search_open_library_assets` command). Results are filtered here to
 //   icon sets whose license is permissive (MIT / ISC / Apache-2.0), because
 //   Iconify also indexes CC BY, CC BY-SA, GPL and brand-logo sets.
-// - Photos: Openverse anonymous API, filtered to CC0 / Public Domain so
-//   the default mode stays "100% free, no attribution required".
+// - Photos: Openverse anonymous API via the Rust
+//   `search_openverse_photos` command (the webview fetch path failed at
+//   network level — "Load failed" — while the Rust lane worked),
+//   filtered to CC0 / Public Domain so the default mode stays
+//   "100% free, no attribution required".
 //
 // Every search result carries an AssetLicenseInfo. A session registry
 // keyed by asset id keeps the license attached even after the Rust
@@ -15,7 +18,11 @@
 // record, so the inserted canvas element can carry the license with it.
 
 import type { AssetLicenseInfo } from '../domain/editor';
-import type { FrameAssetMeta } from './frameAssetService';
+import {
+  frameAssetService,
+  type FrameAssetMeta,
+  type OpenverseSearchResponse,
+} from './frameAssetService';
 
 interface IconSetLicense {
   licenseId: string;
@@ -157,48 +164,31 @@ export function enrichIconifyResults(results: FrameAssetMeta[]): FrameAssetMeta[
   return kept;
 }
 
-interface OpenverseResult {
-  id: string;
-  title?: string;
-  url: string;
-  thumbnail?: string;
-  width?: number;
-  height?: number;
-  license: string;
-  license_url?: string;
-  creator?: string;
-  attribution?: string;
-  foreign_landing_url?: string;
-}
-
 /**
  * Search Openverse for CC0 / Public Domain photos (anonymous tier:
  * 20 req/min, 200 req/day per IP — fine for interactive picking).
+ * Transport is the Rust `search_openverse_photos` command: the
+ * webview fetch path failed at network level on the maintainer's Mac
+ * while the Rust ureq lane (same one Iconify search uses) worked.
  * One automatic retry: the Openverse edge occasionally answers 504.
+ * Failures propagate with the Rust side's precise message so the
+ * panel can show the real cause.
  */
 export async function searchOpenversePhotos(query: string, limit = 24): Promise<FrameAssetMeta[]> {
-  const params = new URLSearchParams({
-    q: query,
-    page: '1',
-    page_size: String(Math.min(limit, 20)),
-    license_type: 'commercial,modification',
-    license: 'cc0,pdm',
-    filter_dead: 'true',
-  });
-  const url = `https://api.openverse.org/v1/images/?${params.toString()}`;
-
-  let data: { results?: OpenverseResult[] } | null = null;
+  let data: OpenverseSearchResponse | null = null;
   let lastError: unknown = null;
   for (let attempt = 0; attempt < 2 && !data; attempt++) {
     try {
-      const res = await fetch(url, { headers: { Accept: 'application/json' } });
-      if (!res.ok) throw new Error(`Openverse HTTP ${res.status}`);
-      data = (await res.json()) as { results?: OpenverseResult[] };
+      data = await frameAssetService.searchOpenverse(query, limit);
     } catch (err) {
       lastError = err;
     }
   }
-  if (!data) throw lastError instanceof Error ? lastError : new Error('Openverse search failed');
+  if (!data) {
+    throw lastError instanceof Error
+      ? lastError
+      : new Error(typeof lastError === 'string' && lastError ? lastError : 'Openverse search failed');
+  }
 
   const metas: FrameAssetMeta[] = [];
   for (const r of data.results ?? []) {
